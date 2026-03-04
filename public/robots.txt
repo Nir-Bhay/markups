@@ -1,8 +1,9 @@
-# robots.txt for Markups - Online Markdown Editor
+# robots.txt for Markups - Free Online Markdown Editor
 # https://markups.vercel.app/
 
 User-agent: *
 Allow: /
+Allow: /landing
 
 # Sitemap location
 Sitemap: https://markups.vercel.app/sitemap.xml
@@ -14,3 +15,48 @@ Crawl-delay: 1
 Disallow: /api/
 Disallow: /_next/
 Disallow: /node_modules/
+Disallow: /src/
+
+# Allow critical resource access for rendering
+Allow: /css/
+Allow: /image/
+Allow: /assets/
+
+# ===== AI SEARCH ENGINE BOTS =====
+# Allow all AI bots to crawl and cite our content.
+# This is essential for appearing in AI-generated answers
+# on ChatGPT, Perplexity, Google AI Overviews, Copilot, Claude, etc.
+
+# OpenAI — powers ChatGPT search
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Perplexity AI search
+User-agent: PerplexityBot
+Allow: /
+
+# Anthropic Claude
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# Google Gemini and AI Overviews
+User-agent: Google-Extended
+Allow: /
+
+# Microsoft Copilot (via Bing)
+User-agent: Bingbot
+Allow: /
+
+# Meta AI
+User-agent: FacebookBot
+Allow: /
+
+# Block training-only crawlers (not search/citation)
+User-agent: CCBot
+Disallow: /

@@ -1,10 +1,16 @@
 /**
  * Markups Landing Page — Interactive Scripts
  * Theme toggle, scroll animations, FAQ accordion, preloader, marquee, count-up, nav states
+ * SEO: FAQ accordion uses proper aria attributes, performance metrics, canonical handling
  */
 
 (function () {
     'use strict';
+
+    // ---- PERFORMANCE MARK ----
+    if (window.performance && performance.mark) {
+        performance.mark('landing-js-start');
+    }
 
     // ---- PRELOADER ----
     const preloader = document.getElementById('preloader');
@@ -213,24 +219,38 @@
         countElements.forEach(el => animateCountUp(el));
     }
 
-    // ---- FAQ ACCORDION ----
+    // ---- FAQ ACCORDION (with ARIA attributes for SEO/accessibility) ----
     const faqItems = document.querySelectorAll('.faq-item');
 
-    faqItems.forEach(item => {
+    faqItems.forEach((item, index) => {
         const button = item.querySelector('.faq-question');
-        if (!button) return;
+        const answer = item.querySelector('.faq-answer');
+        if (!button || !answer) return;
+
+        // Set ARIA attributes for accessibility (helps crawlers understand FAQ structure)
+        const faqId = `faq-answer-${index}`;
+        button.setAttribute('aria-expanded', 'false');
+        button.setAttribute('aria-controls', faqId);
+        button.setAttribute('role', 'button');
+        answer.setAttribute('id', faqId);
+        answer.setAttribute('role', 'region');
+        answer.setAttribute('aria-labelledby', `faq-question-${index}`);
+        button.setAttribute('id', `faq-question-${index}`);
 
         button.addEventListener('click', () => {
             const isOpen = item.classList.contains('open');
 
             // Close all
-            faqItems.forEach(other => {
+            faqItems.forEach((other, otherIndex) => {
                 other.classList.remove('open');
+                const otherButton = other.querySelector('.faq-question');
+                if (otherButton) otherButton.setAttribute('aria-expanded', 'false');
             });
 
             // Toggle current
             if (!isOpen) {
                 item.classList.add('open');
+                button.setAttribute('aria-expanded', 'true');
             }
         });
     });
@@ -249,5 +269,18 @@
             window.scrollTo({ top, behavior: 'smooth' });
         });
     });
+
+    // ---- PERFORMANCE MARK END ----
+    if (window.performance && performance.mark) {
+        performance.mark('landing-js-end');
+        performance.measure('landing-js-execution', 'landing-js-start', 'landing-js-end');
+    }
+
+    // ---- LAZY-LOAD ENHANCEMENT: Defer offscreen images if any ----
+    if ('loading' in HTMLImageElement.prototype) {
+        document.querySelectorAll('img[loading="lazy"]').forEach(img => {
+            img.src = img.dataset.src || img.src;
+        });
+    }
 
 })();

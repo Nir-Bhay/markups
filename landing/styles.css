@@ -3223,3 +3223,60 @@ section {
         padding: 2rem 0;
     }
 }
+
+/* ===== SEO: BREADCRUMB NAV (Visible to crawlers, minimal visual) ===== */
+.breadcrumb-nav {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.breadcrumb {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.breadcrumb li::after {
+    content: '>';
+    margin-left: 0.5rem;
+}
+
+.breadcrumb li:last-child::after {
+    content: '';
+}
+
+/* ===== SEO: HIDDEN CONTENT FOR CRAWLERS ===== */
+/* Uses CSS clip method — content is accessible to screen readers and crawlers
+   but invisible to sighted users. NOT display:none which hides from bots. */
+article.seo-content,
+.seo-content {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Footer inline link style */
+.footer-link-inline {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--jade-500, #22c55e);
+    text-underline-offset: 2px;
+}
+.footer-link-inline:hover {
+    color: var(--jade-500, #22c55e);
+}

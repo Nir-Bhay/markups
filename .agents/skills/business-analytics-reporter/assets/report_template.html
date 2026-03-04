@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Performance Analysis Report</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f7fa;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .metric-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .metric-change {
+            font-size: 0.9em;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .metric-change.positive {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .metric-change.negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .metric-change.neutral {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .chart-container {
+            margin: 20px 0;
+            min-height: 400px;
+        }
+
+        .weak-areas-grid {
+            display: grid;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .weak-area-card {
+            background: #fff5f5;
+            border-left: 5px solid #e53e3e;
+            padding: 20px;
+            border-radius: 5px;
+            transition: transform 0.2s;
+        }
+
+        .weak-area-card:hover {
+            transform: translateX(5px);
+        }
+
+        .weak-area-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .weak-area-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #c53030;
+        }
+
+        .severity-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .severity-high {
+            background: #fc8181;
+            color: #742a2a;
+        }
+
+        .severity-medium {
+            background: #fbd38d;
+            color: #7c2d12;
+        }
+
+        .severity-low {
+            background: #fed7d7;
+            color: #9c4221;
+        }
+
+        .weak-area-finding {
+            color: #555;
+            margin: 10px 0;
+            line-height: 1.8;
+        }
+
+        .strategies-grid {
+            display: grid;
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .strategy-card {
+            background: #f0f9ff;
+            border-left: 5px solid #3182ce;
+            padding: 25px;
+            border-radius: 5px;
+        }
+
+        .strategy-header {
+            margin-bottom: 15px;
+        }
+
+        .strategy-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #2c5282;
+            margin-bottom: 5px;
+        }
+
+        .strategy-area {
+            color: #4299e1;
+            font-weight: 600;
+        }
+
+        .strategy-actions {
+            margin: 15px 0;
+        }
+
+        .strategy-actions ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .strategy-actions li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #2d3748;
+        }
+
+        .strategy-actions li:before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #3182ce;
+            font-weight: bold;
+        }
+
+        .strategy-meta {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #bee3f8;
+            font-size: 0.9em;
+        }
+
+        .strategy-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .strategy-meta-label {
+            font-weight: 600;
+            color: #2c5282;
+        }
+
+        .impact-high {
+            color: #38a169;
+            font-weight: bold;
+        }
+
+        .impact-medium {
+            color: #d69e2e;
+            font-weight: bold;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        @media print {
+            .header {
+                background: #667eea;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .metric-card, .section {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Business Performance Analysis Report</h1>
+            <div class="subtitle">
+                <span id="report-date">Generated: [DATE]</span> |
+                <span id="data-period">Data Period: [PERIOD]</span>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Total Revenue</div>
+                <div class="metric-value" id="total-revenue">[VALUE]</div>
+                <span class="metric-change positive" id="revenue-change">[CHANGE]</span>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Average Growth Rate</div>
+                <div class="metric-value" id="growth-rate">[VALUE]</div>
+                <span class="metric-change neutral" id="growth-status">[STATUS]</span>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Revenue Stability</div>
+                <div class="metric-value" id="stability">[VALUE]</div>
+                <span class="metric-change neutral" id="stability-status">[STATUS]</span>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Weak Areas Identified</div>
+                <div class="metric-value" id="weak-areas-count">[COUNT]</div>
+                <span class="metric-change negative" id="areas-status">Requires Attention</span>
+            </div>
+        </div>
+
+        <!-- Performance Trends Section -->
+        <div class="section">
+            <h2>📈 Performance Trends</h2>
+            <div class="chart-container" id="trend-chart"></div>
+        </div>
+
+        <!-- Category Performance Section -->
+        <div class="section">
+            <h2>📊 Category Performance</h2>
+            <div class="chart-container" id="category-chart"></div>
+        </div>
+
+        <!-- Weak Areas Section -->
+        <div class="section">
+            <h2>⚠️ Areas of Weakness</h2>
+            <p style="color: #666; margin-bottom: 20px;">
+                The following areas have been identified as requiring immediate attention based on data analysis:
+            </p>
+            <div class="weak-areas-grid" id="weak-areas-container">
+                <!-- Weak areas will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Improvement Strategies Section -->
+        <div class="section">
+            <h2>💡 Improvement Strategies</h2>
+            <p style="color: #666; margin-bottom: 20px;">
+                Recommended strategic initiatives to address identified weaknesses and drive business growth:
+            </p>
+            <div class="strategies-grid" id="strategies-container">
+                <!-- Strategies will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Data Insights Section -->
+        <div class="section">
+            <h2>🔍 Statistical Insights</h2>
+            <div id="insights-content">
+                <!-- Statistical insights will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>This report was generated using automated business intelligence analysis.</p>
+            <p>For questions or clarifications, please contact your analytics team.</p>
+        </div>
+    </div>
+
+    <script>
+        // Placeholder JavaScript - This will be populated with actual data from the analysis
+
+        // Example: How to populate weak areas dynamically
+        function renderWeakAreas(weakAreas) {
+            const container = document.getElementById('weak-areas-container');
+            container.innerHTML = weakAreas.map(area => `
+                <div class="weak-area-card">
+                    <div class="weak-area-header">
+                        <div class="weak-area-title">${area.area}</div>
+                        <span class="severity-badge severity-${area.severity.toLowerCase()}">${area.severity}</span>
+                    </div>
+                    <div class="weak-area-finding">${area.finding}</div>
+                    ${area.details ? `<div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        <strong>Affected areas:</strong> ${area.details.join(', ')}
+                    </div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Example: How to populate strategies dynamically
+        function renderStrategies(strategies) {
+            const container = document.getElementById('strategies-container');
+            container.innerHTML = strategies.map(strategy => `
+                <div class="strategy-card">
+                    <div class="strategy-header">
+                        <div class="strategy-area">${strategy.area}</div>
+                        <div class="strategy-title">${strategy.strategy}</div>
+                    </div>
+                    <div class="strategy-actions">
+                        <strong>Key Actions:</strong>
+                        <ul>
+                            ${strategy.actions.map(action => `<li>${action}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div class="strategy-meta">
+                        <div class="strategy-meta-item">
+                            <span class="strategy-meta-label">Expected Impact:</span>
+                            <span class="impact-${strategy.expected_impact.toLowerCase()}">${strategy.expected_impact}</span>
+                        </div>
+                        <div class="strategy-meta-item">
+                            <span class="strategy-meta-label">Timeline:</span>
+                            <span>${strategy.timeline}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Example: Creating a simple trend chart with Plotly
+        function createTrendChart(dates, values) {
+            const trace = {
+                x: dates,
+                y: values,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {color: '#667eea', width: 3},
+                marker: {size: 8}
+            };
+
+            const layout = {
+                title: 'Revenue Trend Over Time',
+                xaxis: {title: 'Date'},
+                yaxis: {title: 'Revenue ($)'},
+                hovermode: 'closest'
+            };
+
+            Plotly.newPlot('trend-chart', [trace], layout, {responsive: true});
+        }
+
+        // Initialize with sample data (replace with actual data from analysis)
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set report date
+            document.getElementById('report-date').textContent = 'Generated: ' + new Date().toLocaleDateString();
+
+            // This is where you would load actual analysis results
+            // For example, from a JSON file generated by analyze_business_data.py
+        });
+    </script>
+</body>
+</html>

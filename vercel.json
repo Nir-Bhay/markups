@@ -8,6 +8,40 @@
     "trailingSlash": false,
     "headers": [
         {
+            "source": "/landing/(.*)",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
+                },
+                {
+                    "key": "X-Robots-Tag",
+                    "value": "index, follow, max-image-preview:large, max-snippet:-1"
+                },
+                {
+                    "key": "Link",
+                    "value": "<https://markups.vercel.app/landing>; rel=\"canonical\""
+                }
+            ]
+        },
+        {
+            "source": "/landing",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
+                },
+                {
+                    "key": "X-Robots-Tag",
+                    "value": "index, follow, max-image-preview:large, max-snippet:-1"
+                },
+                {
+                    "key": "Link",
+                    "value": "<https://markups.vercel.app/landing>; rel=\"canonical\""
+                }
+            ]
+        },
+        {
             "source": "/assets/(.*)",
             "headers": [
                 {
