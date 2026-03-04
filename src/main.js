@@ -52,6 +52,7 @@ import 'prismjs/themes/prism-tomorrow.css';
 
 // Mermaid for diagrams
 import mermaid from 'mermaid';
+mermaid.initialize({ startOnLoad: false, theme: 'default', suppressErrors: true });
 
 // KaTeX for math
 import katex from 'katex';
@@ -73,7 +74,7 @@ const APP_CONFIG = {
 // Global state and constants
 let editor;
 let hasEdited = false;
-let scrollBarSync = false;
+let scrollBarSync = true;
 let darkMode = false;
 let currentTheme = 'vs';
 
@@ -91,6 +92,8 @@ const localStorageDarkModeKey = 'dark_mode_settings';
 const localStorageThemeKey = 'theme_settings';
 const localStorageDocsKey = 'docs';
 const localStorageGoalsKey = 'writing_goals';
+const localStorageImagesKey = 'image_store';
+const imageStore = new Map(); // key: imgId, value: base64 data URL
 const confirmationMessage = 'Are you sure you want to reset? Your changes will be lost.';
 // default template
 const defaultInput = `# Markdown Live Preview
@@ -330,6 +333,7 @@ let addNewTab = () => {
         lastModified: Date.now()
     };
     documents.push(newDoc);
+    window.__markups_documents = documents;
     switchTab(newDoc.id);
 };
 
@@ -338,6 +342,7 @@ let switchTab = (id) => {
 
     // Save current before switching? Done by onDidChangeModelContent
     activeDocId = id;
+    window.__markups_activeDocId = activeDocId;
     renderTabs();
     loadActiveDocument();
 };
@@ -355,10 +360,12 @@ let closeTab = (id) => {
         if (id === activeDocId) {
             const newIndex = index === 0 ? 1 : index - 1;
             activeDocId = documents[newIndex].id; // Set new active
+            window.__markups_activeDocId = activeDocId;
             // loadActiveDocument happens after render
         }
 
         documents = documents.filter(d => d.id !== id);
+        window.__markups_documents = documents;
         saveDocsToStorage();
 
         renderTabs();
@@ -520,9 +527,13 @@ marked.use(markedHighlight({
     highlight(code, lang) {
         if (lang && Prism.languages[lang]) {
             try {
-                return Prism.highlight(code, Prism.languages[lang], lang);
+                // Verify the grammar is a valid object before attempting highlight
+                const grammar = Prism.languages[lang];
+                if (typeof grammar !== 'object') return code;
+                return Prism.highlight(code, grammar, lang);
             } catch (e) {
-                console.warn('Prism highlighting failed:', e);
+                // Silently fall back for languages with missing dependencies (e.g., PHP needs markup-templating)
+                return code;
             }
         }
         return code;
@@ -1057,53 +1068,63 @@ let updateEditorMarkers = (issues) => {
 
 // ----- Search System -----
 let currentSearchQuery = '';
+let editorSearchDecorations = []; // Track Monaco editor search decorations
 
 let setupSearch = () => {
     const searchBtn = document.getElementById('search-btn');
     const searchOverlay = document.getElementById('search-overlay');
     const searchInput = document.getElementById('search-input');
     const searchClose = document.getElementById('search-close');
+    const matchCountEl = document.getElementById('search-match-count');
 
     if (!searchBtn || !searchOverlay || !searchInput) {
         console.warn('Search elements not found');
         return;
     }
 
-    // Toggle search overlay on button click
+    // Toggle search overlay on button click - always use custom overlay for both panes
     searchBtn.addEventListener('click', () => {
         searchOverlay.classList.toggle('hidden');
         if (!searchOverlay.classList.contains('hidden')) {
             searchInput.focus();
             searchInput.select();
+        } else {
+            clearSearch();
         }
     });
 
     // Close search overlay
     if (searchClose) {
         searchClose.addEventListener('click', () => {
-            searchOverlay.classList.add('hidden');
-            currentSearchQuery = '';
-            searchInput.value = '';
-            convert(editor.getValue()); // Re-render without highlights
+            clearSearch();
         });
     }
+
+    let clearSearch = () => {
+        searchOverlay.classList.add('hidden');
+        currentSearchQuery = '';
+        searchInput.value = '';
+        if (matchCountEl) matchCountEl.textContent = '';
+        // Clear editor decorations
+        editorSearchDecorations = editor.deltaDecorations(editorSearchDecorations, []);
+        convert(editor.getValue()); // Re-render without highlights
+    };
 
     // Handle search input
     searchInput.addEventListener('input', (e) => {
         currentSearchQuery = e.target.value;
         convert(editor.getValue());
+        highlightEditorMatches();
+        updateMatchCount();
     });
 
     // Handle Enter key to find next
     searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            searchOverlay.classList.add('hidden');
-            currentSearchQuery = '';
-            searchInput.value = '';
-            convert(editor.getValue());
+            clearSearch();
         }
         if (e.key === 'Enter') {
-            // Scroll to first match
+            // Scroll to first match in preview
             const firstMatch = document.querySelector('.search-highlight');
             if (firstMatch) {
                 firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1111,7 +1132,7 @@ let setupSearch = () => {
         }
     });
 
-    // Keyboard shortcut Ctrl+F
+    // Keyboard shortcut Ctrl+F - open custom search overlay
     document.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
             e.preventDefault();
@@ -1122,9 +1143,55 @@ let setupSearch = () => {
     });
 };
 
+// Highlight matches in Monaco editor using decorations
+let highlightEditorMatches = () => {
+    if (!editor) return;
+    if (!currentSearchQuery) {
+        editorSearchDecorations = editor.deltaDecorations(editorSearchDecorations, []);
+        return;
+    }
+
+    const model = editor.getModel();
+    if (!model) return;
+
+    const matches = model.findMatches(currentSearchQuery, false, false, false, null, true);
+    const decorations = matches.map(match => ({
+        range: match.range,
+        options: {
+            className: 'editor-search-highlight',
+            overviewRuler: { color: '#fbbf24', position: 1 }
+        }
+    }));
+
+    editorSearchDecorations = editor.deltaDecorations(editorSearchDecorations, decorations);
+};
+
+// Update match count display
+let updateMatchCount = () => {
+    const matchCountEl = document.getElementById('search-match-count');
+    if (!matchCountEl) return;
+
+    if (!currentSearchQuery) {
+        matchCountEl.textContent = '';
+        return;
+    }
+
+    // Count preview matches
+    const previewMatches = document.querySelectorAll('.search-highlight').length;
+    // Count editor matches
+    const model = editor.getModel();
+    const editorMatches = model ? model.findMatches(currentSearchQuery, false, false, false, null, true).length : 0;
+    const totalMatches = Math.max(previewMatches, editorMatches);
+
+    matchCountEl.textContent = totalMatches > 0 ? `${totalMatches} match${totalMatches !== 1 ? 'es' : ''}` : 'No matches';
+};
+
 let highlightText = () => {
     if (!currentSearchQuery) return;
+    // Skip highlight when preview pane is hidden (code-only mode)
+    if (getCurrentViewMode() === 'code') return;
     const root = document.querySelector('#output');
+    if (!root) return;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -1157,7 +1224,9 @@ let convert = (markdown) => {
     tocItems = [];
 
     // options variable removed as headerIds and mangle are deprecated
-    let html = marked.parse(markdown);
+    // Resolve image store references to actual data URLs before rendering
+    let resolvedMarkdown = resolveImageReferences(markdown);
+    let html = marked.parse(resolvedMarkdown);
     let sanitized = DOMPurify.sanitize(html, { ADD_ATTR: ['id'] });
 
     const outputElement = document.querySelector('#output');
@@ -1175,13 +1244,11 @@ let convert = (markdown) => {
             pre.replaceWith(div);
         });
 
-        try {
-            mermaid.run({
-                nodes: outputElement.querySelectorAll('.mermaid')
-            });
-        } catch (err) {
-            console.error('Mermaid rendering failed:', err);
-        }
+        mermaid.run({
+            nodes: outputElement.querySelectorAll('.mermaid')
+        }).catch(() => {
+            // Silently handle mermaid rendering failures (e.g., invalid syntax during typing)
+        });
     }
 
     // Add copy buttons to code blocks
@@ -1248,10 +1315,21 @@ let initScrollBarSync = (settings) => {
     checkbox.checked = settings;
     scrollBarSync = settings;
 
+    // Sync toolbar button visual state with loaded settings
+    const scrollSyncBtn = document.querySelector('#scroll-sync-button');
+    if (scrollSyncBtn) {
+        scrollSyncBtn.classList.toggle('active', scrollBarSync);
+    }
+
     checkbox.addEventListener('change', (event) => {
         let checked = event.currentTarget.checked;
         scrollBarSync = checked;
         saveScrollBarSettings(checked);
+
+        // Keep toolbar button in sync when checkbox is toggled
+        if (scrollSyncBtn) {
+            scrollSyncBtn.classList.toggle('active', checked);
+        }
     });
 };
 
@@ -1702,7 +1780,7 @@ let setupSnippetsButton = () => {
 // ----- download utils -----
 
 let downloadMarkdown = () => {
-    const content = editor.getValue();
+    const content = resolveImageReferences(editor.getValue());
     const filename = getExportFilename('md');
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -1976,6 +2054,20 @@ let setupAdditionalExportButtons = () => {
 // ==================== EXPORT MODAL ====================
 let currentExportFormat = 'pdf';
 let exportModalZoom = 0.9;
+let exportPreviewDebounceTimer = null;
+
+let scheduleExportPreviewUpdate = (format, includeSize = true, delay = 150) => {
+    if (exportPreviewDebounceTimer) {
+        clearTimeout(exportPreviewDebounceTimer);
+    }
+
+    exportPreviewDebounceTimer = setTimeout(() => {
+        updateExportPreview(format);
+        if (includeSize) {
+            estimateFileSize(format);
+        }
+    }, delay);
+};
 
 let setupExportModal = () => {
     const modal = document.getElementById('export-modal');
@@ -2020,6 +2112,9 @@ let setupExportModal = () => {
             btn.classList.add('active');
             currentExportFormat = format;
 
+            // Persist format choice
+            localStorage.setItem('markups_export_format', format);
+
             updateExportUI(format);
             updateExportPreview(format);
         });
@@ -2041,10 +2136,11 @@ let setupExportModal = () => {
         }
     });
 
-    // Confirm button
+    // Confirm button — keep modal open during export for progress visibility
     confirmBtn?.addEventListener('click', () => {
+        if (confirmBtn.classList.contains('exporting')) return; // prevent double-click
+        confirmBtn.classList.add('exporting');
         executeExport(currentExportFormat);
-        closeExportModal();
     });
 
     // Zoom controls for PNG
@@ -2083,8 +2179,7 @@ let setupExportOptionListeners = () => {
         if (el) {
             el.addEventListener('change', () => {
                 if (currentExportFormat === 'pdf') {
-                    updateExportPreview('pdf');
-                    estimateFileSize('pdf');
+                    scheduleExportPreviewUpdate('pdf');
                 }
             });
         }
@@ -2097,8 +2192,7 @@ let setupExportOptionListeners = () => {
         if (el) {
             el.addEventListener('change', () => {
                 if (currentExportFormat === 'html') {
-                    updateExportPreview('html');
-                    estimateFileSize('html');
+                    scheduleExportPreviewUpdate('html');
                 }
             });
         }
@@ -2112,8 +2206,7 @@ let setupExportOptionListeners = () => {
             const eventType = el.type === 'text' ? 'input' : 'change';
             el.addEventListener(eventType, () => {
                 if (currentExportFormat === 'png') {
-                    updateExportPreview('png');
-                    estimateFileSize('png');
+                    scheduleExportPreviewUpdate('png');
                 }
             });
         }
@@ -2126,8 +2219,7 @@ let setupExportOptionListeners = () => {
         if (el) {
             el.addEventListener('change', () => {
                 if (currentExportFormat === 'txt') {
-                    updateExportPreview('txt');
-                    estimateFileSize('txt');
+                    scheduleExportPreviewUpdate('txt');
                 }
             });
         }
@@ -2140,11 +2232,41 @@ let setupExportOptionListeners = () => {
         if (el) {
             el.addEventListener('change', () => {
                 if (currentExportFormat === 'print') {
-                    updateExportPreview('print');
+                    scheduleExportPreviewUpdate('print', false);
                 }
             });
         }
     });
+
+    const printScaleEl = document.getElementById('print-scale');
+    if (printScaleEl) {
+        printScaleEl.addEventListener('change', () => {
+            if (printScaleEl.value !== 'custom') return;
+
+            const currentCustom = printScaleEl.dataset.customScale || '100';
+            const input = window.prompt('Enter custom print scale (%) between 50 and 200', currentCustom);
+
+            if (input === null) {
+                // User canceled; revert to fit
+                printScaleEl.value = 'fit';
+                scheduleExportPreviewUpdate('print', false);
+                return;
+            }
+
+            const parsed = parseInt(input, 10);
+            if (Number.isNaN(parsed)) {
+                printScaleEl.value = 'fit';
+                showToast('Invalid scale. Using Fit to page.', 'warning', 1800);
+                scheduleExportPreviewUpdate('print', false);
+                return;
+            }
+
+            const clamped = Math.min(200, Math.max(50, parsed));
+            printScaleEl.dataset.customScale = String(clamped);
+            showToast(`Custom print scale set to ${clamped}%`, 'info', 1600);
+            scheduleExportPreviewUpdate('print', false);
+        });
+    }
 
     // Refresh button
     document.getElementById('export-refresh-btn')?.addEventListener('click', () => {
@@ -2164,14 +2286,21 @@ let openExportModal = () => {
     const loadingOverlay = document.getElementById('export-loading-overlay');
     if (loadingOverlay) loadingOverlay.classList.add('hidden');
 
-    // Set default format to PDF
-    currentExportFormat = 'pdf';
+    // Reset export button state
+    const confirmBtn = document.getElementById('export-confirm-btn');
+    if (confirmBtn) confirmBtn.classList.remove('exporting');
+
+    // Restore last-used format or default to PDF
+    const savedFormat = localStorage.getItem('markups_export_format') || 'pdf';
+    const validFormats = ['pdf', 'html', 'markdown', 'docx', 'txt', 'png', 'print'];
+    currentExportFormat = validFormats.includes(savedFormat) ? savedFormat : 'pdf';
+
     document.querySelectorAll('.export-format-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.format === 'pdf');
+        btn.classList.toggle('active', btn.dataset.format === currentExportFormat);
     });
 
-    updateExportUI('pdf');
-    updateExportPreview('pdf');
+    updateExportUI(currentExportFormat);
+    updateExportPreview(currentExportFormat);
 
     // Show modal
     modal.classList.add('active');
@@ -2182,10 +2311,18 @@ let closeExportModal = () => {
     const modal = document.getElementById('export-modal');
     const overlay = document.getElementById('export-modal-overlay');
     const loadingOverlay = document.getElementById('export-loading-overlay');
+    const confirmBtn = document.getElementById('export-confirm-btn');
 
     modal?.classList.remove('active');
     overlay?.classList.remove('active');
     loadingOverlay?.classList.add('hidden');
+    if (confirmBtn) confirmBtn.classList.remove('exporting');
+
+    // Reset success icon for next use
+    const successIcon = loadingOverlay?.querySelector('.export-loading-success-icon');
+    const spinner = loadingOverlay?.querySelector('.export-loading-spinner');
+    if (successIcon) successIcon.style.display = 'none';
+    if (spinner) spinner.style.display = '';
 };
 
 let updateExportUI = (format) => {
@@ -2205,7 +2342,7 @@ let updateExportUI = (format) => {
     const previewLabel = document.getElementById('preview-label');
 
     const formatConfig = {
-        pdf: { text: 'Export PDF', icon: 'picture_as_pdf', label: 'Previewing 1 of 1 pages' },
+        pdf: { text: 'Export PDF', icon: 'picture_as_pdf', label: '' },
         html: { text: 'Export HTML', icon: 'html', label: 'HTML Preview' },
         markdown: { text: 'Download Markdown', icon: 'download', label: 'Markdown file' },
         docx: { text: 'Export DOCX', icon: 'description', label: 'Word Document' },
@@ -2217,7 +2354,20 @@ let updateExportUI = (format) => {
     const config = formatConfig[format] || formatConfig.pdf;
     if (btnText) btnText.textContent = config.text;
     if (btnIcon) btnIcon.textContent = config.icon;
-    if (previewLabel) previewLabel.textContent = config.label;
+
+    // Calculate approximate page count for PDF/print
+    if (format === 'pdf' || format === 'print') {
+        const outputEl = document.getElementById('output');
+        if (outputEl) {
+            const contentHeight = outputEl.scrollHeight;
+            // A4 at ~96 DPI ≈ 842px printable height with margins ≈ 700px
+            const pageHeight = 700;
+            const approxPages = Math.max(1, Math.ceil(contentHeight / pageHeight));
+            if (previewLabel) previewLabel.textContent = `Previewing 1 of ~${approxPages} page${approxPages > 1 ? 's' : ''}`;
+        }
+    } else {
+        if (previewLabel) previewLabel.textContent = config.label;
+    }
 
     // Estimate file size
     estimateFileSize(format);
@@ -2398,10 +2548,14 @@ let showExportLoading = (text = 'Generating your file...', progress = 30) => {
     const overlay = document.getElementById('export-loading-overlay');
     const textEl = document.getElementById('export-loading-text');
     const progressEl = document.getElementById('export-loading-progress-bar');
+    const spinner = overlay?.querySelector('.export-loading-spinner');
+    const successIcon = overlay?.querySelector('.export-loading-success-icon');
 
     if (overlay) overlay.classList.remove('hidden');
     if (textEl) textEl.textContent = text;
     if (progressEl) progressEl.style.width = `${progress}%`;
+    if (spinner) spinner.style.display = '';
+    if (successIcon) successIcon.style.display = 'none';
 };
 
 let updateExportProgress = (progress, text) => {
@@ -2412,15 +2566,49 @@ let updateExportProgress = (progress, text) => {
     if (textEl && text) textEl.textContent = text;
 };
 
-let hideExportLoading = () => {
+let hideExportLoading = ({ success = true, text = 'Complete!', closeModal = true, delay = 900 } = {}) => {
     const overlay = document.getElementById('export-loading-overlay');
-    if (overlay) {
-        // Small delay to show 100% progress
-        updateExportProgress(100, 'Complete!');
-        setTimeout(() => {
-            overlay.classList.add('hidden');
-        }, 500);
+    const spinner = overlay?.querySelector('.export-loading-spinner');
+    const successIcon = overlay?.querySelector('.export-loading-success-icon');
+    const confirmBtn = document.getElementById('export-confirm-btn');
+
+    if (!overlay) return;
+
+    if (!success) {
+        if (spinner) spinner.style.display = '';
+        if (successIcon) successIcon.style.display = 'none';
+        updateExportProgress(0, text || 'Ready');
+        overlay.classList.add('hidden');
+        if (confirmBtn) confirmBtn.classList.remove('exporting');
+        return;
     }
+
+    updateExportProgress(100, text);
+
+    // Show success icon instead of spinner
+    if (spinner) spinner.style.display = 'none';
+    if (!successIcon) {
+        const icon = document.createElement('div');
+        icon.className = 'export-loading-success-icon';
+        icon.innerHTML = '<span class="material-symbols-outlined">check</span>';
+        const content = overlay.querySelector('.export-loading-content');
+        if (content) content.insertBefore(icon, content.firstChild);
+    } else {
+        successIcon.style.display = 'flex';
+    }
+
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        if (spinner) spinner.style.display = '';
+        const si = overlay.querySelector('.export-loading-success-icon');
+        if (si) si.style.display = 'none';
+        if (confirmBtn) confirmBtn.classList.remove('exporting');
+        if (closeModal) closeExportModal();
+    }, delay);
+};
+
+let failExportLoading = (text = 'Export failed') => {
+    hideExportLoading({ success: false, text, closeModal: false });
 };
 
 let executeExport = (format) => {
@@ -2449,14 +2637,57 @@ let executeExport = (format) => {
     }
 };
 
+// Helper: Convert inline SVGs to canvas-based images for better html2canvas compatibility
+let convertSVGsToImages = async (container) => {
+    const svgElements = container.querySelectorAll('.mermaid-diagram svg, svg');
+    const promises = [];
+
+    for (const svg of svgElements) {
+        promises.push(new Promise((resolve) => {
+            try {
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const bbox = svg.getBoundingClientRect();
+                    canvas.width = (bbox.width || 400) * 2;
+                    canvas.height = (bbox.height || 300) * 2;
+                    const ctx = canvas.getContext('2d');
+                    ctx.scale(2, 2);
+                    ctx.drawImage(img, 0, 0, bbox.width || 400, bbox.height || 300);
+                    const imgEl = document.createElement('img');
+                    imgEl.src = canvas.toDataURL('image/png');
+                    imgEl.style.maxWidth = '100%';
+                    imgEl.style.height = 'auto';
+                    svg.parentNode.replaceChild(imgEl, svg);
+                    URL.revokeObjectURL(url);
+                    resolve();
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(); // Continue even if SVG conversion fails
+                };
+                img.src = url;
+            } catch (e) {
+                console.warn('SVG conversion failed:', e);
+                resolve();
+            }
+        }));
+    }
+
+    await Promise.all(promises);
+};
+
 // Enhanced export functions with options
-let exportToPDFWithOptions = () => {
+let exportToPDFWithOptions = async () => {
     const paperSize = document.getElementById('export-paper-size')?.value || 'letter';
     const orientation = document.getElementById('export-orientation')?.value || 'portrait';
     const pageNumbers = document.getElementById('export-page-numbers')?.checked ?? true;
     const headerFooter = document.getElementById('export-header-footer')?.checked ?? false;
 
-    showExportLoading('Preparing PDF document...', 20);
+    showExportLoading('Preparing PDF document...', 10);
     const element = document.querySelector('#output');
     const filename = getExportFilename('pdf');
     const title = getActiveDocTitle();
@@ -2469,42 +2700,40 @@ let exportToPDFWithOptions = () => {
         'tabloid': [11, 17]
     };
 
+    // Clone element and pre-process SVGs for better rendering
+    updateExportProgress(20, 'Pre-processing content...');
+    const exportClone = element.cloneNode(true);
+    exportClone.style.width = orientation === 'landscape' ? '10in' : '7.5in';
+    exportClone.style.maxWidth = 'none';
+    exportClone.style.position = 'absolute';
+    exportClone.style.left = '-9999px';
+    exportClone.style.top = '0';
+    exportClone.style.background = '#ffffff';
+    document.body.appendChild(exportClone);
+
+    // Convert SVGs (mermaid diagrams) to PNG images for reliable PDF rendering
+    await convertSVGsToImages(exportClone);
+    updateExportProgress(35, 'Content ready...');
+
     // Create a wrapper with header/footer if enabled
     const wrapper = document.createElement('div');
     wrapper.className = 'pdf-export-wrapper';
+    wrapper.style.background = '#ffffff';
 
     if (headerFooter) {
         wrapper.innerHTML = `
-            <style>
-                .pdf-header { 
-                    position: running(header);
-                    font-size: 10pt;
-                    color: #666;
-                    border-bottom: 1px solid #ddd;
-                    padding-bottom: 8px;
-                    margin-bottom: 16px;
-                }
-                .pdf-footer {
-                    position: running(footer);
-                    font-size: 9pt;
-                    color: #888;
-                    text-align: center;
-                    border-top: 1px solid #ddd;
-                    padding-top: 8px;
-                    margin-top: 16px;
-                }
-                @page {
-                    @top-center { content: element(header); }
-                    @bottom-center { content: element(footer); }
-                }
-            </style>
-            <div class="pdf-header">${title}</div>
-            ${element.innerHTML}
-            <div class="pdf-footer">${today}</div>
+            <div style="font-size:10pt;color:#666;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:16px;">${title} &mdash; ${today}</div>
+            ${exportClone.innerHTML}
         `;
     } else {
-        wrapper.innerHTML = element.innerHTML;
+        wrapper.innerHTML = exportClone.innerHTML;
     }
+    wrapper.style.position = 'absolute';
+    wrapper.style.left = '-9999px';
+    document.body.appendChild(wrapper);
+
+    // Clean up clone
+    document.body.removeChild(exportClone);
 
     const options = {
         margin: headerFooter ? [0.75, 0.5, 0.75, 0.5] : [0.5, 0.5, 0.5, 0.5],
@@ -2515,48 +2744,47 @@ let exportToPDFWithOptions = () => {
             useCORS: true,
             logging: false,
             letterRendering: true,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            foreignObjectRendering: false,
+            removeContainer: true
         },
         jsPDF: {
             unit: 'in',
             format: formatMap[paperSize] || 'letter',
             orientation: orientation
         },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak: { mode: ['css', 'legacy'] }
     };
 
-    // Add page numbers if enabled
-    if (pageNumbers) {
-        updateExportProgress(50, 'Rendering pages...');
-        html2pdf().set(options).from(headerFooter ? wrapper : element).toPdf().get('pdf').then((pdf) => {
-            updateExportProgress(80, 'Adding page numbers...');
-            const totalPages = pdf.internal.getNumberOfPages();
-            for (let i = 1; i <= totalPages; i++) {
-                pdf.setPage(i);
-                pdf.setFontSize(9);
-                pdf.setTextColor(128);
-                const pageWidth = pdf.internal.pageSize.getWidth();
-                const pageHeight = pdf.internal.pageSize.getHeight();
-                pdf.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 0.3, { align: 'center' });
-            }
-        }).save().then(() => {
-            hideExportLoading();
-            showToast(`PDF exported: ${filename}`, 'success');
-        }).catch((err) => {
-            console.error('PDF export error:', err);
-            hideExportLoading();
-            showToast('Failed to export PDF', 'error');
-        });
-    } else {
-        updateExportProgress(60, 'Generating PDF file...');
-        html2pdf().set(options).from(headerFooter ? wrapper : element).save().then(() => {
-            hideExportLoading();
-            showToast(`PDF exported: ${filename}`, 'success');
-        }).catch((err) => {
-            console.error('PDF export error:', err);
-            hideExportLoading();
-            showToast('Failed to export PDF', 'error');
-        });
+    try {
+        // Add page numbers if enabled
+        if (pageNumbers) {
+            updateExportProgress(50, 'Rendering pages...');
+            await html2pdf().set(options).from(wrapper).toPdf().get('pdf').then((pdf) => {
+                updateExportProgress(80, 'Adding page numbers...');
+                const totalPages = pdf.internal.getNumberOfPages();
+                for (let i = 1; i <= totalPages; i++) {
+                    pdf.setPage(i);
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(128);
+                    const pageWidth = pdf.internal.pageSize.getWidth();
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    pdf.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 0.3, { align: 'center' });
+                }
+            }).save();
+        } else {
+            updateExportProgress(60, 'Generating PDF file...');
+            await html2pdf().set(options).from(wrapper).save();
+        }
+        // Clean up wrapper
+        if (wrapper.parentNode) document.body.removeChild(wrapper);
+        showToast(`PDF exported: ${filename}`, 'success');
+        hideExportLoading();
+    } catch (err) {
+        console.error('PDF export error:', err);
+        if (wrapper.parentNode) document.body.removeChild(wrapper);
+        failExportLoading('Failed to export PDF');
+        showToast('Failed to export PDF', 'error');
     }
 };
 
@@ -2613,19 +2841,25 @@ ${content}
         html = html.replace(/\s+/g, ' ').replace(/>\s+</g, '><').trim();
     }
 
-    updateExportProgress(80, 'Preparing download...');
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    hideExportLoading();
-    showToast(`HTML exported: ${filename}`, 'success');
+    try {
+        updateExportProgress(80, 'Preparing download...');
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`HTML exported: ${filename}`, 'success');
+        hideExportLoading();
+    } catch (err) {
+        console.error('HTML export error:', err);
+        failExportLoading('Failed to export HTML');
+        showToast('Failed to export HTML', 'error');
+    }
 };
 
-let exportToPNGWithOptions = () => {
+let exportToPNGWithOptions = async () => {
     const widthInput = document.getElementById('export-image-width')?.value || '1200 px';
     const resolution = parseInt(document.getElementById('export-resolution')?.value || '2');
     const transparentBg = document.getElementById('export-transparent-bg')?.checked ?? false;
@@ -2634,7 +2868,7 @@ let exportToPNGWithOptions = () => {
     // Parse width value
     const width = parseInt(widthInput.replace(/[^0-9]/g, '')) || 1200;
 
-    showExportLoading('Capturing document as image...', 30);
+    showExportLoading('Capturing document as image...', 20);
     const element = document.querySelector('#output');
     const filename = getExportFilename('png');
 
@@ -2660,6 +2894,10 @@ let exportToPNGWithOptions = () => {
     wrapper.style.left = '-9999px';
     document.body.appendChild(wrapper);
 
+    // Convert SVGs to images for reliable rendering
+    updateExportProgress(40, 'Processing SVG elements...');
+    await convertSVGsToImages(wrapper);
+
     updateExportProgress(60, 'Rendering image canvas...');
     html2canvas(wrapper, {
         scale: resolution,
@@ -2677,12 +2915,12 @@ let exportToPNGWithOptions = () => {
         link.download = filename;
         link.href = canvas.toDataURL('image/png');
         link.click();
-        hideExportLoading();
         showToast(`Image exported: ${filename}`, 'success');
+        hideExportLoading();
     }).catch((err) => {
         document.body.removeChild(wrapper);
         console.error('PNG export error:', err);
-        hideExportLoading();
+        failExportLoading('Failed to export image');
         showToast('Failed to export image', 'error');
     });
 };
@@ -2691,7 +2929,15 @@ let printDocumentWithOptions = () => {
     const paperSize = document.getElementById('print-paper-size')?.value || 'a4';
     const orientation = document.getElementById('print-orientation')?.value || 'portrait';
     const margins = document.getElementById('print-margins')?.value || 'default';
-    const scale = document.getElementById('print-scale')?.value || '100';
+    const printScaleEl = document.getElementById('print-scale');
+    const scaleValue = printScaleEl?.value || 'fit';
+    const customScale = parseInt(printScaleEl?.dataset.customScale || '100', 10);
+    const scaleMap = {
+        fit: 100,
+        actual: 100,
+        custom: Number.isNaN(customScale) ? 100 : customScale
+    };
+    const scale = scaleMap[scaleValue] || parseInt(scaleValue, 10) || 100;
 
     showExportLoading('Preparing print dialog...', 50);
     const content = document.getElementById('output').innerHTML;
@@ -2705,6 +2951,11 @@ let printDocumentWithOptions = () => {
     };
 
     const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        failExportLoading('Popup blocked');
+        showToast('Popup blocked. Please allow popups and try again.', 'error');
+        return;
+    }
     printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -2719,7 +2970,7 @@ let printDocumentWithOptions = () => {
                 }
                 body { 
                     padding: 20px; 
-                    transform: scale(${parseInt(scale) / 100});
+                    transform: scale(${scale / 100});
                     transform-origin: top left;
                 }
                 .markdown-body { max-width: 800px; margin: 0 auto; }
@@ -2746,25 +2997,32 @@ let printDocumentWithOptions = () => {
     setTimeout(() => {
         printWindow.print();
         printWindow.close();
-        hideExportLoading();
     }, 500);
     showToast('Print dialog opened', 'info');
+    hideExportLoading();
 };
 
 // Download Markdown with options
 let downloadMarkdownWithOptions = () => {
     showExportLoading('Preparing Markdown file...', 50);
-    const content = editor.getValue();
+    const content = resolveImageReferences(editor.getValue());
     const filename = getExportFilename('md');
-    const blob = new Blob([content], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    hideExportLoading();
-    showToast(`Markdown downloaded: ${filename}`, 'success');
+    try {
+        updateExportProgress(80, 'Downloading...');
+        const blob = new Blob([content], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`Markdown downloaded: ${filename}`, 'success');
+        hideExportLoading();
+    } catch (err) {
+        console.error('Markdown export error:', err);
+        failExportLoading('Failed to export Markdown');
+        showToast('Failed to export Markdown', 'error');
+    }
 };
 
 // Export DOCX with options
@@ -2848,16 +3106,22 @@ ${content}
 </body>
 </html>`;
 
-    const blob = new Blob([html], { type: 'application/msword' });
-    updateExportProgress(80, 'Preparing download...');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    hideExportLoading();
-    showToast(`DOCX exported: ${filename}`, 'success');
+    try {
+        const blob = new Blob([html], { type: 'application/msword' });
+        updateExportProgress(80, 'Preparing download...');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`DOCX exported: ${filename}`, 'success');
+        hideExportLoading();
+    } catch (err) {
+        console.error('DOCX export error:', err);
+        failExportLoading('Failed to export DOCX');
+        showToast('Failed to export DOCX', 'error');
+    }
 };
 
 // Export TXT with options
@@ -2925,16 +3189,22 @@ Words: ${wordCount}
     }
 
     const filename = getExportFilename('txt');
-    updateExportProgress(80, 'Preparing download...');
-    const blob = new Blob([plainText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    hideExportLoading();
-    showToast(`Text exported: ${filename}`, 'success');
+    try {
+        updateExportProgress(80, 'Preparing download...');
+        const blob = new Blob([plainText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`Text exported: ${filename}`, 'success');
+        hideExportLoading();
+    } catch (err) {
+        console.error('TXT export error:', err);
+        failExportLoading('Failed to export TXT');
+        showToast('Failed to export TXT', 'error');
+    }
 };
 
 // ----- import utils -----
@@ -3042,7 +3312,14 @@ let processImageFile = (file) => {
         const base64Image = e.target.result;
         const selection = editor.getSelection();
         const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
-        const markdown = `![${fileName}](${base64Image})`;
+
+        // Generate short unique ID and store base64 in the image store
+        const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+        imageStore.set(imgId, base64Image);
+        saveImageStore();
+
+        // Insert short readable reference instead of enormous base64 string
+        const markdown = `![${fileName}](markups-img:${imgId})`;
 
         editor.executeEdits('image-upload', [{
             range: selection,
@@ -3854,6 +4131,13 @@ let setupScrollSyncButton = () => {
 
 // ----- View Mode -----
 
+// Helper to determine current view mode from body class
+let getCurrentViewMode = () => {
+    if (document.body.classList.contains('view-editor')) return 'code';
+    if (document.body.classList.contains('view-preview')) return 'preview';
+    return 'split';
+};
+
 let setViewMode = (mode) => {
     // Use the actual pane elements (same IDs as setupDivider uses)
     const leftPane = document.getElementById('edit');      // .editor-pane
@@ -3910,6 +4194,9 @@ let setViewMode = (mode) => {
     setTimeout(() => {
         if (editor) editor.layout();
     }, 50);
+
+    // Save view mode preference
+    saveViewMode(mode);
 };
 
 let setupViewButtons = () => {
@@ -3940,11 +4227,11 @@ let toggleFocusMode = () => {
 
     if (isFocusMode) {
         document.body.classList.add('focus-mode');
-        if (focusBtn) focusBtn.querySelector('a').textContent = 'Exit Focus';
+        if (focusBtn) focusBtn.title = 'Exit Focus Mode';
         showToast('Focus Mode Enabled (Press ESC to exit)', 'success');
     } else {
         document.body.classList.remove('focus-mode');
-        if (focusBtn) focusBtn.querySelector('a').textContent = 'Focus';
+        if (focusBtn) focusBtn.title = 'Focus Mode';
         showToast('Focus Mode Disabled', 'info', 1500);
     }
 };
@@ -4010,7 +4297,7 @@ let toggleFullscreen = () => {
         }
         document.body.classList.add('fullscreen-mode');
         if (fullscreenBtn) {
-            fullscreenBtn.querySelector('a').textContent = 'Exit Fullscreen';
+            fullscreenBtn.title = 'Exit Fullscreen';
         }
         isFullscreen = true;
     } else {
@@ -4023,7 +4310,7 @@ let toggleFullscreen = () => {
         }
         document.body.classList.remove('fullscreen-mode');
         if (fullscreenBtn) {
-            fullscreenBtn.querySelector('a').textContent = 'Fullscreen';
+            fullscreenBtn.title = 'Fullscreen';
         }
         isFullscreen = false;
     }
@@ -4031,6 +4318,7 @@ let toggleFullscreen = () => {
 
 let setupFullscreenButton = () => {
     const fullscreenBtn = document.querySelector("#fullscreen-button");
+    if (!fullscreenBtn) return;
 
     fullscreenBtn.addEventListener('click', (event) => {
         event.preventDefault();
@@ -4041,7 +4329,7 @@ let setupFullscreenButton = () => {
     document.addEventListener('fullscreenchange', () => {
         if (!document.fullscreenElement) {
             document.body.classList.remove('fullscreen-mode');
-            fullscreenBtn.querySelector('a').textContent = 'Fullscreen';
+            if (fullscreenBtn) fullscreenBtn.title = 'Fullscreen';
             isFullscreen = false;
         }
     });
@@ -4049,7 +4337,7 @@ let setupFullscreenButton = () => {
     document.addEventListener('webkitfullscreenchange', () => {
         if (!document.webkitFullscreenElement) {
             document.body.classList.remove('fullscreen-mode');
-            fullscreenBtn.querySelector('a').textContent = 'Fullscreen';
+            if (fullscreenBtn) fullscreenBtn.title = 'Fullscreen';
             isFullscreen = false;
         }
     });
@@ -4290,252 +4578,429 @@ let saveDarkModeSettings = (settings) => {
     Storehouse.setItem(localStorageNamespace, localStorageDarkModeKey, settings, expiredAt);
 };
 
-// ----- Mobile UI Setup -----
-let setupMobileUI = () => {
-    // Mobile menu toggle
-    const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
-    const mobileNavDrawer = document.getElementById('mobile-nav-drawer');
-    const mobileNavOverlay = document.getElementById('mobile-nav-overlay');
-    const mobileNavClose = document.getElementById('drawer-close');
+// ----- Image Store Persistence -----
 
-    if (mobileMenuToggle && mobileNavDrawer) {
-        const openDrawer = () => {
-            mobileNavDrawer.classList.add('open');
-            mobileMenuToggle.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        };
-
-        const closeDrawer = () => {
-            mobileNavDrawer.classList.remove('open');
-            mobileMenuToggle.classList.remove('active');
-            document.body.style.overflow = '';
-        };
-
-        mobileMenuToggle.addEventListener('click', () => {
-            if (mobileNavDrawer.classList.contains('open')) {
-                closeDrawer();
-            } else {
-                openDrawer();
-            }
+let loadImageStore = () => {
+    const saved = Storehouse.getItem(localStorageNamespace, localStorageImagesKey);
+    if (saved && typeof saved === 'object') {
+        Object.entries(saved).forEach(([key, value]) => {
+            imageStore.set(key, value);
         });
+    }
+};
 
-        if (mobileNavOverlay) {
-            mobileNavOverlay.addEventListener('click', closeDrawer);
-        }
+let saveImageStore = () => {
+    const expiredAt = new Date(2099, 1, 1);
+    const obj = Object.fromEntries(imageStore);
+    Storehouse.setItem(localStorageNamespace, localStorageImagesKey, obj, expiredAt);
+};
 
-        if (mobileNavClose) {
-            mobileNavClose.addEventListener('click', closeDrawer);
-        }
+let resolveImageReferences = (text) => {
+    return text.replace(
+        /markups-img:(img_\w+)/g,
+        (match, imgId) => imageStore.get(imgId) || match
+    );
+};
 
-        // Close drawer when clicking a drawer item
-        const drawerItems = mobileNavDrawer.querySelectorAll('.drawer-item');
-        drawerItems.forEach(item => {
-            item.addEventListener('click', () => {
-                // Handle action
-                const action = item.dataset.action;
-                if (action) {
-                    handleMobileDrawerAction(action);
-                }
-                closeDrawer();
-            });
+// ----- Find & Replace Button -----
+
+let setupFindReplaceButton = () => {
+    const btn = document.getElementById('find-replace-btn');
+    if (btn) {
+        btn.addEventListener('click', () => {
+            editor.trigger('keyboard', 'editor.action.startFindReplaceAction', null);
         });
     }
 
-    // Mobile view tabs
-    const mobileViewTabs = document.getElementById('mobile-view-tabs');
-    if (mobileViewTabs) {
-        const editorTab = mobileViewTabs.querySelector('[data-view="editor"]');
-        const previewTab = mobileViewTabs.querySelector('[data-view="preview"]');
-        const splitTab = mobileViewTabs.querySelector('[data-view="split"]');
-
-        const setMobileView = (view) => {
-            document.body.classList.remove('mobile-view-editor', 'mobile-view-preview', 'mobile-view-split');
-            document.body.classList.add(`mobile-view-${view}`);
-
-            // Update active tab
-            [editorTab, previewTab, splitTab].forEach(tab => {
-                if (tab) tab.classList.remove('active');
-            });
-
-            if (view === 'editor' && editorTab) editorTab.classList.add('active');
-            if (view === 'preview' && previewTab) previewTab.classList.add('active');
-            if (view === 'split' && splitTab) splitTab.classList.add('active');
-        };
-
-        if (editorTab) {
-            editorTab.addEventListener('click', () => setMobileView('editor'));
+    // Keyboard shortcut Ctrl+Shift+H for Find & Replace
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'H') {
+            e.preventDefault();
+            editor.trigger('keyboard', 'editor.action.startFindReplaceAction', null);
         }
-        if (previewTab) {
-            previewTab.addEventListener('click', () => setMobileView('preview'));
-        }
-        if (splitTab) {
-            splitTab.addEventListener('click', () => setMobileView('split'));
-        }
+    });
+};
 
-        // Set default mobile view
-        if (window.innerWidth <= 768) {
-            setMobileView('editor');
-        }
+// ----- URL Auto-Format on Paste + Toolbar Button -----
+
+let extractDomain = (url) => {
+    try {
+        const parsed = new URL(url);
+        return parsed.hostname.replace(/^www\./, '');
+    } catch {
+        return null;
     }
+};
 
-    // FAB functionality
-    const fabContainer = document.getElementById('fab-container');
-    const fabMain = document.getElementById('fab-main');
+let setupURLAutoFormat = () => {
+    // Auto-format URLs on paste
+    const editorElement = document.querySelector('#editor');
+    if (editorElement) {
+        editorElement.addEventListener('paste', (e) => {
+            const clipboardData = e.clipboardData || window.clipboardData;
+            if (!clipboardData) return;
 
-    if (fabContainer && fabMain) {
-        fabMain.addEventListener('click', () => {
-            fabContainer.classList.toggle('open');
-        });
-
-        // Close FAB when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!fabContainer.contains(e.target)) {
-                fabContainer.classList.remove('open');
-            }
-        });
-
-        // FAB action buttons
-        const fabActions = fabContainer.querySelectorAll('.fab-action');
-        fabActions.forEach(action => {
-            action.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const actionType = action.dataset.action;
-                handleFabAction(actionType);
-                fabContainer.classList.remove('open');
-            });
-        });
-    }
-
-    // Sync mobile dark mode toggle with desktop
-    const mobileDarkModeCheckbox = document.getElementById('mobile-dark-mode-checkbox');
-    const desktopDarkModeCheckbox = document.getElementById('dark-mode-checkbox');
-
-    if (mobileDarkModeCheckbox && desktopDarkModeCheckbox) {
-        mobileDarkModeCheckbox.checked = desktopDarkModeCheckbox.checked;
-
-        mobileDarkModeCheckbox.addEventListener('change', () => {
-            desktopDarkModeCheckbox.checked = mobileDarkModeCheckbox.checked;
-            desktopDarkModeCheckbox.dispatchEvent(new Event('change'));
-        });
-
-        desktopDarkModeCheckbox.addEventListener('change', () => {
-            mobileDarkModeCheckbox.checked = desktopDarkModeCheckbox.checked;
-        });
-    }
-
-    // Sync mobile sync scroll toggle with desktop
-    const mobileSyncScrollCheckbox = document.getElementById('mobile-sync-scroll-checkbox');
-    const desktopSyncScrollCheckbox = document.querySelector('#sync-scroll-checkbox');
-
-    if (mobileSyncScrollCheckbox && desktopSyncScrollCheckbox) {
-        mobileSyncScrollCheckbox.checked = desktopSyncScrollCheckbox.checked;
-
-        mobileSyncScrollCheckbox.addEventListener('change', () => {
-            desktopSyncScrollCheckbox.checked = mobileSyncScrollCheckbox.checked;
-            desktopSyncScrollCheckbox.dispatchEvent(new Event('change'));
-        });
-
-        desktopSyncScrollCheckbox.addEventListener('change', () => {
-            mobileSyncScrollCheckbox.checked = desktopSyncScrollCheckbox.checked;
-        });
-    }
-
-    // Handle dropdown menus for touch devices
-    const dropdowns = document.querySelectorAll('.dropdown-wrapper');
-    dropdowns.forEach(dropdown => {
-        const trigger = dropdown.querySelector('.dropdown-trigger');
-        const menu = dropdown.querySelector('.dropdown-menu');
-
-        if (trigger && menu) {
-            trigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Close other dropdowns
-                dropdowns.forEach(other => {
-                    if (other !== dropdown) {
-                        other.classList.remove('open');
+            // Check for images first (higher priority)
+            const items = clipboardData.items;
+            if (items) {
+                for (let item of items) {
+                    if (item.type.startsWith('image/')) {
+                        return; // Let clipboard image paste handler deal with it
                     }
-                });
-                dropdown.classList.toggle('open');
+                }
+            }
+
+            const text = clipboardData.getData('text/plain');
+            if (!text) return;
+
+            // Check if the pasted text is a raw URL
+            const urlRegex = /^https?:\/\/[^\s]+$/;
+            if (urlRegex.test(text.trim())) {
+                e.preventDefault();
+                e.stopPropagation();
+                const url = text.trim();
+                const domain = extractDomain(url);
+                const markdownLink = domain ? `[${domain}](${url})` : `[link](${url})`;
+
+                const selection = editor.getSelection();
+                editor.executeEdits('url-format', [{
+                    range: selection,
+                    text: markdownLink
+                }]);
+                editor.focus();
+                showToast('URL formatted as markdown link', 'success', 1500);
+            }
+        }, true);
+    }
+};
+
+let setupURLToolbarButton = () => {
+    const urlBtn = document.getElementById('toolbar-url');
+    if (!urlBtn) return;
+
+    urlBtn.addEventListener('click', () => {
+        const selection = editor.getSelection();
+        const selectedText = editor.getModel().getValueInRange(selection);
+
+        // Check if selected text is a URL
+        const urlRegex = /^https?:\/\/[^\s]+$/;
+        if (selectedText && urlRegex.test(selectedText.trim())) {
+            const url = selectedText.trim();
+            const domain = extractDomain(url);
+            const markdownLink = domain ? `[${domain}](${url})` : `[link](${url})`;
+            editor.executeEdits('url-format', [{
+                range: selection,
+                text: markdownLink
+            }]);
+            showToast('URL formatted', 'success', 1500);
+        } else if (selectedText) {
+            // Wrap selected text as link text with placeholder URL
+            const markdownLink = `[${selectedText}](https://)`;
+            editor.executeEdits('url-format', [{
+                range: selection,
+                text: markdownLink
+            }]);
+        } else {
+            // Insert link template
+            const markdownLink = `[link text](https://url)`;
+            editor.executeEdits('url-format', [{
+                range: selection,
+                text: markdownLink
+            }]);
+        }
+        editor.focus();
+    });
+};
+
+// ----- Paste Image from Clipboard (Ctrl+V) -----
+
+let setupClipboardImagePaste = () => {
+    const editorElement = document.querySelector('#editor');
+    if (!editorElement) return;
+
+    editorElement.addEventListener('paste', (e) => {
+        const clipboardData = e.clipboardData || window.clipboardData;
+        if (!clipboardData || !clipboardData.items) return;
+
+        for (let item of clipboardData.items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const file = item.getAsFile();
+                if (file) {
+                    processImageFile(file);
+                    showToast('Image pasted from clipboard', 'success', 1500);
+                }
+                return;
+            }
+        }
+    }, true);
+};
+
+// ----- Remember Last View Mode -----
+
+const localStorageViewModeKey = 'view_mode';
+
+let saveViewMode = (mode) => {
+    const expiredAt = new Date(2099, 1, 1);
+    Storehouse.setItem(localStorageNamespace, localStorageViewModeKey, mode, expiredAt);
+};
+
+let loadViewMode = () => {
+    return Storehouse.getItem(localStorageNamespace, localStorageViewModeKey);
+};
+
+// ----- Drag-and-Drop Tab Reordering -----
+
+let draggedTabId = null;
+
+let setupDragDropTabs = () => {
+    // Hook into renderTabs to add drag attributes after each render
+    const originalRenderTabs = renderTabs;
+
+    renderTabs = () => {
+        originalRenderTabs();
+        // Add drag attributes to all tabs
+        const tabs = document.querySelectorAll('.header-tab');
+        tabs.forEach(tab => {
+            tab.setAttribute('draggable', 'true');
+
+            tab.addEventListener('dragstart', (e) => {
+                draggedTabId = tab.dataset.docId;
+                tab.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
             });
+
+            tab.addEventListener('dragend', () => {
+                tab.classList.remove('dragging');
+                draggedTabId = null;
+                // Remove all drag-over indicators
+                document.querySelectorAll('.header-tab.drag-over').forEach(t => t.classList.remove('drag-over'));
+            });
+
+            tab.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                tab.classList.add('drag-over');
+            });
+
+            tab.addEventListener('dragleave', () => {
+                tab.classList.remove('drag-over');
+            });
+
+            tab.addEventListener('drop', (e) => {
+                e.preventDefault();
+                tab.classList.remove('drag-over');
+                const targetDocId = tab.dataset.docId;
+
+                if (draggedTabId && draggedTabId !== targetDocId) {
+                    const fromIndex = documents.findIndex(d => d.id === draggedTabId);
+                    const toIndex = documents.findIndex(d => d.id === targetDocId);
+
+                    if (fromIndex !== -1 && toIndex !== -1) {
+                        // Reorder documents array
+                        const [moved] = documents.splice(fromIndex, 1);
+                        documents.splice(toIndex, 0, moved);
+                        saveDocsToStorage();
+                        renderTabs();
+                        showToast('Tab reordered', 'info', 1000);
+                    }
+                }
+            });
+        });
+    };
+};
+
+// ----- Word Wrap Quick Toggle -----
+
+let setupWordWrapToggle = () => {
+    const btn = document.getElementById('word-wrap-toggle');
+    if (!btn) return;
+
+    let isWrapped = true; // Matches editor default wordWrap: 'on'
+
+    btn.addEventListener('click', () => {
+        isWrapped = !isWrapped;
+        editor.updateOptions({ wordWrap: isWrapped ? 'on' : 'off' });
+        btn.querySelector('span').textContent = isWrapped ? 'Wrap: On' : 'Wrap: Off';
+        showToast(isWrapped ? 'Word wrap enabled' : 'Word wrap disabled', 'info', 1000);
+    });
+};
+
+// ----- Auto-Save with Version History -----
+
+const localStorageVersionsKey = 'version_history';
+const MAX_VERSIONS = 20;
+let lastVersionSaveTime = 0;
+const VERSION_SAVE_INTERVAL = 60000; // Save a version snapshot every 60 seconds of editing
+
+let loadVersionHistory = () => {
+    return Storehouse.getItem(localStorageNamespace, localStorageVersionsKey) || [];
+};
+
+let saveVersionHistory = (versions) => {
+    const expiredAt = new Date(2099, 1, 1);
+    Storehouse.setItem(localStorageNamespace, localStorageVersionsKey, versions, expiredAt);
+};
+
+let addVersionSnapshot = () => {
+    const now = Date.now();
+    if (now - lastVersionSaveTime < VERSION_SAVE_INTERVAL) return;
+
+    const content = editor.getValue();
+    if (!content || content === defaultInput) return;
+
+    const versions = loadVersionHistory();
+    const wordCount = content.split(/\s+/).filter(w => w.length > 0).length;
+
+    // Don't save if content matches the latest version
+    if (versions.length > 0 && versions[0].content === content) return;
+
+    versions.unshift({
+        timestamp: now,
+        content: content,
+        wordCount: wordCount
+    });
+
+    // Limit to MAX_VERSIONS
+    if (versions.length > MAX_VERSIONS) {
+        versions.length = MAX_VERSIONS;
+    }
+
+    saveVersionHistory(versions);
+    lastVersionSaveTime = now;
+};
+
+let setupVersionHistory = () => {
+    const modal = document.getElementById('version-history-modal');
+    const overlay = document.getElementById('version-history-overlay');
+    if (!modal || !overlay) return;
+
+    const closeBtns = modal.querySelectorAll('.close-modal');
+
+    const openModal = () => {
+        modal.style.display = 'block';
+        overlay.style.display = 'block';
+        renderVersionList();
+    };
+
+    const closeModal = () => {
+        modal.style.display = 'none';
+        overlay.style.display = 'none';
+    };
+
+    closeBtns.forEach(btn => btn.addEventListener('click', closeModal));
+    overlay.addEventListener('click', closeModal);
+
+    // Keyboard shortcut Ctrl+Shift+V
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') {
+            e.preventDefault();
+            openModal();
         }
     });
 
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', () => {
-        dropdowns.forEach(dropdown => {
-            dropdown.classList.remove('open');
+    // Auto-save version snapshots periodically
+    setInterval(() => {
+        if (hasEdited) {
+            addVersionSnapshot();
+        }
+    }, VERSION_SAVE_INTERVAL);
+};
+
+let renderVersionList = () => {
+    const listEl = document.getElementById('version-list');
+    if (!listEl) return;
+
+    const versions = loadVersionHistory();
+
+    if (versions.length === 0) {
+        listEl.innerHTML = '<p class="empty-state">No saved versions yet. Versions are saved automatically as you edit.</p>';
+        return;
+    }
+
+    listEl.innerHTML = versions.map((v, i) => {
+        const date = new Date(v.timestamp);
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const label = i === 0 ? ' (Latest)' : '';
+
+        return `
+            <div class="version-item" data-index="${i}">
+                <div class="version-info">
+                    <span class="version-date">${dateStr} at ${timeStr}${label}</span>
+                    <span class="version-meta">${v.wordCount} words</span>
+                </div>
+                <button class="version-restore-btn" data-index="${i}">Restore</button>
+            </div>
+        `;
+    }).join('');
+
+    // Attach restore handlers
+    listEl.querySelectorAll('.version-restore-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const index = parseInt(btn.dataset.index);
+            const version = versions[index];
+            if (version && confirm('Restore this version? Current content will be replaced.')) {
+                editor.setValue(version.content);
+                showToast('Version restored', 'success');
+                // Close modal
+                document.getElementById('version-history-modal').style.display = 'none';
+                document.getElementById('version-history-overlay').style.display = 'none';
+            }
         });
     });
 };
 
-// Handle mobile drawer actions
-let handleMobileDrawerAction = (action) => {
-    switch (action) {
-        case 'reset':
-            document.querySelector('#reset-button')?.click();
-            break;
-        case 'import':
-            document.querySelector('#import-button')?.click();
-            break;
-        case 'download-md':
-            document.querySelector('#download-md-button')?.click();
-            break;
-        case 'export-html':
-            document.querySelector('#export-html-button')?.click();
-            break;
-        case 'export-docx':
-            document.querySelector('#export-docx-button')?.click();
-            break;
-        case 'copy-md':
-            document.querySelector('#copy-button')?.click();
-            break;
-        case 'copy-html':
-            document.querySelector('#copy-html-button')?.click();
-            break;
-        case 'export-pdf':
-            document.querySelector('#export-pdf-button')?.click();
-            break;
-        case 'templates':
-            document.querySelector('#templates-button')?.click();
-            break;
-        case 'toc':
-            document.querySelector('#toc-button')?.click();
-            break;
-        case 'lint':
-            document.querySelector('#lint-button')?.click();
-            break;
-        case 'goals':
-            document.querySelector('#goals-button')?.click();
-            break;
-        case 'stats':
-            document.querySelector('#stats-button')?.click();
-            break;
-        case 'help':
-            document.querySelector('#help-button')?.click();
-            break;
-        case 'focus-mode':
-            document.querySelector('#focus-button')?.click();
-            break;
-        case 'fullscreen':
-            document.querySelector('#fullscreen-button')?.click();
-            break;
-    }
+// ----- Mobile Swipe Gestures -----
+// Now handled by MobileUIManager in features/mobile/index.js
+let setupMobileSwipeGestures = () => {
+    // No-op: swipe gestures are handled by mobile module
 };
 
-// Handle FAB actions
-let handleFabAction = (action) => {
-    switch (action) {
-        case 'copy-md':
-            document.querySelector('#copy-button')?.click();
-            break;
-        case 'download-md':
-            document.querySelector('#download-md-button')?.click();
-            break;
-        case 'export-pdf':
-            document.querySelector('#export-pdf-button')?.click();
-            break;
-    }
+// ----- Mobile UI Setup -----
+// Now handled by MobileUIManager in features/mobile/index.js
+let setupMobileUI = () => {
+    // Expose tab data and functions globally for mobile module
+    window.__markups_documents = documents;
+    window.__markups_activeDocId = activeDocId;
+    window.__markups_switchTab = switchTab;
+    window.__markups_closeTab = closeTab;
+
+    // Import and initialize mobile module
+    import('./features/mobile/index.js').then(({ mobileUIManager }) => {
+        mobileUIManager.initialize();
+
+        // Apply mobile-specific Monaco settings
+        if (mobileUIManager.isMobile() && editor) {
+            editor.updateOptions({
+                minimap: { enabled: false },
+                lineNumbers: 'off',
+                folding: false,
+                glyphMargin: false,
+                lineDecorationsWidth: 0,
+                lineNumbersMinChars: 0,
+                overviewRulerLanes: 0,
+                scrollbar: {
+                    vertical: 'auto',
+                    horizontal: 'hidden',
+                    verticalScrollbarSize: 8,
+                },
+                wordWrap: 'on',
+                fontSize: 15,
+            });
+            editor.layout();
+        }
+    }).catch(err => {
+        console.warn('Mobile module load error:', err);
+    });
 };
+
+// Handle mobile drawer actions - now handled by mobile module
+let handleMobileDrawerAction = (action) => {};
+
+// Handle FAB actions - now handled by mobile module
+let handleFabAction = (action) => {};
 
 let setupDivider = () => {
     let lastLeftRatio = 0.5;
@@ -4738,6 +5203,7 @@ const initializeApp = () => {
     defineCustomThemes();
 
     let lastContent = loadLastContent();
+    loadImageStore(); // Load image store before editor setup so convert() can resolve refs
     editor = setupEditor();
     if (lastContent) {
         presetValue(lastContent);
@@ -4760,6 +5226,12 @@ const initializeApp = () => {
     setupTemplatesButton();
     setupSnippetsButton();
     setupTOCButton();
+
+    // Load and apply scroll sync settings BEFORE setting up the button
+    // so the button reads the correct scrollBarSync value
+    let scrollBarSettings = loadScrollBarSettings() ?? true;
+    initScrollBarSync(scrollBarSettings);
+
     setupScrollSyncButton();
     setupFocusMode();
     setupTypewriterButton();
@@ -4767,9 +5239,6 @@ const initializeApp = () => {
     setupViewButtons(); initTabs(); setupSearch(); setupLinter(); setupGoals();
     setupKeyboardShortcuts();
     setupGlobalEscapeKey();
-
-    let scrollBarSettings = loadScrollBarSettings() || false;
-    initScrollBarSync(scrollBarSettings);
 
     let themeSettings = loadThemeSettings() || 'vs';
     initThemeSelector(themeSettings);
@@ -4781,6 +5250,22 @@ const initializeApp = () => {
     setupDivider();
     setupMobileUI();
     setupExportModal();
+
+    // New features
+    setupFindReplaceButton();
+    setupURLAutoFormat();
+    setupURLToolbarButton();
+    setupClipboardImagePaste();
+    setupDragDropTabs();
+    setupWordWrapToggle();
+    setupVersionHistory();
+    setupMobileSwipeGestures();
+
+    // Restore saved view mode
+    const savedViewMode = loadViewMode();
+    if (savedViewMode && savedViewMode !== 'split') {
+        setViewMode(savedViewMode);
+    }
 
     // Initialize stats with current content
     updateStats(editor.getValue());
