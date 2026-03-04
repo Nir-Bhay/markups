@@ -67,32 +67,48 @@ class MobileUIManager {
             });
         }
 
+        // Import button — delegates to the desktop import button
+        const importNavBtn = document.getElementById('mobile-import-nav-btn');
+        if (importNavBtn) {
+            importNavBtn.addEventListener('click', () => {
+                const desktopImport = document.getElementById('import-button');
+                if (desktopImport) desktopImport.click();
+            });
+        }
+
+        // Export button — delegates to the desktop export button
+        const exportNavBtn = document.getElementById('mobile-export-nav-btn');
+        if (exportNavBtn) {
+            exportNavBtn.addEventListener('click', () => {
+                const desktopExport = document.getElementById('export-btn');
+                if (desktopExport) desktopExport.click();
+            });
+        }
+
         // Theme toggle button — delegates to the desktop dark-mode toggle
         const themeBtn = document.getElementById('mobile-theme-btn');
         if (themeBtn) {
             themeBtn.addEventListener('click', () => {
                 const desktopThemeBtn = document.getElementById('dark-mode-toggle');
                 if (desktopThemeBtn) desktopThemeBtn.click();
-                // Sync icon state after toggle
-                this._syncMobileThemeIcon();
             });
-            // Initial sync
+
+            // Keep icon in sync via MutationObserver watching body class changes
             this._syncMobileThemeIcon();
+            const observer = new MutationObserver(() => this._syncMobileThemeIcon());
+            observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
         }
     }
 
     _syncMobileThemeIcon() {
         const mobileBtn = document.getElementById('mobile-theme-btn');
-        const desktopBtn = document.getElementById('dark-mode-toggle');
-        if (!mobileBtn || !desktopBtn) return;
+        if (!mobileBtn) return;
 
-        const isDark = document.body.classList.contains('dark-mode') ||
-                       document.documentElement.getAttribute('data-theme') === 'dark';
-
+        const isDark = document.body.classList.contains('dark-mode');
         const mobileSun = mobileBtn.querySelector('.icon-sun');
         const mobileMoon = mobileBtn.querySelector('.icon-moon');
-        if (mobileSun) mobileSun.style.display = isDark ? 'none' : 'block';
-        if (mobileMoon) mobileMoon.style.display = isDark ? 'block' : 'none';
+        if (mobileSun) mobileSun.style.display = isDark ? 'none' : 'inline';
+        if (mobileMoon) mobileMoon.style.display = isDark ? 'inline' : 'none';
     }
 
     /* ============================

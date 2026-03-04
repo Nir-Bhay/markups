@@ -6350,29 +6350,21 @@ body.resizing .monaco-editor {
     padding: 0 8px;
   }
 
-  /* -- Toolbar: hide non-essential groups -- */
+  /* -- Toolbar: hide tool/mode/extra groups (keep all formatting buttons) -- */
   .toolbar-tools-group,
   .toolbar-modes-group,
-  .toolbar-extras-group,
-  .toolbar-block-group {
+  .toolbar-extras-group {
     display: none !important;
+  }
+
+  /* Show block group (quote, HR) and overflow button on mobile */
+  .toolbar-block-group {
+    display: flex !important;
   }
 
   /* Show overflow button */
   .toolbar-overflow-btn {
     display: flex;
-  }
-
-  /* Hide the toolbar groups for strikethrough, table, hr, quote, code on mobile 
-     Keep: bold, italic, h1-h3, link, image, code, ul, inline-code */
-  #toolbar-strikethrough,
-  #toolbar-table,
-  #toolbar-hr,
-  #toolbar-quote,
-  #toolbar-ol,
-  #toolbar-task,
-  #toolbar-url {
-    display: none;
   }
 
   /* Toolbar compact on mobile */
