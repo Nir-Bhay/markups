@@ -45,11 +45,54 @@ class MobileUIManager {
         this._setupSwipeGestures();
         this._setupDrawerActions();
         this._setupResizeHandler();
+        this._setupMobileHeaderButtons();
 
         // Set default mobile view
         if (this.isMobile()) {
             this.setView('editor');
         }
+    }
+
+    /* ============================
+       MOBILE HEADER BUTTONS (+ new file, theme)
+       ============================ */
+
+    _setupMobileHeaderButtons() {
+        // New File button — delegates to the desktop new-tab button
+        const newFileBtn = document.getElementById('mobile-new-file-btn');
+        if (newFileBtn) {
+            newFileBtn.addEventListener('click', () => {
+                const desktopNewTab = document.getElementById('new-tab-button');
+                if (desktopNewTab) desktopNewTab.click();
+            });
+        }
+
+        // Theme toggle button — delegates to the desktop dark-mode toggle
+        const themeBtn = document.getElementById('mobile-theme-btn');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                const desktopThemeBtn = document.getElementById('dark-mode-toggle');
+                if (desktopThemeBtn) desktopThemeBtn.click();
+                // Sync icon state after toggle
+                this._syncMobileThemeIcon();
+            });
+            // Initial sync
+            this._syncMobileThemeIcon();
+        }
+    }
+
+    _syncMobileThemeIcon() {
+        const mobileBtn = document.getElementById('mobile-theme-btn');
+        const desktopBtn = document.getElementById('dark-mode-toggle');
+        if (!mobileBtn || !desktopBtn) return;
+
+        const isDark = document.body.classList.contains('dark-mode') ||
+                       document.documentElement.getAttribute('data-theme') === 'dark';
+
+        const mobileSun = mobileBtn.querySelector('.icon-sun');
+        const mobileMoon = mobileBtn.querySelector('.icon-moon');
+        if (mobileSun) mobileSun.style.display = isDark ? 'none' : 'block';
+        if (mobileMoon) mobileMoon.style.display = isDark ? 'block' : 'none';
     }
 
     /* ============================

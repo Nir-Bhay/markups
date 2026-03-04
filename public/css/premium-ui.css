@@ -4874,10 +4874,192 @@ body.focus-mode .editor-pane {
   text-align: center;
 }
 
+/* ==================== DARK MODE: MARKDOWN PREVIEW ==================== */
+/* Override github-markdown-light.css hardcoded colors in dark mode */
+body.dark-mode .markdown-body {
+  color: #e6edf3;
+  background-color: transparent;
+}
+
+body.dark-mode .preview-pane {
+  background: var(--bg-primary);
+}
+
+body.dark-mode .markdown-body a {
+  color: #4493f8;
+}
+
+body.dark-mode .markdown-body h1,
+body.dark-mode .markdown-body h2 {
+  border-bottom-color: #3d444db3;
+}
+
+body.dark-mode .markdown-body hr {
+  background-color: #3d444d;
+  border-color: #3d444d;
+}
+
+body.dark-mode .markdown-body blockquote {
+  color: #9198a1;
+  border-left-color: var(--accent-primary);
+  background: var(--bg-secondary);
+}
+
+body.dark-mode .markdown-body table th,
+body.dark-mode .markdown-body table td {
+  border-color: #3d444d;
+}
+
+body.dark-mode .markdown-body table th {
+  background: var(--bg-secondary);
+}
+
+body.dark-mode .markdown-body table tr {
+  background-color: transparent;
+  border-top-color: #3d444d;
+}
+
+body.dark-mode .markdown-body table tr:nth-child(2n) {
+  background-color: rgba(45, 54, 67, 0.5);
+}
+
+body.dark-mode .markdown-body img {
+  background-color: transparent;
+}
+
+body.dark-mode .markdown-body code {
+  background: rgba(110, 118, 129, 0.25);
+  color: #f0883e;
+}
+
+body.dark-mode .markdown-body pre {
+  background: #161b22;
+  border-color: #3d444d;
+}
+
+body.dark-mode .markdown-body pre code {
+  background: none;
+  color: #e6edf3;
+}
+
+body.dark-mode .markdown-body kbd {
+  background-color: #1e293b;
+  border-color: #3d444d;
+  box-shadow: inset 0 -1px 0 #3d444d;
+  color: #e6edf3;
+}
+
+body.dark-mode .markdown-body mark {
+  background-color: rgba(187, 128, 9, 0.3);
+  color: #e6edf3;
+}
+
+body.dark-mode .markdown-body .highlight pre,
+body.dark-mode .markdown-body pre {
+  background-color: #161b22;
+}
+
+body.dark-mode .markdown-body .pl-c {
+  color: #9198a1;
+}
+
+body.dark-mode .markdown-body .pl-c1,
+body.dark-mode .markdown-body .pl-s .pl-v {
+  color: #79c0ff;
+}
+
+body.dark-mode .markdown-body .pl-e,
+body.dark-mode .markdown-body .pl-en {
+  color: #d2a8ff;
+}
+
+body.dark-mode .markdown-body .pl-smi,
+body.dark-mode .markdown-body .pl-s .pl-s1 {
+  color: #e6edf3;
+}
+
+body.dark-mode .markdown-body .pl-ent {
+  color: #7ee787;
+}
+
+body.dark-mode .markdown-body .pl-k {
+  color: #ff7b72;
+}
+
+body.dark-mode .markdown-body .pl-s,
+body.dark-mode .markdown-body .pl-pds,
+body.dark-mode .markdown-body .pl-s .pl-pse .pl-s1 {
+  color: #a5d6ff;
+}
+
+body.dark-mode .markdown-body .pl-sr .pl-cce,
+body.dark-mode .markdown-body .pl-sr .pl-sra,
+body.dark-mode .markdown-body .pl-sr .pl-sre {
+  color: #a5d6ff;
+}
+
+body.dark-mode .markdown-body .footnotes li::before {
+  color: #9198a1;
+}
+
+/* Diff colors - dark */
+body.dark-mode .markdown-body .pl-mi1 {
+  color: #aff5b4;
+  background-color: rgba(63, 185, 80, 0.15);
+}
+
+body.dark-mode .markdown-body .pl-md {
+  color: #ffdcd7;
+  background-color: rgba(248, 81, 73, 0.15);
+}
+
+/* Focus outlines - dark */
+body.dark-mode .markdown-body a:focus,
+body.dark-mode .markdown-body [role=button]:focus,
+body.dark-mode .markdown-body input[type=radio]:focus,
+body.dark-mode .markdown-body input[type=checkbox]:focus {
+  outline-color: #4493f8;
+}
+
+/* Alert overrides - dark */
+body.dark-mode .markdown-alert-note {
+  background: rgba(88, 101, 242, 0.12);
+}
+
+body.dark-mode .markdown-alert-tip {
+  background: rgba(34, 197, 94, 0.12);
+}
+
+body.dark-mode .markdown-alert-important {
+  background: rgba(139, 92, 246, 0.12);
+}
+
+body.dark-mode .markdown-alert-warning {
+  background: rgba(245, 158, 11, 0.12);
+}
+
+body.dark-mode .markdown-alert-caution {
+  background: rgba(239, 68, 68, 0.12);
+}
+
 /* Math (KaTeX) */
 .katex-display {
   margin: 1.5rem 0;
   overflow-x: auto;
+}
+
+body.dark-mode .katex {
+  color: #e6edf3;
+}
+
+body.dark-mode .mermaid {
+  background: #161b22;
+}
+
+body.dark-mode .mermaid-diagram {
+  background: #161b22;
+  border-radius: var(--radius-lg);
+  padding: 16px;
 }
 
 /* ==================== FLOATING EDIT BUTTON ==================== */
@@ -5828,6 +6010,7 @@ body.resizing .monaco-editor {
 }
 
 @media (max-width: 480px) {
+
   /* TOC button hidden — only adjust edit button position */
   body.view-preview .floating-edit-btn {
     bottom: 20px;
@@ -5840,6 +6023,27 @@ body.resizing .monaco-editor {
    MOBILE RESPONSIVENESS OVERHAUL
    All rules scoped to max-width: 768px to protect desktop
    ============================================================ */
+
+/* ---- Mobile Header Buttons (new file, theme) ---- */
+.mobile-header-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+  padding: 0;
+}
+
+.mobile-header-btn:hover {
+  background: var(--bg-hover);
+}
 
 /* ---- Mobile Header Menu Button (hamburger) ---- */
 .mobile-header-menu {
@@ -6108,11 +6312,16 @@ body.resizing .monaco-editor {
     display: flex;
   }
 
+  .mobile-header-btn {
+    display: flex;
+  }
+
   .mobile-view-switcher {
     display: flex;
     flex: 1;
     justify-content: center;
     max-width: 200px;
+    margin: 0 auto;
   }
 
   /* -- Hide desktop header elements on mobile -- */
@@ -6120,16 +6329,25 @@ body.resizing .monaco-editor {
     display: none !important;
   }
 
-  /* -- Header layout for mobile -- */
+  .header-tabs {
+    display: none !important;
+  }
+
+  .brand-logo,
+  .brand-name {
+    display: none !important;
+  }
+
+  .header-brand {
+    display: none !important;
+  }
+
+  /* -- Header layout for mobile: + [Write|Preview] Theme ☰ -- */
   .premium-header {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 0 8px;
-  }
-
-  .header-brand {
-    flex-shrink: 0;
   }
 
   /* -- Toolbar: hide non-essential groups -- */

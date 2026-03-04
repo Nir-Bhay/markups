@@ -95,99 +95,70 @@ const localStorageGoalsKey = 'writing_goals';
 const localStorageImagesKey = 'image_store';
 const imageStore = new Map(); // key: imgId, value: base64 data URL
 const confirmationMessage = 'Are you sure you want to reset? Your changes will be lost.';
-// default template
-const defaultInput = `# Markdown Live Preview
+// default welcome content — shown to first-time users, auto-cleared on first real keystroke
+const defaultInput = `# Welcome to Markups ✨
 
-<a href="https://git.io/typing-svg"><img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&duration=3000&pause=1000&color=6AD3F7&center=true&vCenter=true&multiline=true&repeat=true&width=600&height=100&lines=%F0%9F%9A%80+Building+Next-Gen+Digital+Experiences;%F0%9F%92%BB+React+%7C+Node.js+%7C+React+Native+%7C+Three.js;%F0%9F%8E%AF+397%2B+Commits+%7C+76%2B+Repositories" alt="Typing SVG" /></a>
+> **Your free, powerful Markdown editor** — write, preview, and export beautiful documents right in your browser.
+
+Start typing here to begin — this welcome content will disappear automatically.
 
 ---
 
-## Headers
+## What You Can Do
 
-# This is a Heading h1
-## This is a Heading h2
-###### This is a Heading h6
+| Feature | How |
+|---------|-----|
+| **Bold**, *Italic*, ~~Strikethrough~~ | Toolbar buttons or Markdown syntax |
+| Headings (H1–H6) | \`# Heading\` or toolbar |
+| Bullet & numbered lists | \`- item\` or \`1. item\` |
+| Code blocks with syntax highlighting | Triple backticks ${"\`"}${"\`"}${"\`"} |
+| Tables | Pipe \`|\` syntax |
+| Images & links | Drag-drop or \`![alt](url)\` |
+| Math equations (LaTeX) | \`$E=mc^2$\` |
+| Diagrams (Mermaid) | Fenced \`mermaid\` blocks |
+| Export to PDF, HTML, DOCX, PNG | Click **Export** ↗ |
+| Multiple tabs | Click **+** in the tab bar |
 
-## Emphasis
+## Quick Examples
 
-*This text will be italic*  
-_This will also be italic_
+### Code Block
 
-**This text will be bold**  
-__This will also be bold__
+${"\`"}${"\`"}${"\`"}javascript
+function greet(name) {
+  return \`Hello, \${name}! 👋\`;
+}
+${"\`"}${"\`"}${"\`"}
 
-_You **can** combine them_
+### Math
 
-## Lists
+Inline: $E = mc^2$ · Block:
 
-### Unordered
+$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$
 
-* Item 1
-* Item 2
-* Item 2a
-* Item 2b
-    * Item 3a
-    * Item 3b
+### Diagram
 
-### Ordered
+${"\`"}${"\`"}${"\`"}mermaid
+graph LR
+    A[Write Markdown] --> B[Live Preview]
+    B --> C{Export}
+    C --> D[PDF]
+    C --> E[HTML]
+    C --> F[Image]
+${"\`"}${"\`"}${"\`"}
 
-1. Item 1
-2. Item 2
-3. Item 3
-    1. Item 3a
-    2. Item 3b
+### Blockquote
 
-## Images
+> "The best way to predict the future is to create it." — Abraham Lincoln
 
-![This is an alt text.](/image/sample.webp "This is a sample image.")
+---
 
-## Links
+**Keyboard shortcuts:** \`Ctrl+B\` Bold · \`Ctrl+I\` Italic · \`Ctrl+S\` Save · \`Ctrl+Shift+E\` Export
 
-You may be using this Markdown Live Preview tool.
-
-## Blockquotes
-
-> Markdown is a lightweight markup language with plain-text-formatting syntax, created in 2004 by John Gruber with Aaron Swartz.
->
->> Markdown is often used to format readme files, for writing messages in online discussion forums, and to create rich text using a plain text editor.
-
-## Tables
-
-| Left columns  | Right columns |
-| ------------- |:-------------:|
-| left foo      | right foo     |
-| left bar      | right bar     |
-| left baz      | right baz     |
-
-## Blocks of code
-
-${"`"}${"`"}${"`"}
-let message = 'Hello world';
-alert(message);
-${"`"}${"`"}${"`"}
-
-## Inline code
-
-This web site is using open-source libraries.
-
-## Mermaid Diagram
-
-${"`"}${"`"}${"`"}mermaid
-graph TD
-    A[Start] --> B{Is it working?}
-    B -->|Yes| C[Great!]
-    B -->|No| D[Debug]
-${"`"}${"`"}${"`"}
-
-## Math (LaTeX)
-
-Inline math: $E = mc^2$
-
-Block math:
-$$
-\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}
-$$
+Happy writing! 🚀
 `;
+
+// Flag: true when showing the default welcome content (auto-clear on first real keystroke)
+let isShowingWelcome = false;
 
 // ----- Tabs System -----
 let documents = [];
@@ -211,6 +182,10 @@ let initTabs = () => {
         };
         documents = [newDoc];
         activeDocId = newDoc.id;
+        // Mark as showing welcome content if using default
+        if (oldContent === defaultInput) {
+            isShowingWelcome = true;
+        }
     }
 
     renderTabs();
@@ -433,7 +408,31 @@ let setupEditor = () => {
         folding: false
     });
 
-    editor.onDidChangeModelContent(() => {
+    editor.onDidChangeModelContent((e) => {
+        // Auto-clear welcome content on first real keystroke
+        if (isShowingWelcome && e.changes && e.changes.length > 0) {
+            const change = e.changes[0];
+            // Only clear if the user actually typed something (not a programmatic setValue)
+            const isUserTyping = change.text.length > 0 && change.text !== defaultInput;
+            if (isUserTyping && editor.getValue() !== defaultInput) {
+                // User started editing the welcome content — don't clear, they might want to keep parts
+            } else if (isUserTyping && change.rangeLength === 0) {
+                // Pure insertion on top of default content — clear and keep only what user typed
+                isShowingWelcome = false;
+                const typed = change.text;
+                editor.setValue(typed);
+                // Place cursor at end of typed text
+                const model = editor.getModel();
+                if (model) {
+                    const lastLine = model.getLineCount();
+                    const lastCol = model.getLineMaxColumn(lastLine);
+                    editor.setPosition({ lineNumber: lastLine, column: lastCol });
+                }
+                return; // setValue will trigger this handler again
+            }
+            isShowingWelcome = false;
+        }
+
         let changed = editor.getValue() != defaultInput;
         if (changed) {
             hasEdited = true;
@@ -1298,6 +1297,7 @@ let reset = () => {
             return;
         }
     }
+    isShowingWelcome = true;
     presetValue(defaultInput);
     document.querySelectorAll('.column').forEach((element) => {
         element.scrollTo({ top: 0 });
@@ -2816,7 +2816,7 @@ let exportToPDFWithOptions = async () => {
         hideExportLoading();
     } catch (err) {
         console.error('PDF export error:', err);
-        if (tempContainer?.parentNode) try { document.body.removeChild(tempContainer); } catch (_) {}
+        if (tempContainer?.parentNode) try { document.body.removeChild(tempContainer); } catch (_) { }
         failExportLoading('Failed to export PDF');
         showToast('Failed to export PDF', 'error');
     }
@@ -3912,8 +3912,10 @@ let applyTheme = (theme) => {
     const themes = ['dracula', 'solarized-dark', 'solarized-light', 'github-dark', 'github-light'];
     themes.forEach(t => document.body.classList.remove(`theme-${t}`));
 
+    const isDark = theme.includes('dark') || theme === 'hc-black' || theme === 'dracula';
+
     // Apply base mode
-    if (theme.includes('dark') || theme === 'hc-black' || theme === 'dracula') {
+    if (isDark) {
         document.body.classList.add('dark-mode');
     } else {
         document.body.classList.add('light-mode');
@@ -3924,6 +3926,16 @@ let applyTheme = (theme) => {
         document.body.classList.add('hc-mode');
     } else if (theme !== 'vs' && theme !== 'vs-dark') {
         document.body.classList.add(`theme-${theme}`);
+    }
+
+    // Switch mermaid diagram theme to match
+    if (typeof mermaid !== 'undefined') {
+        try {
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: isDark ? 'dark' : 'default'
+            });
+        } catch (e) { /* mermaid not ready yet */ }
     }
 };
 

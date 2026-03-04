@@ -1,100 +1,69 @@
 /**
  * Default Content
- * Default markdown content shown when app is first loaded
+ * Welcome content shown when app is first loaded
+ * Auto-cleared when user starts typing
  * @module config/default-content
  */
 
-export const DEFAULT_CONTENT = `# Markdown Live Preview
+export const DEFAULT_CONTENT = `# Welcome to Markups ✨
 
-<a href="https://git.io/typing-svg"><img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&duration=3000&pause=1000&color=6AD3F7&center=true&vCenter=true&multiline=true&repeat=true&width=600&height=100&lines=%F0%9F%9A%80+Building+Next-Gen+Digital+Experiences;%F0%9F%92%BB+React+%7C+Node.js+%7C+React+Native+%7C+Three.js;%F0%9F%8E%AF+397%2B+Commits+%7C+76%2B+Repositories" alt="Typing SVG" /></a>
+> **Your free, powerful Markdown editor** — write, preview, and export beautiful documents right in your browser.
+
+Start typing here to begin — this welcome content will disappear automatically.
 
 ---
 
-## Headers
+## What You Can Do
 
-# This is a Heading h1
-## This is a Heading h2
-###### This is a Heading h6
+| Feature | How |
+|---------|-----|
+| **Bold**, *Italic*, ~~Strikethrough~~ | Toolbar buttons or Markdown syntax |
+| Headings (H1–H6) | \`# Heading\` or toolbar |
+| Bullet & numbered lists | \`- item\` or \`1. item\` |
+| Code blocks with syntax highlighting | Triple backticks \\\`\\\`\\\` |
+| Tables | Pipe \`|\` syntax |
+| Images & links | Drag-drop or \`![alt](url)\` |
+| Math equations (LaTeX) | \`$E=mc^2$\` |
+| Diagrams (Mermaid) | Fenced \`mermaid\` blocks |
+| Export to PDF, HTML, DOCX, PNG | Click **Export** ↗ |
+| Multiple tabs | Click **+** in the tab bar |
 
-## Emphasis
+## Quick Examples
 
-*This text will be italic*  
-_This will also be italic_
+### Code Block
 
-**This text will be bold**  
-__This will also be bold__
+\\\`\\\`\\\`javascript
+function greet(name) {
+  return \\\`Hello, \\\${name}! 👋\\\`;
+}
+\\\`\\\`\\\`
 
-_You **can** combine them_
+### Math
 
-## Lists
+Inline: $E = mc^2$ · Block:
 
-### Unordered
+$$\\\\sum_{i=1}^{n} i = \\\\frac{n(n+1)}{2}$$
 
-* Item 1
-* Item 2
-* Item 2a
-* Item 2b
-    * Item 3a
-    * Item 3b
+### Diagram
 
-### Ordered
+\\\`\\\`\\\`mermaid
+graph LR
+    A[Write Markdown] --> B[Live Preview]
+    B --> C{Export}
+    C --> D[PDF]
+    C --> E[HTML]
+    C --> F[Image]
+\\\`\\\`\\\`
 
-1. Item 1
-2. Item 2
-3. Item 3
-    1. Item 3a
-    2. Item 3b
+### Blockquote
 
-## Images
+> "The best way to predict the future is to create it." — Abraham Lincoln
 
-![This is an alt text.](/image/sample.webp "This is a sample image.")
+---
 
-## Links
+**Keyboard shortcuts:** \`Ctrl+B\` Bold · \`Ctrl+I\` Italic · \`Ctrl+S\` Save · \`Ctrl+Shift+E\` Export
 
-You may be using this Markdown Live Preview tool.
-
-## Blockquotes
-
-> Markdown is a lightweight markup language with plain-text-formatting syntax, created in 2004 by John Gruber with Aaron Swartz.
->
->> Markdown is often used to format readme files, for writing messages in online discussion forums, and to create rich text using a plain text editor.
-
-## Tables
-
-| Left columns  | Right columns |
-| ------------- |:-------------:|
-| left foo      | right foo     |
-| left bar      | right bar     |
-| left baz      | right baz     |
-
-## Blocks of code
-
-\`\`\`javascript
-let message = 'Hello world';
-alert(message);
-\`\`\`
-
-## Inline code
-
-This web site is using \`open-source\` libraries.
-
-## Mermaid Diagram
-
-\`\`\`mermaid
-graph TD
-    A[Start] --> B{Is it working?}
-    B -->|Yes| C[Great!]
-    B -->|No| D[Debug]
-\`\`\`
-
-## Math (LaTeX)
-
-Inline math: $E = mc^2$
-
-Block math:
-$$
-\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}
-$$
+Happy writing! 🚀
 `;
 
 export default DEFAULT_CONTENT;
