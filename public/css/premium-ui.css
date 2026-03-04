@@ -2222,6 +2222,23 @@ body.view-split .toc-sidebar {
   margin: 0;
 }
 
+.export-recommended-tag {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  margin: 2px 12px 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(88, 101, 242, 0.1);
+  color: var(--accent-primary);
+  border: 1px solid rgba(88, 101, 242, 0.2);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
 .export-format-btn {
   display: flex;
   align-items: center;
@@ -2566,9 +2583,19 @@ body.dark-mode .export-loading-overlay {
 }
 
 @keyframes scaleIn {
-  0% { transform: scale(0); opacity: 0; }
-  60% { transform: scale(1.15); }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  60% {
+    transform: scale(1.15);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .export-btn.primary.exporting {
@@ -2585,7 +2612,7 @@ body.dark-mode .export-loading-overlay {
   width: 18px;
   height: 18px;
   margin: -9px 0 0 -9px;
-  border: 2px solid rgba(255,255,255,0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -3344,7 +3371,8 @@ body.dark-mode .export-preview-container {
   }
 
   .export-format-btn .btn-text {
-    display: none;
+    display: inline !important;
+    font-size: 0.6875rem;
   }
 
   .export-format-btn .material-symbols-outlined {
@@ -4451,22 +4479,34 @@ kbd {
 
   /* Main container */
   .main-container {
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .doc-outline,
-  .toc-sidebar {
+  .doc-outline.visible,
+  .toc-sidebar,
+  .toc-sidebar.visible {
     display: none !important;
   }
 
   .split-divider {
-    display: none;
+    display: none !important;
   }
 
+  /* Force panes to full width on mobile — override desktop width:50% for split */
   .editor-pane,
   .preview-pane {
-    flex: none;
-    height: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  body.view-split .editor-pane,
+  body.view-split .preview-pane {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
   }
 
   body.view-split .editor-pane {
@@ -5342,28 +5382,11 @@ body.resizing .monaco-editor {
     min-height: 28px;
   }
 
-  /* TOC Sidebar Mobile */
-  .toc-sidebar {
-    position: fixed !important;
-    top: var(--header-height);
-    right: 0;
-    bottom: var(--status-bar-height);
-    width: 280px;
-    max-width: 85vw;
-    z-index: 100;
-    transform: translateX(100%);
-    transition: transform 0.3s ease;
-    display: flex !important;
-    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
-  }
-
-  /* On mobile, start hidden - use .visible class to show */
-  .toc-sidebar.visible {
-    transform: translateX(0);
-  }
-
+  /* TOC Sidebar — completely hidden on mobile */
+  .toc-sidebar,
+  .toc-sidebar.visible,
   .toc-sidebar.hidden {
-    transform: translateX(100%);
+    display: none !important;
   }
 
   .toc-header {
@@ -5386,28 +5409,12 @@ body.resizing .monaco-editor {
     align-items: center;
   }
 
-  /* Document Outline Mobile */
-  .doc-outline {
-    position: fixed !important;
-    top: var(--header-height);
-    left: 0;
-    bottom: var(--status-bar-height);
-    width: 280px;
-    max-width: 85vw;
-    z-index: 100;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    display: flex !important;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
-  }
-
-  .doc-outline:not(.hidden) {
-    transform: translateX(0);
-  }
-
+  /* Document Outline — completely hidden on mobile */
+  .doc-outline,
+  .doc-outline.visible,
+  .doc-outline:not(.hidden),
   .doc-outline.hidden {
-    transform: translateX(-100%);
-    display: flex !important;
+    display: none !important;
   }
 }
 
@@ -5803,47 +5810,27 @@ body.resizing .monaco-editor {
   visibility: visible;
 }
 
-/* Show floating TOC button only on mobile in preview mode */
+/* TOC button on mobile — DISABLED, TOC fully hidden on mobile */
 @media (max-width: 768px) {
   .floating-toc-btn {
-    display: flex;
-  }
-
-  body.view-editor .floating-toc-btn {
-    display: none;
-  }
-
-  body.view-preview .floating-toc-btn,
-  body.view-split .floating-toc-btn {
-    display: flex;
+    display: none !important;
   }
 
   .mobile-toc-overlay {
-    display: block;
+    display: none !important;
   }
 
-  /* Adjust floating edit button position when TOC button is visible */
+  /* Floating edit button — no offset needed without TOC button */
   body.view-preview .floating-edit-btn {
-    bottom: 60px;
+    bottom: 24px;
     right: 20px;
   }
 }
 
 @media (max-width: 480px) {
-  .floating-toc-btn {
-    bottom: 70px;
-    left: 16px;
-    width: 44px;
-    height: 44px;
-  }
-
-  .floating-toc-btn svg {
-    width: 18px;
-    height: 18px;
-  }
-
+  /* TOC button hidden — only adjust edit button position */
   body.view-preview .floating-edit-btn {
-    bottom: 70px;
+    bottom: 20px;
     right: 16px;
   }
 }
@@ -6148,7 +6135,8 @@ body.resizing .monaco-editor {
   /* -- Toolbar: hide non-essential groups -- */
   .toolbar-tools-group,
   .toolbar-modes-group,
-  .toolbar-extras-group {
+  .toolbar-extras-group,
+  .toolbar-block-group {
     display: none !important;
   }
 
@@ -6174,6 +6162,19 @@ body.resizing .monaco-editor {
     position: relative;
     padding: 0 4px;
     gap: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .premium-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide toolbar dividers and spacer on mobile for clean layout */
+  .toolbar-divider,
+  .toolbar-spacer {
+    display: none !important;
   }
 
   /* -- Status bar on mobile: hide footer menu toggle, simplify -- */
@@ -6183,20 +6184,26 @@ body.resizing .monaco-editor {
 
   /* -- Mobile view switching via body classes -- */
   body.view-editor .editor-pane {
-    display: flex;
-    flex: 1;
+    display: flex !important;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
-  body.view-editor .preview-pane {
+  body.view-editor .preview-pane,
+  body.view-editor .split-divider {
     display: none !important;
   }
 
   body.view-preview .preview-pane {
-    display: flex;
-    flex: 1;
+    display: flex !important;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
-  body.view-preview .editor-pane {
+  body.view-preview .editor-pane,
+  body.view-preview .split-divider {
     display: none !important;
   }
 
@@ -6209,6 +6216,24 @@ body.resizing .monaco-editor {
   body.view-editor .floating-edit-btn,
   body.view-editor .floating-toc-btn {
     display: none !important;
+  }
+
+  /* Force-hide ALL TOC/outline elements on mobile — no exceptions */
+  .doc-outline,
+  .doc-outline.visible,
+  .toc-sidebar,
+  .toc-sidebar.visible,
+  .floating-toc-btn,
+  .mobile-toc-overlay,
+  #toc-button {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    clip: rect(0, 0, 0, 0) !important;
   }
 
   /* -- Mobile drawer active state -- */
@@ -6265,6 +6290,11 @@ body.resizing .monaco-editor {
 
   .mobile-nav-drawer {
     width: 100% !important;
+  }
+
+  /* Tighter preview padding on small screens */
+  .preview-wrapper {
+    padding: 16px 12px;
   }
 }
 

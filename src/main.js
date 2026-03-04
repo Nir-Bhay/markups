@@ -455,6 +455,7 @@ let setupEditor = () => {
         isScrollSyncing = true;
         // Use .preview-wrapper as it's the scrollable element (not #preview which has overflow: hidden)
         const previewElement = document.querySelector('.preview-wrapper');
+        if (!previewElement) { isScrollSyncing = false; return; }
 
         // Get editor scroll metrics
         const scrollTop = editor.getScrollTop();
@@ -478,7 +479,7 @@ let setupEditor = () => {
     // Add preview-to-editor scroll sync
     // Use .preview-wrapper as it's the scrollable element
     const previewElement = document.querySelector('.preview-wrapper');
-    previewElement.addEventListener('scroll', () => {
+    if (previewElement) previewElement.addEventListener('scroll', () => {
         // Update outline scroll progress
         updateOutlineScrollProgress();
         updateActiveOutlineItem();
@@ -1278,6 +1279,9 @@ let addCodeCopyButtons = () => {
                     copyBtn.innerHTML = '📋';
                     copyBtn.classList.remove('copied');
                 }, 2000);
+            }).catch(() => {
+                copyBtn.innerHTML = '✗';
+                setTimeout(() => { copyBtn.innerHTML = '📋'; }, 1500);
             });
         });
         pre.style.position = 'relative';
@@ -2113,7 +2117,7 @@ let setupExportModal = () => {
             currentExportFormat = format;
 
             // Persist format choice
-            localStorage.setItem('markups_export_format', format);
+            try { localStorage.setItem('markups_export_format', format); } catch (_) { /* ignore */ }
 
             updateExportUI(format);
             updateExportPreview(format);
@@ -2291,7 +2295,8 @@ let openExportModal = () => {
     if (confirmBtn) confirmBtn.classList.remove('exporting');
 
     // Restore last-used format or default to PDF
-    const savedFormat = localStorage.getItem('markups_export_format') || 'pdf';
+    let savedFormat = 'pdf';
+    try { savedFormat = localStorage.getItem('markups_export_format') || 'pdf'; } catch (_) { /* ignore */ }
     const validFormats = ['pdf', 'html', 'markdown', 'docx', 'txt', 'png', 'print'];
     currentExportFormat = validFormats.includes(savedFormat) ? savedFormat : 'pdf';
 
@@ -2638,129 +2643,156 @@ let executeExport = (format) => {
 };
 
 // Helper: Convert inline SVGs to canvas-based images for better html2canvas compatibility
-let convertSVGsToImages = async (container) => {
-    const svgElements = container.querySelectorAll('.mermaid-diagram svg, svg');
-    const promises = [];
+// Uses synchronous canvas drawing (no Image loading) to avoid blob URL / onload hangs
+let convertSVGsToImages = (container) => {
+    // Only target top-level SVGs inside mermaid diagrams — skip KaTeX & nested SVGs
+    const mermaidSvgs = container.querySelectorAll('.mermaid-diagram > svg');
+    // Also grab standalone top-level SVGs (direct children of output), but not nested ones
+    const topLevelSvgs = container.querySelectorAll(':scope > svg');
+    // Deduplicate using a Set
+    const svgSet = new Set([...mermaidSvgs, ...topLevelSvgs]);
 
-    for (const svg of svgElements) {
-        promises.push(new Promise((resolve) => {
-            try {
-                const svgData = new XMLSerializer().serializeToString(svg);
-                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                const url = URL.createObjectURL(svgBlob);
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const bbox = svg.getBoundingClientRect();
-                    canvas.width = (bbox.width || 400) * 2;
-                    canvas.height = (bbox.height || 300) * 2;
-                    const ctx = canvas.getContext('2d');
-                    ctx.scale(2, 2);
-                    ctx.drawImage(img, 0, 0, bbox.width || 400, bbox.height || 300);
-                    const imgEl = document.createElement('img');
-                    imgEl.src = canvas.toDataURL('image/png');
-                    imgEl.style.maxWidth = '100%';
-                    imgEl.style.height = 'auto';
-                    svg.parentNode.replaceChild(imgEl, svg);
-                    URL.revokeObjectURL(url);
-                    resolve();
-                };
-                img.onerror = () => {
-                    URL.revokeObjectURL(url);
-                    resolve(); // Continue even if SVG conversion fails
-                };
-                img.src = url;
-            } catch (e) {
-                console.warn('SVG conversion failed:', e);
-                resolve();
+    const stats = { total: svgSet.size, converted: 0, skipped: 0, errors: 0 };
+    if (!svgSet.size) return stats;
+
+    for (const svg of svgSet) {
+        try {
+            if (!svg.parentNode) { stats.skipped++; continue; }
+
+            // Get dimensions from attributes or viewBox (getBoundingClientRect unreliable on clones)
+            const vb = svg.getAttribute('viewBox');
+            const attrW = parseFloat(svg.getAttribute('width') || '0');
+            const attrH = parseFloat(svg.getAttribute('height') || '0');
+            let width = attrW, height = attrH;
+            if ((!width || !height) && vb) {
+                const parts = vb.split(/[\s,]+/).map(Number);
+                if (parts.length === 4) { width = width || parts[2]; height = height || parts[3]; }
             }
-        }));
-    }
+            width = Math.max(1, Math.round(width || 400));
+            height = Math.max(1, Math.round(height || 300));
 
-    await Promise.all(promises);
+            // Serialize SVG with explicit dimensions to ensure canvas draws correctly
+            const svgClone = svg.cloneNode(true);
+            svgClone.setAttribute('width', String(width));
+            svgClone.setAttribute('height', String(height));
+            const svgData = new XMLSerializer().serializeToString(svgClone);
+            const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
+
+            // Draw synchronously on canvas via a data-URL image (no blob/onload needed)
+            const canvas = document.createElement('canvas');
+            canvas.width = width * 2;
+            canvas.height = height * 2;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) { stats.skipped++; continue; }
+
+            // Use a temporary Image drawn synchronously by setting src to data URI
+            // Note: data URI images are loaded synchronously in most browsers when dimensions are known
+            const tmpImg = new Image(width, height);
+            tmpImg.src = svgDataUrl;
+            // If the image isn't immediately available, skip it rather than hanging
+            if (!tmpImg.complete || !tmpImg.naturalWidth) {
+                stats.skipped++;
+                continue;
+            }
+
+            ctx.scale(2, 2);
+            ctx.drawImage(tmpImg, 0, 0, width, height);
+
+            const imgEl = document.createElement('img');
+            imgEl.src = canvas.toDataURL('image/png');
+            imgEl.style.maxWidth = '100%';
+            imgEl.style.height = 'auto';
+            svg.parentNode.replaceChild(imgEl, svg);
+            stats.converted++;
+        } catch (e) {
+            console.warn('SVG conversion skipped:', e);
+            stats.errors++;
+            stats.skipped++;
+        }
+    }
+    return stats;
 };
 
 // Enhanced export functions with options
 let exportToPDFWithOptions = async () => {
-    const paperSize = document.getElementById('export-paper-size')?.value || 'letter';
-    const orientation = document.getElementById('export-orientation')?.value || 'portrait';
-    const pageNumbers = document.getElementById('export-page-numbers')?.checked ?? true;
-    const headerFooter = document.getElementById('export-header-footer')?.checked ?? false;
-
-    showExportLoading('Preparing PDF document...', 10);
-    const element = document.querySelector('#output');
-    const filename = getExportFilename('pdf');
-    const title = getActiveDocTitle();
-    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-
-    const formatMap = {
-        'a4': 'a4',
-        'letter': 'letter',
-        'legal': 'legal',
-        'tabloid': [11, 17]
-    };
-
-    // Clone element and pre-process SVGs for better rendering
-    updateExportProgress(20, 'Pre-processing content...');
-    const exportClone = element.cloneNode(true);
-    exportClone.style.width = orientation === 'landscape' ? '10in' : '7.5in';
-    exportClone.style.maxWidth = 'none';
-    exportClone.style.position = 'absolute';
-    exportClone.style.left = '-9999px';
-    exportClone.style.top = '0';
-    exportClone.style.background = '#ffffff';
-    document.body.appendChild(exportClone);
-
-    // Convert SVGs (mermaid diagrams) to PNG images for reliable PDF rendering
-    await convertSVGsToImages(exportClone);
-    updateExportProgress(35, 'Content ready...');
-
-    // Create a wrapper with header/footer if enabled
-    const wrapper = document.createElement('div');
-    wrapper.className = 'pdf-export-wrapper';
-    wrapper.style.background = '#ffffff';
-
-    if (headerFooter) {
-        wrapper.innerHTML = `
-            <div style="font-size:10pt;color:#666;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:16px;">${title} &mdash; ${today}</div>
-            ${exportClone.innerHTML}
-        `;
-    } else {
-        wrapper.innerHTML = exportClone.innerHTML;
-    }
-    wrapper.style.position = 'absolute';
-    wrapper.style.left = '-9999px';
-    document.body.appendChild(wrapper);
-
-    // Clean up clone
-    document.body.removeChild(exportClone);
-
-    const options = {
-        margin: headerFooter ? [0.75, 0.5, 0.75, 0.5] : [0.5, 0.5, 0.5, 0.5],
-        filename: filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            letterRendering: true,
-            backgroundColor: '#ffffff',
-            foreignObjectRendering: false,
-            removeContainer: true
-        },
-        jsPDF: {
-            unit: 'in',
-            format: formatMap[paperSize] || 'letter',
-            orientation: orientation
-        },
-        pagebreak: { mode: ['css', 'legacy'] }
-    };
+    let tempContainer = null;
 
     try {
-        // Add page numbers if enabled
+        const paperSize = document.getElementById('export-paper-size')?.value || 'letter';
+        const orientation = document.getElementById('export-orientation')?.value || 'portrait';
+        const pageNumbers = document.getElementById('export-page-numbers')?.checked ?? true;
+        const headerFooter = document.getElementById('export-header-footer')?.checked ?? false;
+
+        showExportLoading('Preparing PDF document...', 10);
+        const element = document.querySelector('#output');
+        if (!element) throw new Error('Output element not found');
+
+        const filename = getExportFilename('pdf');
+        const title = getActiveDocTitle();
+        const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+        const formatMap = {
+            'a4': 'a4',
+            'letter': 'letter',
+            'legal': 'legal',
+            'tabloid': [11, 17]
+        };
+
+        updateExportProgress(30, 'Preparing content...');
+
+        // Determine what element to pass to html2pdf
+        let sourceElement = element;
+
+        if (headerFooter) {
+            // Only create a container when header/footer is needed
+            tempContainer = document.createElement('div');
+            tempContainer.className = 'markdown-body';
+            tempContainer.style.cssText = 'background:#fff; color:#24292e; padding:0; width:' +
+                (orientation === 'landscape' ? '10in' : '7.5in') + ';';
+            tempContainer.innerHTML = `
+                <div style="font-size:10pt;color:#666;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:16px;">${title} &mdash; ${today}</div>
+            `;
+            // Clone the output content into the temp container
+            const contentClone = element.cloneNode(true);
+            // Move all children from clone into our container
+            while (contentClone.firstChild) {
+                tempContainer.appendChild(contentClone.firstChild);
+            }
+            // Place it on-screen but behind the export overlay (z-index: -1)
+            tempContainer.style.position = 'fixed';
+            tempContainer.style.top = '0';
+            tempContainer.style.left = '0';
+            tempContainer.style.zIndex = '-1';
+            tempContainer.style.pointerEvents = 'none';
+            document.body.appendChild(tempContainer);
+            sourceElement = tempContainer;
+        }
+
+        const options = {
+            margin: headerFooter ? [0.75, 0.5, 0.75, 0.5] : [0.5, 0.5, 0.5, 0.5],
+            filename: filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                letterRendering: true,
+                backgroundColor: '#ffffff',
+                scrollX: 0,
+                scrollY: -window.scrollY
+            },
+            jsPDF: {
+                unit: 'in',
+                format: formatMap[paperSize] || 'letter',
+                orientation: orientation
+            },
+            pagebreak: { mode: ['css', 'legacy'] }
+        };
+
+        // Generate PDF
         if (pageNumbers) {
             updateExportProgress(50, 'Rendering pages...');
-            await html2pdf().set(options).from(wrapper).toPdf().get('pdf').then((pdf) => {
+            await html2pdf().set(options).from(sourceElement).toPdf().get('pdf').then((pdf) => {
                 updateExportProgress(80, 'Adding page numbers...');
                 const totalPages = pdf.internal.getNumberOfPages();
                 for (let i = 1; i <= totalPages; i++) {
@@ -2774,15 +2806,17 @@ let exportToPDFWithOptions = async () => {
             }).save();
         } else {
             updateExportProgress(60, 'Generating PDF file...');
-            await html2pdf().set(options).from(wrapper).save();
+            await html2pdf().set(options).from(sourceElement).save();
         }
-        // Clean up wrapper
-        if (wrapper.parentNode) document.body.removeChild(wrapper);
+
+        // Clean up temp container if used
+        if (tempContainer?.parentNode) document.body.removeChild(tempContainer);
+        tempContainer = null;
         showToast(`PDF exported: ${filename}`, 'success');
         hideExportLoading();
     } catch (err) {
         console.error('PDF export error:', err);
-        if (wrapper.parentNode) document.body.removeChild(wrapper);
+        if (tempContainer?.parentNode) try { document.body.removeChild(tempContainer); } catch (_) {}
         failExportLoading('Failed to export PDF');
         showToast('Failed to export PDF', 'error');
     }
@@ -2894,9 +2928,12 @@ let exportToPNGWithOptions = async () => {
     wrapper.style.left = '-9999px';
     document.body.appendChild(wrapper);
 
-    // Convert SVGs to images for reliable rendering
+    // Convert SVGs to images for reliable rendering (synchronous — never hangs)
     updateExportProgress(40, 'Processing SVG elements...');
-    await convertSVGsToImages(wrapper);
+    const pngSvgStats = convertSVGsToImages(wrapper);
+    if (pngSvgStats.skipped > 0) {
+        showToast(`Skipped ${pngSvgStats.skipped} SVG(s) during image prep`, 'info', 2400);
+    }
 
     updateExportProgress(60, 'Rendering image canvas...');
     html2canvas(wrapper, {
@@ -4892,6 +4929,10 @@ let setupVersionHistory = () => {
     closeBtns.forEach(btn => btn.addEventListener('click', closeModal));
     overlay.addEventListener('click', closeModal);
 
+    // Toolbar button
+    const historyBtn = document.getElementById('version-history-btn');
+    if (historyBtn) historyBtn.addEventListener('click', openModal);
+
     // Keyboard shortcut Ctrl+Shift+V
     document.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') {
@@ -4997,10 +5038,10 @@ let setupMobileUI = () => {
 };
 
 // Handle mobile drawer actions - now handled by mobile module
-let handleMobileDrawerAction = (action) => {};
+let handleMobileDrawerAction = (action) => { };
 
 // Handle FAB actions - now handled by mobile module
-let handleFabAction = (action) => {};
+let handleFabAction = (action) => { };
 
 let setupDivider = () => {
     let lastLeftRatio = 0.5;

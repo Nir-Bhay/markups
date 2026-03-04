@@ -62,6 +62,7 @@ class MobileUIManager {
         // Hamburger in header
         const menuBtn = document.getElementById('mobile-header-menu');
         if (menuBtn) {
+            menuBtn.setAttribute('aria-expanded', 'false');
             menuBtn.addEventListener('click', () => this.toggleDrawer());
         }
 
@@ -81,6 +82,19 @@ class MobileUIManager {
         if (this.overlay) {
             this.overlay.addEventListener('click', () => this.closeDrawer());
         }
+
+        // Escape key closes drawer and overflow sheet
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (this.drawer?.classList.contains('active')) {
+                    this.closeDrawer();
+                    e.preventDefault();
+                } else if (this.overflowSheet?.classList.contains('active')) {
+                    this.overflowSheet.classList.remove('active');
+                    e.preventDefault();
+                }
+            }
+        });
     }
 
     _setupDrawerActions() {
@@ -168,6 +182,9 @@ class MobileUIManager {
             this.overlay.classList.add('active');
         }
         document.body.style.overflow = 'hidden';
+        // Update aria-expanded
+        const menuBtn = document.getElementById('mobile-header-menu');
+        if (menuBtn) menuBtn.setAttribute('aria-expanded', 'true');
     }
 
     closeDrawer() {
@@ -177,6 +194,9 @@ class MobileUIManager {
             this.overlay.classList.remove('active');
         }
         document.body.style.overflow = '';
+        // Update aria-expanded
+        const menuBtn = document.getElementById('mobile-header-menu');
+        if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
     }
 
     /* ============================
@@ -276,6 +296,21 @@ class MobileUIManager {
         if (view !== 'editor' && view !== 'preview') return;
         this.currentView = view;
 
+        const editorPane = document.getElementById('edit');
+        const previewPane = document.getElementById('preview');
+        const divider = document.getElementById('split-divider');
+
+        // Clear ALL inline styles that desktop setViewMode may have set
+        // This ensures CSS classes have full control
+        [editorPane, previewPane].forEach(el => {
+            if (el) {
+                el.style.display = '';
+                el.style.width = '';
+                el.style.flex = '';
+            }
+        });
+        if (divider) divider.style.display = '';
+
         // Use the existing body class system that CSS already supports
         document.body.classList.remove('view-editor', 'view-split', 'view-preview');
         document.body.classList.add(view === 'editor' ? 'view-editor' : 'view-preview');
@@ -295,10 +330,13 @@ class MobileUIManager {
         if (view === 'editor' && btnCode) btnCode.classList.add('active');
         if (view === 'preview' && btnPreview) btnPreview.classList.add('active');
 
-        // Trigger Monaco relayout
+        // Trigger Monaco relayout (two passes for reliability)
         setTimeout(() => {
             if (window.editor) window.editor.layout();
         }, 50);
+        setTimeout(() => {
+            if (window.editor) window.editor.layout();
+        }, 200);
 
         eventBus.emit(EVENTS.VIEW_MODE_CHANGED, { mode: view === 'editor' ? 'code' : 'preview' });
     }
@@ -311,9 +349,11 @@ class MobileUIManager {
         const overflowBtn = document.getElementById('toolbar-overflow-btn');
         if (!overflowBtn || !this.overflowSheet) return;
 
+        overflowBtn.setAttribute('aria-expanded', 'false');
         overflowBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.overflowSheet.classList.toggle('active');
+            const isOpen = this.overflowSheet.classList.toggle('active');
+            overflowBtn.setAttribute('aria-expanded', String(isOpen));
         });
 
         // Close on outside click
@@ -322,6 +362,7 @@ class MobileUIManager {
                 !this.overflowSheet.contains(e.target) &&
                 e.target !== overflowBtn) {
                 this.overflowSheet.classList.remove('active');
+                overflowBtn.setAttribute('aria-expanded', 'false');
             }
         });
 
@@ -342,17 +383,12 @@ class MobileUIManager {
                 const action = item.dataset.action;
                 const selector = actionMap[action];
                 if (selector) {
-                    // The buttons might be display:none on mobile, but click still works
+                    // .click() works on hidden elements — no need to show them
                     const btn = document.querySelector(selector);
-                    if (btn) {
-                        // Temporarily show the button to fire its click
-                        const wasHidden = getComputedStyle(btn).display === 'none';
-                        if (wasHidden) btn.style.display = 'inline-flex';
-                        btn.click();
-                        if (wasHidden) btn.style.display = '';
-                    }
+                    if (btn) btn.click();
                 }
                 this.overflowSheet.classList.remove('active');
+                overflowBtn.setAttribute('aria-expanded', 'false');
             });
         });
     }

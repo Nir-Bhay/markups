@@ -125,7 +125,7 @@
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="favicon.png">
 
-  <script type="module" crossorigin src="/assets/index-DO9qMs4Z.js"></script>
+  <script type="module" crossorigin src="/assets/index-nfQ81Xq6.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/monaco-editor-Dh3DNcUn.js">
   <link rel="stylesheet" crossorigin href="/assets/monaco-editor-D6kYW_CN.css">
   <link rel="stylesheet" crossorigin href="/assets/index-B9WpDNyT.css">
@@ -397,7 +397,7 @@
         <span class="toolbar-divider"></span>
 
         <!-- Block Elements -->
-        <div class="toolbar-group">
+        <div class="toolbar-group toolbar-block-group">
             <button class="toolbar-btn" id="toolbar-quote" title="Blockquote" aria-label="Blockquote">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path
@@ -412,7 +412,7 @@
         </div>
 
         <!-- Spacer -->
-        <div style="flex: 1;"></div>
+        <div class="toolbar-spacer" style="flex: 1;"></div>
 
         <!-- Tools -->
         <div class="toolbar-group toolbar-tools-group">
@@ -1651,6 +1651,7 @@
                 <hr class="export-divider">
 
                 <p class="export-section-label">Actions</p>
+                <div class="export-recommended-tag" aria-label="Recommended action">Recommended</div>
                 <button class="export-format-btn" data-format="print">
                     <span class="material-symbols-outlined">print</span>
                     <span class="btn-text">Print</span>
