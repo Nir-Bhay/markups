@@ -408,16 +408,22 @@ let setupEditor = () => {
         folding: false
     });
 
+    let isProgrammaticChange = false;
+
+    // Wrap editor.setValue to distinguish programmatic changes from user edits
+    const originalSetValue = editor.setValue.bind(editor);
+    editor.setValue = (val) => {
+        isProgrammaticChange = true;
+        originalSetValue(val);
+        isProgrammaticChange = false;
+    };
+
     editor.onDidChangeModelContent((e) => {
-        // Auto-clear welcome content on first real keystroke
-        if (isShowingWelcome && e.changes && e.changes.length > 0) {
+        // Auto-clear welcome content on first real user keystroke
+        if (isShowingWelcome && !isProgrammaticChange && e.changes && e.changes.length > 0) {
             const change = e.changes[0];
-            // Only clear if the user actually typed something (not a programmatic setValue)
-            const isUserTyping = change.text.length > 0 && change.text !== defaultInput;
-            if (isUserTyping && editor.getValue() !== defaultInput) {
-                // User started editing the welcome content — don't clear, they might want to keep parts
-            } else if (isUserTyping && change.rangeLength === 0) {
-                // Pure insertion on top of default content — clear and keep only what user typed
+            // User typed or pasted something — clear welcome content, keep only what they entered
+            if (change.text.length > 0) {
                 isShowingWelcome = false;
                 const typed = change.text;
                 editor.setValue(typed);
@@ -428,8 +434,9 @@ let setupEditor = () => {
                     const lastCol = model.getLineMaxColumn(lastLine);
                     editor.setPosition({ lineNumber: lastLine, column: lastCol });
                 }
-                return; // setValue will trigger this handler again
+                return; // setValue triggers this handler again, but isProgrammaticChange guards it
             }
+            // User deleted something — just disable welcome mode
             isShowingWelcome = false;
         }
 
