@@ -572,19 +572,21 @@ let tocItems = [];
 
 // Custom renderer for headings with anchor links
 const renderer = new marked.Renderer();
-renderer.heading = function (text, level) {
-    // Handle marked v15+ where text is an object with text property
-    const headingText = typeof text === 'object' ? text.text : text;
-    const headingLevel = typeof text === 'object' ? text.depth : level;
-    const slug = slugify(headingText);
+renderer.heading = function (token) {
+    const headingLevel = token.depth;
+    // Strip markdown link syntax [text](url) → text for slug and aria-label
+    const plainText = token.text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    const slug = slugify(plainText);
+    // Render inline tokens so links/bold/etc. become HTML
+    const renderedContent = this.parser.parseInline(token.tokens);
 
-    // Store for TOC
-    tocItems.push({ text: headingText, level: headingLevel, slug });
+    // Store rendered HTML for TOC so it also shows clickable links
+    tocItems.push({ text: renderedContent, level: headingLevel, slug });
 
     return `
             <h${headingLevel} id="${slug}" class="heading-anchor">
-                ${headingText}
-                <a href="#${slug}" class="anchor-link" aria-label="Link to ${headingText}">
+                ${renderedContent}
+                <a href="#${slug}" class="anchor-link" aria-label="Link to ${plainText}">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"/>
                     </svg>
