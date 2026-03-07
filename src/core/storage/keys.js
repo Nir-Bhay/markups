@@ -42,7 +42,15 @@ export const STORAGE_KEYS = {
 
     // Cache
     LAST_EXPORT_FORMAT: 'last_export_format',
-    RECENT_TEMPLATES: 'recent_templates'
+    RECENT_TEMPLATES: 'recent_templates',
+
+    // AI Writer
+    AI_PROVIDER: 'ai_provider',
+    AI_ENDPOINT: 'ai_endpoint',
+    AI_MODEL: 'ai_model',
+    AI_TEMPERATURE: 'ai_temperature',
+    AI_MAX_TOKENS: 'ai_max_tokens',
+    AI_PANEL_VISIBLE: 'ai_panel_visible'
 };
 
 /**
@@ -66,7 +74,15 @@ export const STORAGE_DEFAULTS = {
     [STORAGE_KEYS.TOC_VISIBLE]: false,
     [STORAGE_KEYS.LINT_PANEL_VISIBLE]: false,
     [STORAGE_KEYS.TYPEWRITER_MODE]: false,
-    [STORAGE_KEYS.FOCUS_MODE]: false
+    [STORAGE_KEYS.FOCUS_MODE]: false,
+
+    // AI Writer
+    [STORAGE_KEYS.AI_PROVIDER]: 'openai',
+    [STORAGE_KEYS.AI_ENDPOINT]: 'https://api.openai.com/v1',
+    [STORAGE_KEYS.AI_MODEL]: 'gpt-4o-mini',
+    [STORAGE_KEYS.AI_TEMPERATURE]: 0.7,
+    [STORAGE_KEYS.AI_MAX_TOKENS]: 2048,
+    [STORAGE_KEYS.AI_PANEL_VISIBLE]: false
 };
 
 export default STORAGE_KEYS;

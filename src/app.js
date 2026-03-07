@@ -37,6 +37,9 @@ import { dividerManager } from './features/divider/index.js';
 import { mobileUIManager } from './features/mobile/index.js';
 import { importManager } from './features/import/index.js';
 
+// AI Writer
+import { aiWriterManager } from './features/ai-writer/index.js';
+
 // Services
 import { shortcutsManager } from './services/shortcuts/index.js';
 import { exportManager } from './services/export/index.js';
@@ -256,6 +259,11 @@ class App {
 
         // File import
         importManager.initialize();
+
+        // AI Writer
+        if (FEATURE_FLAGS.ENABLE_AI_WRITER) {
+            aiWriterManager.initialize();
+        }
     }
 
     /**
@@ -293,7 +301,8 @@ class App {
             'reset': () => tabsManager.resetActiveTab(),
             'exportPDF': () => this.exportPDF(),
             'exportHTML': () => this.exportHTML(),
-            'help': () => this.showHelp()
+            'help': () => this.showHelp(),
+            'toggleAI': () => aiWriterManager.toggle()
         });
     }
 
@@ -501,6 +510,7 @@ class App {
         toolbarManager.dispose();
         modesManager.dispose();
         shortcutsManager.dispose();
+        aiWriterManager.dispose();
 
         this.initialized = false;
         App.instance = null;

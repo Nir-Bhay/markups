@@ -58,7 +58,12 @@ export const APP_CONFIG = {
         startOnLoad: false,
         theme: 'default',
         securityLevel: 'loose'
-    }
+    },
+
+    // AI Writer
+    AI_REQUEST_TIMEOUT_MS: 30000,
+    AI_MAX_CONTEXT_CHARS: 8000,
+    AI_STREAMING_DEBOUNCE_MS: 50
 };
 
 /**
@@ -82,7 +87,8 @@ export const FEATURE_FLAGS = {
     ENABLE_FOCUS_MODE: true,
     ENABLE_TYPEWRITER_MODE: true,
     ENABLE_FULLSCREEN: true,
-    ENABLE_MOBILE_UI: true
+    ENABLE_MOBILE_UI: true,
+    ENABLE_AI_WRITER: true
 };
 
 /**

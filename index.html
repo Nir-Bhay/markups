@@ -473,6 +473,13 @@
                     <line x1="15" y1="9" x2="15.01" y2="9"></line>
                 </svg>
             </button>
+            <!-- AI Writer -->
+            <button class="toolbar-btn" id="ai-writer-button" title="AI Writing Assistant (Ctrl+Shift+A)" aria-label="AI Writing Assistant">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+            </button>
             <!-- Table of Contents -->
             <button class="toolbar-btn" id="toc-button" title="Table of Contents" aria-label="Toggle Outline">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -689,6 +696,10 @@
         <section class="editor-pane" id="edit">
             <div class="editor-wrapper" id="editor-wrapper">
                 <div id="editor"></div>
+            </div>
+            <!-- AI Writer Panel -->
+            <div class="ai-writer-panel" id="ai-writer-panel" style="display:none;">
+                <!-- Rendered by AI Writer JS -->
             </div>
         </section>
 
