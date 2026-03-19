@@ -14,26 +14,30 @@ class StorageService {
     /**
      * Get full key with namespace
      * @private
+     * @param {string} key - Storage key
+     * @param {boolean} session - Use sessionStorage instead of localStorage
      */
-    _getKey(key) {
+    _getKey(key, session = false) {
         return `${this.namespace}.${key}`;
     }
 
     /**
      * Get a value from storage
      * @param {string} key - Storage key
+     * @param {boolean} session - Use sessionStorage instead of localStorage
      * @returns {*} Stored value or null
      */
-    get(key) {
+    get(key, session = false) {
         try {
-            const item = localStorage.getItem(this._getKey(key));
+            const storage = session ? sessionStorage : localStorage;
+            const item = storage.getItem(this._getKey(key, session));
             if (!item) return null;
 
             const { value, expiresAt } = JSON.parse(item);
 
             // Check expiration
             if (expiresAt && Date.now() > expiresAt) {
-                this.remove(key);
+                this.remove(key, session);
                 return null;
             }
 
@@ -49,15 +53,17 @@ class StorageService {
      * @param {string} key - Storage key
      * @param {*} value - Value to store
      * @param {number|null} ttlMs - Time to live in milliseconds (null for no expiration)
+     * @param {boolean} session - Use sessionStorage instead of localStorage
      */
-    set(key, value, ttlMs = null) {
+    set(key, value, ttlMs = null, session = false) {
         try {
+            const storage = session ? sessionStorage : localStorage;
             const item = {
                 value,
                 expiresAt: ttlMs ? Date.now() + ttlMs : null,
                 updatedAt: Date.now()
             };
-            localStorage.setItem(this._getKey(key), JSON.stringify(item));
+            storage.setItem(this._getKey(key, session), JSON.stringify(item));
             return true;
         } catch (error) {
             console.error(`Storage set error for key "${key}":`, error);
@@ -68,10 +74,12 @@ class StorageService {
     /**
      * Remove a value from storage
      * @param {string} key - Storage key
+     * @param {boolean} session - Use sessionStorage instead of localStorage
      */
-    remove(key) {
+    remove(key, session = false) {
         try {
-            localStorage.removeItem(this._getKey(key));
+            const storage = session ? sessionStorage : localStorage;
+            storage.removeItem(this._getKey(key, session));
             return true;
         } catch (error) {
             console.warn(`Storage remove error for key "${key}":`, error);
