@@ -5,10 +5,15 @@
  */
 
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { storageService } from '../../core/storage/index.js';
+import { STORAGE_KEYS } from '../../core/storage/keys.js';
+import { editorService } from '../../core/editor/index.js';
+import { tabsManager } from '../../features/tabs/index.js';
+import { debounce } from '../../utils/debounce.js';
 
 /**
  * AutosaveIndicator class
- * Displays autosave status
+ * Displays autosave status and handles refresh safety persistence
  */
 class AutosaveIndicator {
     static instance = null;
@@ -20,6 +25,9 @@ class AutosaveIndicator {
 
         this.element = null;
         this.timeout = null;
+
+        // Debounced state persistence
+        this._persistState = debounce(this._saveCurrentState.bind(this), 500);
 
         AutosaveIndicator.instance = this;
     }
@@ -47,6 +55,38 @@ class AutosaveIndicator {
         // Subscribe to save events
         eventBus.on(EVENTS.DOCUMENT_SAVING, () => this.showSaving());
         eventBus.on(EVENTS.DOCUMENT_SAVED, () => this.showSaved());
+
+        // Refresh safety: subscribe to editor changes
+        this._setupRefreshSafety();
+    }
+
+    /**
+     * Setup listeners for refresh safety
+     * @private
+     */
+    _setupRefreshSafety() {
+        // Track changes to persist state
+        eventBus.on(EVENTS.CONTENT_CHANGED, () => this._persistState());
+        eventBus.on(EVENTS.CURSOR_MOVED, () => this._persistState());
+        eventBus.on(EVENTS.EDITOR_SCROLLED, () => this._persistState());
+        eventBus.on(EVENTS.TAB_ACTIVATED, () => this._persistState());
+    }
+
+    /**
+     * Save current editor state to storage for refresh safety
+     * @private
+     */
+    _saveCurrentState() {
+        const activeTab = tabsManager.getActiveTab();
+        const state = {
+            content: editorService.getValue(),
+            position: editorService.getPosition(),
+            activeTabId: activeTab?.id,
+            scrollPosition: editorService.getScrollPosition(),
+            timestamp: Date.now()
+        };
+
+        storageService.set(STORAGE_KEYS.LAST_STATE, state);
     }
 
     /**

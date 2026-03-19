@@ -357,13 +357,37 @@ class App {
      * @private
      */
     _loadInitialContent() {
-        // Check for saved content
-        const savedContent = storageService.get(STORAGE_KEYS.CONTENT);
+        // Check for saved state (refresh safety)
+        const lastState = storageService.get(STORAGE_KEYS.LAST_STATE);
 
-        if (savedContent) {
-            editorService.setValue(savedContent);
+        if (lastState) {
+            const { content, position, activeTabId, scrollPosition } = lastState;
+
+            // Activate tab if it exists
+            if (activeTabId && tabsManager.getAllTabs().some(t => t.id === activeTabId)) {
+                tabsManager.activateTab(activeTabId);
+            }
+
+            // Set content if different
+            if (content !== undefined) {
+                editorService.setValue(content);
+            }
+
+            // Restore position and scroll
+            if (position) {
+                editorService.setPosition(position);
+            }
+            if (scrollPosition) {
+                editorService.setScrollTop(scrollPosition.scrollTop);
+            }
         } else {
-            editorService.setValue(DEFAULT_CONTENT);
+            // Fallback to individual content storage or default
+            const savedContent = storageService.get(STORAGE_KEYS.CONTENT);
+            if (savedContent) {
+                editorService.setValue(savedContent);
+            } else {
+                editorService.setValue(DEFAULT_CONTENT);
+            }
         }
 
         // Trigger initial preview update
