@@ -15,6 +15,9 @@ export { snippetsManager, SnippetsManager } from './snippets/index.js';
 export { toolbarManager, ToolbarManager } from './toolbar/index.js';
 export { modesManager, ModesManager, VIEW_MODES, SPLIT_ORIENTATION } from './modes/index.js';
 
+// Workspace Feature (Issue #15)
+export { WorkspaceProvider, useWorkspace } from './workspace/WorkspaceContext.js';
+
 // Additional feature modules
 export { focusManager, FocusManager } from './focus/index.js';
 export { typewriterManager, TypewriterManager } from './typewriter/index.js';
@@ -26,6 +29,7 @@ export { importManager, ImportManager } from './import/index.js';
 
 export default {
     tabs: () => import('./tabs/index.js'),
+    workspace: () => import('./workspace/WorkspaceContext.js'),
     goals: () => import('./goals/index.js'),
     stats: () => import('./stats/index.js'),
     linter: () => import('./linter/index.js'),
