@@ -1,0 +1,113 @@
+{
+  "personal_info": {
+    "name": "John Doe",
+    "email": "john.doe@email.com",
+    "phone": "+1 (555) 123-4567",
+    "location": "San Francisco, CA",
+    "linkedin": "linkedin.com/in/johndoe",
+    "github": "github.com/johndoe",
+    "website": "johndoe.com",
+    "summary": "Experienced software engineer with 5+ years of full-stack development expertise. Passionate about building scalable applications and leading high-performing teams."
+  },
+  "experiences": [
+    {
+      "position": "Senior Software Engineer",
+      "company": "Tech Corp",
+      "location": "San Francisco, CA",
+      "start_date": "Jan 2022",
+      "end_date": "Present",
+      "description": "Lead development of cloud-based microservices",
+      "highlights": [
+        "Architected and deployed microservices handling 10M+ requests daily with 99.9% uptime",
+        "Led team of 5 engineers, improving sprint velocity by 40% through agile best practices",
+        "Reduced API response time by 60% through optimization and caching strategies",
+        "Mentored junior developers and conducted code reviews to maintain code quality"
+      ],
+      "technologies": ["Python", "Django", "PostgreSQL", "AWS", "Docker", "Kubernetes"]
+    },
+    {
+      "position": "Software Engineer",
+      "company": "StartupXYZ",
+      "location": "Palo Alto, CA",
+      "start_date": "Jun 2019",
+      "end_date": "Dec 2021",
+      "description": "Full-stack development for SaaS platform",
+      "highlights": [
+        "Developed RESTful APIs serving 50K+ active users with React frontend",
+        "Implemented CI/CD pipeline reducing deployment time from 2 hours to 15 minutes",
+        "Built automated testing suite achieving 85% code coverage",
+        "Collaborated with product team to deliver features on tight deadlines"
+      ],
+      "technologies": ["React", "Node.js", "MongoDB", "Redis", "Jenkins", "Git"]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Open Source Project Manager",
+      "date": "2023",
+      "description": "Web application for managing open source contributions and tracking project metrics",
+      "highlights": [
+        "Built using React, TypeScript, and GraphQL with 1K+ GitHub stars",
+        "Implemented real-time collaboration features using WebSockets",
+        "Integrated with GitHub API for automated issue tracking"
+      ],
+      "technologies": ["React", "TypeScript", "GraphQL", "Node.js", "PostgreSQL", "WebSockets"],
+      "link": "github.com/johndoe/project-manager"
+    },
+    {
+      "name": "Machine Learning Price Predictor",
+      "date": "2022",
+      "description": "ML model for predicting real estate prices with 92% accuracy",
+      "highlights": [
+        "Trained model on 100K+ data points using scikit-learn and TensorFlow",
+        "Deployed as Flask API with Docker containerization",
+        "Created interactive dashboard for visualizing predictions"
+      ],
+      "technologies": ["Python", "TensorFlow", "scikit-learn", "Flask", "Pandas", "Docker"]
+    }
+  ],
+  "education": [
+    {
+      "degree": "Bachelor of Science in Computer Science",
+      "school": "University of California, Berkeley",
+      "location": "Berkeley, CA",
+      "graduation_date": "May 2019",
+      "gpa": "3.8/4.0",
+      "honors": "Magna Cum Laude",
+      "relevant_coursework": [
+        "Data Structures",
+        "Algorithms",
+        "Machine Learning",
+        "Database Systems",
+        "Software Engineering",
+        "Computer Networks"
+      ]
+    }
+  ],
+  "skills": {
+    "Languages": ["Python", "JavaScript", "TypeScript", "Java", "Go", "SQL"],
+    "Frameworks": ["React", "Django", "Node.js", "Flask", "Express", "Spring Boot"],
+    "Tools & Technologies": ["AWS", "Docker", "Kubernetes", "PostgreSQL", "MongoDB", "Redis"],
+    "Practices": ["Agile/Scrum", "CI/CD", "TDD", "Microservices", "RESTful APIs", "Git"]
+  },
+  "certifications": [
+    {
+      "name": "AWS Certified Solutions Architect",
+      "issuer": "Amazon Web Services",
+      "date": "2023"
+    },
+    {
+      "name": "Certified Kubernetes Administrator",
+      "issuer": "Cloud Native Computing Foundation",
+      "date": "2022"
+    }
+  ],
+  "awards": [
+    {
+      "name": "Employee of the Year",
+      "issuer": "Tech Corp",
+      "date": "2023",
+      "description": "Recognized for outstanding technical leadership and innovation"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+Date,Description,Income,Type,Amount
+2025-11-01,Salary Deposit,Income,Income,4500
+2025-11-01,Rent Payment,Housing,Expense,-1200
+2025-11-02,Grocery Shopping,Food,Expense,-156.32
+2025-11-02,Electric Bill,Utilities,Expense,-89.5
+2025-11-03,Gas Station,Transportation,Expense,-45
+2025-11-03,Freelance Project,Income,Income,750
+2025-11-04,Restaurant Dinner,Food,Expense,-68.25
+2025-10-28,Internet Bill,Utilities,Expense,-65
+2025-10-27,Online Shopping,Shopping,Expense,-124.99
+2025-10-25,Investment Dividend,Income,Income,320
+2025-10-24,Gym Membership,Health,Expense,-50
+2025-10-22,Coffee Shop,Food,Expense,-12.5
+2025-10-20,Car Insurance,Transportation,Expense,-180
+2025-10-18,Consulting Income,Income,Income,1200
+2025-10-15,Pharmacy,Health,Expense,-42.3

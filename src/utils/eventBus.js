@@ -168,7 +168,17 @@ export const EVENTS = {
     MOBILE_VIEW_CHANGED: 'mobile:view-changed',
 
     // Keyboard shortcuts
-    SHORTCUT_TRIGGERED: 'shortcut:triggered'
+    SHORTCUT_TRIGGERED: 'shortcut:triggered',
+
+    // AI Writer events
+    AI_PANEL_TOGGLED: 'ai:panel-toggled',
+    AI_GENERATION_STARTED: 'ai:generation-started',
+    AI_GENERATION_STREAMING: 'ai:generation-streaming',
+    AI_GENERATION_COMPLETE: 'ai:generation-complete',
+    AI_GENERATION_ERROR: 'ai:generation-error',
+    AI_GENERATION_CANCELLED: 'ai:generation-cancelled',
+    AI_SETTINGS_CHANGED: 'ai:settings-changed',
+    AI_RESULT_INSERTED: 'ai:result-inserted'
 };
 
 export default eventBus;

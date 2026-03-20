@@ -1,0 +1,31 @@
+# Dockerfile for Next.js Development
+# Optimized for fast rebuilds and hot reloading
+
+FROM node:18-alpine
+
+LABEL maintainer="your-email@example.com"
+LABEL description="Next.js Application - Development"
+
+# Install dependencies for native modules
+RUN apk add --no-cache libc6-compat python3 make g++
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install all dependencies (including devDependencies)
+RUN npm install && \
+    npm cache clean --force
+
+# Copy application source
+COPY . .
+
+# Expose port for dev server
+EXPOSE 3000
+
+ENV PORT=3000
+ENV NODE_ENV=development
+
+# Start development server with hot reload
+CMD ["npm", "run", "dev"]
