@@ -16,6 +16,11 @@ export const APP_CONFIG = {
     // PWA
     SERVICE_WORKER_UPDATE_INTERVAL_MS: 30 * 60 * 1000, // 30 minutes
 
+    // Auto-save
+    AUTOSAVE_INTERVAL_MS: 1500,         // Default debounce interval
+    AUTOSAVE_MIN_INTERVAL_MS: 500,      // Minimum configurable interval
+    AUTOSAVE_MAX_INTERVAL_MS: 10000,    // Maximum configurable interval
+
     // UI
     TOAST_DURATION_MS: 3000,
     AUTOSAVE_INDICATOR_DURATION_MS: 500,

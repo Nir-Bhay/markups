@@ -102,6 +102,13 @@ export const EVENTS = {
     DOC_DELETED: 'doc:deleted',
     TAB_SWITCHED: 'doc:tab-switched',
     TAB_CLOSED: 'doc:tab-closed',
+    TAB_ACTIVATED: 'doc:tab-activated',
+    TAB_CREATED: 'doc:tab-created',
+
+    // Autosave/persistence events
+    DOCUMENT_SAVING: 'doc:saving',
+    DOCUMENT_SAVED: 'doc:saved',
+    AUTOSAVE_STATUS_CHANGED: 'autosave:status-changed',
 
     // Markdown events
     MARKDOWN_CONVERTED: 'markdown:converted',

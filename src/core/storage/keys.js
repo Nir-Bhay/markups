@@ -14,8 +14,10 @@ export const NAMESPACE = 'com.markdownlivepreview';
 export const STORAGE_KEYS = {
     // Document storage
     DOCUMENTS: 'docs',
+    TABS: 'tabs',
     LAST_STATE: 'last_state',
     ACTIVE_TAB: 'active_tab',
+    MIGRATION_STATUS: 'migration_status',
 
     // Settings
     SCROLL_SYNC: 'scroll_bar_settings',

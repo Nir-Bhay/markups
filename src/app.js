@@ -12,6 +12,12 @@ import { markdownService } from './core/markdown/index.js';
 import { APP_CONFIG, FEATURE_FLAGS } from './config/app.config.js';
 import { DEFAULT_CONTENT } from './config/default-content.js';
 
+// Phase 1 Foundation modules
+import { runMigration } from './core/storage/migration.js';
+import { autosaveManager } from './services/autosave/index.js';
+import { errorHandler } from './utils/errorHandler.js';
+import { showLoading, hideLoading } from './ui/loading/index.js';
+
 // UI Components
 import { toast } from './ui/toast/index.js';
 import { modal } from './ui/modal/index.js';
@@ -142,8 +148,22 @@ class App {
      * @private
      */
     async _initCore() {
+        // Initialize global error handler first
+        errorHandler.initialize();
+
         // Initialize storage
         storageService.initialize();
+
+        // Run data migration (localStorage → IndexedDB) — only runs once
+        try {
+            const migrationResult = await runMigration();
+            if (migrationResult.success && !migrationResult.skipped && migrationResult.notesCount > 0) {
+                console.log(`✅ Migrated ${migrationResult.notesCount} notes to IndexedDB`);
+            }
+        } catch (error) {
+            console.error('Migration failed (falling back to localStorage):', error);
+            errorHandler.report(error, 'migration');
+        }
 
         // Initialize editor
         if (this.containers.editor) {
@@ -170,6 +190,11 @@ class App {
 
         // Initialize autosave indicator
         autosaveIndicator.initialize();
+
+        // Initialize autosave manager (debounced IndexedDB saves)
+        autosaveManager.initialize({
+            interval: APP_CONFIG.AUTOSAVE_INTERVAL_MS
+        });
 
         // Toast and modal auto-initialize on first use
     }
