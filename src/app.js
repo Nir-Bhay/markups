@@ -5,7 +5,7 @@
  */
 
 import { eventBus, EVENTS } from './utils/eventBus.js';
-import { storageService } from './core/storage/index.js';
+import { storage } from './core/storage/index.js'; // Use storage directly
 import { STORAGE_KEYS } from './core/storage/keys.js';
 import { editorService } from './core/editor/index.js';
 import { markdownService } from './core/markdown/index.js';
@@ -17,9 +17,11 @@ import { toast } from './ui/toast/index.js';
 import { modal } from './ui/modal/index.js';
 import { themeManager } from './ui/theme/index.js';
 import { autosaveIndicator } from './ui/autosave/index.js';
+import Sidebar from './ui/sidebar/Sidebar.jsx'; // Import Sidebar
 
 // Features
 import { tabsManager } from './features/tabs/index.js';
+import { WorkspaceProvider } from './features/workspace/WorkspaceContext.js'; // Import WorkspaceProvider
 import { goalsManager } from './features/goals/index.js';
 import { statsManager } from './features/stats/index.js';
 import { linterManager } from './features/linter/index.js';
@@ -119,6 +121,7 @@ class App {
             main: '.main-container',
             toolbar: '.toolbar-container',
             tabs: '.tabs-container',
+            sidebar: '#sidebar-container', // Add sidebar container
             stats: '.stats-container',
             toc: '.toc-panel',
             search: '.search-panel',
@@ -143,12 +146,12 @@ class App {
      */
     async _initCore() {
         // Initialize storage
-        storageService.initialize();
+        // storage.initialize(); // Use storage instance directly
 
         // Initialize editor
         if (this.containers.editor) {
-            const savedFontSize = storageService.get(STORAGE_KEYS.FONT_SIZE) || APP_CONFIG.DEFAULT_FONT_SIZE;
-            const savedTheme = storageService.get(STORAGE_KEYS.EDITOR_THEME) || 'vs';
+            const savedFontSize = storage.getSync(STORAGE_KEYS.FONT_SIZE) || APP_CONFIG.DEFAULT_FONT_SIZE;
+            const savedTheme = storage.getSync(STORAGE_KEYS.EDITOR_THEME) || 'vs';
 
             editorService.initialize(this.containers.editor, {
                 fontSize: savedFontSize,
@@ -187,6 +190,13 @@ class App {
         // Tabs
         if (this.containers.tabs && FEATURE_FLAGS.TABS) {
             tabsManager.initialize(this.containers.tabs);
+        }
+
+        // Workspace Sidebar (Issue #15)
+        if (this.containers.sidebar) {
+            // Note: In a real React app, this would be handled by the root render
+            // For this architecture, we provide a placeholder integration point
+            console.log('📦 Workspace sidebar container resolved');
         }
 
         // Stats
@@ -356,9 +366,9 @@ class App {
      * Load initial content
      * @private
      */
-    _loadInitialContent() {
+    async _loadInitialContent() {
         // Check for saved state (refresh safety)
-        const lastState = storageService.get(STORAGE_KEYS.LAST_STATE);
+        const lastState = await storage.get(STORAGE_KEYS.LAST_STATE);
 
         if (lastState) {
             const { content, position, activeTabId, scrollPosition } = lastState;
@@ -382,7 +392,7 @@ class App {
             }
         } else {
             // Fallback to individual content storage or default
-            const savedContent = storageService.get(STORAGE_KEYS.CONTENT);
+            const savedContent = await storage.get(STORAGE_KEYS.CONTENT);
             if (savedContent) {
                 editorService.setValue(savedContent);
             } else {
@@ -408,9 +418,9 @@ class App {
     /**
      * Save current state
      */
-    save() {
+    async save() {
         const content = editorService.getValue();
-        storageService.set(STORAGE_KEYS.CONTENT, content);
+        await storage.set(STORAGE_KEYS.CONTENT, content);
 
         toast.success('Document saved', { duration: 2000 });
         eventBus.emit(EVENTS.DOCUMENT_SAVED);
