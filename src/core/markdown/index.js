@@ -191,11 +191,6 @@ class MarkdownService {
             if (node.tagName === 'A' && node.hasAttribute('target')) {
                 node.setAttribute('rel', 'noopener noreferrer');
             }
-            
-            // Issue #24: Hide images initially. They will be unhidden via JS upon successful load.
-            if (node.tagName === 'IMG') {
-                node.style.display = 'none';
-            }
         });
     }
 
@@ -249,6 +244,9 @@ class MarkdownService {
         const html = this.parse(markdown, options);
         container.innerHTML = html;
 
+        // Post-process: handle broken images (Issue #24) — must run before any async work
+        this._processImages(container);
+
         // Post-process: render mermaid diagrams
         if (this.mermaidEnabled && options.renderMermaid !== false) {
             await this._renderMermaidDiagrams(container);
@@ -290,6 +288,59 @@ class MarkdownService {
                 pre.after(errorDiv);
             }
         }
+    }
+
+    /**
+     * Process images in the rendered container to prevent broken image layout shifts.
+     * Issue #24: Browsers render a native "broken image" placeholder that takes up space
+     * and causes content to jump while the user is typing an incomplete image URL.
+     * 
+     * Strategy: hide every img immediately after it enters the DOM (synchronously, before
+     * the browser has a chance to paint the broken placeholder), then reveal it only if
+     * the network load actually succeeds. Works identically across Chrome, Firefox, Safari,
+     * and Edge because we are modifying live DOM nodes — no serialization, no style stripping.
+     * 
+     * @param {HTMLElement} container - Container element that was just populated
+     * @private
+     */
+    _processImages(container) {
+        const images = container.querySelectorAll('img');
+
+        images.forEach((img) => {
+            // Hide immediately — this runs synchronously right after innerHTML assignment,
+            // before the browser's next paint cycle, so the broken box never appears.
+            img.style.visibility = 'hidden';
+            img.style.minHeight = '0';
+            img.style.minWidth = '0';
+
+            // Reveal on successful load
+            img.addEventListener('load', function onLoad() {
+                this.style.visibility = '';
+                this.style.minHeight = '';
+                this.style.minWidth = '';
+                this.removeEventListener('load', onLoad);
+            });
+
+            // Keep hidden on failure — no broken icon, no space, no layout shift
+            img.addEventListener('error', function onError() {
+                this.style.display = 'none';
+                this.removeEventListener('error', onError);
+            });
+
+            // Handle already-cached images: the load event will have fired before we
+            // attached our listener. Check img.complete as a cross-browser signal.
+            if (img.complete) {
+                if (img.naturalWidth > 0) {
+                    // Already loaded from cache — reveal immediately
+                    img.style.visibility = '';
+                    img.style.minHeight = '';
+                    img.style.minWidth = '';
+                } else {
+                    // complete but naturalWidth === 0 means it failed (broken src)
+                    img.style.display = 'none';
+                }
+            }
+        });
     }
 
     /**
