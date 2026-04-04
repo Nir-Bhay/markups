@@ -59,6 +59,9 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import markedKatex from 'marked-katex-extension';
 
+// Image resize feature
+import { initImageResize } from './features/image-resize/index.js';
+
 // GFM Extensions
 import markedAlert from 'marked-alert';
 import markedFootnote from 'marked-footnote';
@@ -75,6 +78,7 @@ const APP_CONFIG = {
 let editor;
 let hasEdited = false;
 let scrollBarSync = true;
+let cursorSync = false;
 let darkMode = false;
 let currentTheme = 'vs';
 
@@ -88,6 +92,7 @@ let goalsData = {
 const localStorageNamespace = 'com.markdownlivepreview';
 const localStorageKey = 'last_state';
 const localStorageScrollBarKey = 'scroll_bar_settings';
+const localStorageCursorSyncKey = 'cursor_sync_settings';
 const localStorageDarkModeKey = 'dark_mode_settings';
 const localStorageThemeKey = 'theme_settings';
 const localStorageDocsKey = 'docs';
@@ -512,6 +517,7 @@ let setupEditor = () => {
     });
 
     // Typewriter Mode: Center cursor + Update cursor position in status bar
+    let isCursorSyncing = false;
     editor.onDidChangeCursorPosition((e) => {
         // Update status bar cursor position
         const cursorPosEl = document.getElementById('cursor-position');
@@ -522,6 +528,25 @@ let setupEditor = () => {
 
         if (isTypewriterMode) {
             editor.revealLineInCenter(e.position.lineNumber);
+        }
+
+        if (cursorSync && !isCursorSyncing) {
+            isCursorSyncing = true;
+            const previewElement = document.querySelector('.preview-wrapper');
+            if (previewElement) {
+                const lineTop = editor.getTopForLineNumber(e.position.lineNumber);
+                const editorHeight = editor.getScrollHeight();
+                
+                if (editorHeight > 0) {
+                     const ratio = lineTop / editorHeight;
+                     const previewScrollTop = previewElement.scrollHeight * ratio;
+                     
+                     // Center the line in the preview viewport
+                     const targetY = previewScrollTop - (previewElement.clientHeight / 2);
+                     previewElement.scrollTop = Math.max(0, targetY);
+                }
+            }
+            setTimeout(() => { isCursorSyncing = false; }, 50);
         }
     });
 
@@ -594,6 +619,24 @@ renderer.heading = function (token) {
             </h${headingLevel}>
         `;
 };
+
+// Custom image renderer to support {width=X height=Y align=Z} attributes
+renderer.image = function(token) {
+    const src = token.href || '';
+    const alt = token.text || '';
+    const title = token.title || '';
+    
+    // Check if there's attribute syntax after the image in the raw text
+    // The marked library doesn't parse {width=...} so we need to handle it differently
+    // For now, just render standard image - the processPreviewImages will handle sizing
+    let attrs = `src="${src}" alt="${alt}"`;
+    if (title) {
+        attrs += ` title="${title}"`;
+    }
+    
+    return `<img ${attrs}>`;
+};
+
 marked.use({ renderer });
 
 // Generate TOC HTML
@@ -613,9 +656,9 @@ let generateTOC = () => {
 
 // Update TOC panel
 let updateTOC = () => {
-    const tocPanel = document.getElementById('toc-panel');
-    if (tocPanel) {
-        tocPanel.innerHTML = generateTOC();
+    const tocListPanel = document.getElementById('toc-list-panel');
+    if (tocListPanel) {
+        tocListPanel.innerHTML = generateTOC();
     }
 
     // Also update the left sidebar outline
@@ -1241,6 +1284,10 @@ let convert = (markdown) => {
     const outputElement = document.querySelector('#output');
     outputElement.innerHTML = sanitized;
 
+    // Issue #24 Fix: Process images to prevent broken image layout shift
+    // CSS hides images by default; JS reveals them on successful load
+    processPreviewImages(outputElement);
+
     // Process Mermaid diagrams
     const mermaidBlocks = outputElement.querySelectorAll('pre code.language-mermaid');
     if (mermaidBlocks.length > 0) {
@@ -1343,6 +1390,19 @@ let initScrollBarSync = (settings) => {
         if (scrollSyncBtn) {
             scrollSyncBtn.classList.toggle('active', checked);
         }
+    });
+};
+
+let initCursorSync = (settings) => {
+    let checkbox = document.querySelector('#sync-preview-cursor-checkbox');
+    if (!checkbox) return;
+    checkbox.checked = settings;
+    cursorSync = settings;
+
+    checkbox.addEventListener('change', (event) => {
+        let checked = event.currentTarget.checked;
+        cursorSync = checked;
+        saveCursorSyncSettings(checked);
     });
 };
 
@@ -4114,7 +4174,15 @@ let setupTOCButton = () => {
         });
     }
 
-    // Close button for right TOC sidebar
+    // Close button for floating TOC panel
+    const tocPanel = document.getElementById('toc-panel');
+    const closeTocBtn = document.querySelector('.close-toc');
+    if (closeTocBtn && tocPanel) {
+        closeTocBtn.addEventListener('click', () => {
+            tocPanel.classList.add('hidden');
+            tocBtn?.classList.remove('active');
+        });
+    }
     const tocCloseBtn = document.querySelector("#toc-close-btn");
 
     if (tocCloseBtn && tocSidebar) {
@@ -4626,6 +4694,16 @@ let saveScrollBarSettings = (settings) => {
     Storehouse.setItem(localStorageNamespace, localStorageScrollBarKey, settings, expiredAt);
 };
 
+let loadCursorSyncSettings = () => {
+    let lastContent = Storehouse.getItem(localStorageNamespace, localStorageCursorSyncKey);
+    return lastContent;
+};
+
+let saveCursorSyncSettings = (settings) => {
+    let expiredAt = new Date(2099, 1, 1);
+    Storehouse.setItem(localStorageNamespace, localStorageCursorSyncKey, settings, expiredAt);
+};
+
 let loadDarkModeSettings = () => {
     let lastSettings = Storehouse.getItem(localStorageNamespace, localStorageDarkModeKey);
     return lastSettings;
@@ -4658,6 +4736,127 @@ let resolveImageReferences = (text) => {
         /markups-img:(img_\w+)/g,
         (match, imgId) => imageStore.get(imgId) || match
     );
+};
+
+/**
+ * Process images in the preview to prevent broken image layout shift (Issue #24).
+ * CSS hides images by default via :not([data-loaded="true"]).
+ * This function monitors load/error events and sets data-loaded="true" only
+ * when an image successfully loads. Failed/invalid images stay hidden.
+ * 
+ * @param {HTMLElement} container - The preview container element
+ */
+let processPreviewImages = (container) => {
+    const images = container.querySelectorAll('img');
+    
+    // Get markdown source to parse saved dimensions
+    const editorContent = editor ? editor.getValue() : '';
+    const imageAttrsMap = parseImageAttributes(editorContent);
+
+    images.forEach((img, index) => {
+        // Images start hidden via CSS (:not([data-loaded="true"]))
+        // We only reveal them when they successfully load
+
+        const onLoad = function() {
+            this.setAttribute('data-loaded', 'true');
+            
+            // Apply saved dimensions from markdown if available
+            applySavedImageDimensions(this, index, imageAttrsMap);
+            
+            this.removeEventListener('load', onLoad);
+            this.removeEventListener('error', onError);
+        };
+
+        const onError = function() {
+            // Keep hidden on failure (CSS already hides, display:none is backup)
+            this.style.display = 'none';
+            this.removeEventListener('load', onLoad);
+            this.removeEventListener('error', onError);
+        };
+
+        img.addEventListener('load', onLoad);
+        img.addEventListener('error', onError);
+
+        // Handle already-cached/loaded images (base64 data URLs load synchronously)
+        if (img.complete) {
+            if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                // Already loaded (e.g., base64 data URL) — reveal immediately
+                img.setAttribute('data-loaded', 'true');
+                // Apply saved dimensions from markdown if available
+                applySavedImageDimensions(img, index, imageAttrsMap);
+            } else {
+                // complete but no dimensions means it failed
+                img.style.display = 'none';
+            }
+        }
+    });
+};
+
+/**
+ * Parse image attributes from markdown source
+ * Extracts {width=X height=Y align=Z} syntax from ![alt](src){attrs}
+ * @param {string} content - Markdown content
+ * @returns {Array} Array of attribute objects indexed by image order
+ */
+let parseImageAttributes = (content) => {
+    const result = [];
+    // Match: ![alt](src){width=123 height=456 align=center}
+    const pattern = /!\[([^\]]*)\]\(([^)]+)\)(\{([^}]+)\})?/g;
+    let match;
+    
+    while ((match = pattern.exec(content)) !== null) {
+        const attrs = {};
+        attrs.src = match[2];
+        attrs.alt = match[1];
+        
+        if (match[4]) {
+            // Parse attributes like "width=300 height=200 align=center"
+            const attrParts = match[4].split(/\s+/);
+            attrParts.forEach(part => {
+                const [key, value] = part.split('=');
+                if (key && value) {
+                    attrs[key.toLowerCase()] = value;
+                }
+            });
+        }
+        result.push(attrs);
+    }
+    
+    return result;
+};
+
+/**
+ * Apply saved dimensions from markdown to an image element
+ * @param {HTMLImageElement} img - Image element
+ * @param {number} index - Index of image in DOM
+ * @param {Array} attrsMap - Parsed attributes from markdown
+ */
+let applySavedImageDimensions = (img, index, attrsMap) => {
+    if (!attrsMap || index >= attrsMap.length) return;
+    
+    const attrs = attrsMap[index];
+    if (!attrs) return;
+    
+    // Apply width
+    if (attrs.width) {
+        const width = parseInt(attrs.width, 10);
+        if (!isNaN(width) && width > 0) {
+            img.style.width = `${width}px`;
+        }
+    }
+    
+    // Apply height
+    if (attrs.height) {
+        const height = parseInt(attrs.height, 10);
+        if (!isNaN(height) && height > 0) {
+            img.style.height = `${height}px`;
+        }
+    }
+    
+    // Apply alignment
+    if (attrs.align) {
+        img.setAttribute('align', attrs.align);
+    }
 };
 
 // ----- Find & Replace Button -----
@@ -5294,6 +5493,9 @@ const initializeApp = () => {
     let scrollBarSettings = loadScrollBarSettings() ?? true;
     initScrollBarSync(scrollBarSettings);
 
+    let cursorSyncSettings = loadCursorSyncSettings() ?? false;
+    initCursorSync(cursorSyncSettings);
+
     setupScrollSyncButton();
     setupFocusMode();
     setupTypewriterButton();
@@ -5331,6 +5533,9 @@ const initializeApp = () => {
 
     // Initialize stats with current content
     updateStats(editor.getValue());
+    
+    // Initialize image resize feature
+    initImageResize({ editor });
 };
 
 // ----- PWA Support -----

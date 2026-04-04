@@ -109,6 +109,71 @@
   background-color: #ffffff;
 }
 
+/* ==============================================
+   Issue #24 Fix: Prevent broken image layout shift
+   ==============================================
+   When users type invalid/incomplete image URLs, browsers render a 
+   "broken image" placeholder that causes content to jump and shift.
+   
+   CSS-first solution: Hide images by default until JavaScript confirms
+   they have loaded successfully. This prevents the broken icon from
+   ever appearing because CSS applies BEFORE the browser paints.
+   
+   The JavaScript in src/core/markdown/index.js adds the 'data-loaded'
+   attribute when an image loads successfully.
+   ============================================== */
+.markdown-body img:not([data-loaded="true"]) {
+  /* Hide until confirmed loaded - prevents broken icon flash */
+  visibility: hidden !important;
+  /* Collapse space to prevent layout shift */
+  max-height: 0 !important;
+  max-width: 0 !important;
+  /* Remove any borders/outlines that might show */
+  border: none !important;
+  outline: none !important;
+  /* Ensure no space is taken */
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Reveal images once JavaScript confirms they loaded */
+.markdown-body img[data-loaded="true"] {
+  visibility: visible !important;
+  max-height: none !important;
+  max-width: 100% !important;
+}
+
+/* Default image sizing - prevent oversized images on first render */
+.markdown-body img[data-loaded="true"]:not([width]):not([style*="width"]) {
+  max-width: min(100%, 600px);
+  height: auto;
+}
+
+/* When width/height are explicitly set via inline styles or attributes, respect them */
+.markdown-body img[data-loaded="true"][width],
+.markdown-body img[data-loaded="true"][style*="width"] {
+  max-width: none;
+}
+
+/* Image alignment classes */
+.markdown-body img[align="left"] {
+  float: left;
+  margin-right: 16px;
+  margin-bottom: 8px;
+}
+
+.markdown-body img[align="right"] {
+  float: right;
+  margin-left: 16px;
+  margin-bottom: 8px;
+}
+
+.markdown-body img[align="center"] {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .markdown-body code,
 .markdown-body kbd,
 .markdown-body pre,

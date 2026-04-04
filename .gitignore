@@ -44,3 +44,11 @@ coverage/
 # Misc
 *.local
 
+# Agents and Analysis Tools
+.agent/
+.agents/
+.claude/
+plot/
+
+# Configurations
+.github/

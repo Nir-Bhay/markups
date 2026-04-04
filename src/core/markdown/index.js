@@ -295,10 +295,15 @@ class MarkdownService {
      * Issue #24: Browsers render a native "broken image" placeholder that takes up space
      * and causes content to jump while the user is typing an incomplete image URL.
      * 
-     * Strategy: hide every img immediately after it enters the DOM (synchronously, before
-     * the browser has a chance to paint the broken placeholder), then reveal it only if
-     * the network load actually succeeds. Works identically across Chrome, Firefox, Safari,
-     * and Edge because we are modifying live DOM nodes — no serialization, no style stripping.
+     * Strategy: CSS hides all images by default (via :not([data-loaded="true"]) selector).
+     * This runs synchronously during HTML parsing, BEFORE the browser paints anything.
+     * Then JavaScript monitors load/error events and sets data-loaded="true" only
+     * when an image successfully loads. Failed images stay hidden forever.
+     * 
+     * This CSS-first approach is more reliable than JS-only solutions because:
+     * 1. CSS applies during parse, before any paint cycle
+     * 2. No race condition between innerHTML and JavaScript execution
+     * 3. Works even if JS is slow or delayed
      * 
      * @param {HTMLElement} container - Container element that was just populated
      * @private
@@ -307,36 +312,37 @@ class MarkdownService {
         const images = container.querySelectorAll('img');
 
         images.forEach((img) => {
-            // Hide immediately — this runs synchronously right after innerHTML assignment,
-            // before the browser's next paint cycle, so the broken box never appears.
-            img.style.visibility = 'hidden';
-            img.style.minHeight = '0';
-            img.style.minWidth = '0';
+            // Images start hidden via CSS (:not([data-loaded="true"]))
+            // No need to set inline styles - CSS handles initial hiding
 
-            // Reveal on successful load
-            img.addEventListener('load', function onLoad() {
-                this.style.visibility = '';
-                this.style.minHeight = '';
-                this.style.minWidth = '';
+            // Reveal on successful load by setting the data attribute
+            const onLoad = function() {
+                this.setAttribute('data-loaded', 'true');
                 this.removeEventListener('load', onLoad);
-            });
-
-            // Keep hidden on failure — no broken icon, no space, no layout shift
-            img.addEventListener('error', function onError() {
-                this.style.display = 'none';
                 this.removeEventListener('error', onError);
-            });
+            };
 
-            // Handle already-cached images: the load event will have fired before we
-            // attached our listener. Check img.complete as a cross-browser signal.
+            // Keep hidden on failure — CSS keeps it collapsed, we just ensure
+            // the error state is final by removing listeners
+            const onError = function() {
+                // Explicitly hide via display:none as a backup
+                // (CSS already hides via visibility, but display:none is more thorough)
+                this.style.display = 'none';
+                this.removeEventListener('load', onLoad);
+                this.removeEventListener('error', onError);
+            };
+
+            img.addEventListener('load', onLoad);
+            img.addEventListener('error', onError);
+
+            // Handle already-cached images: the load event may have fired before
+            // we attached our listener. Check img.complete as a cross-browser signal.
             if (img.complete) {
-                if (img.naturalWidth > 0) {
+                if (img.naturalWidth > 0 && img.naturalHeight > 0) {
                     // Already loaded from cache — reveal immediately
-                    img.style.visibility = '';
-                    img.style.minHeight = '';
-                    img.style.minWidth = '';
+                    img.setAttribute('data-loaded', 'true');
                 } else {
-                    // complete but naturalWidth === 0 means it failed (broken src)
+                    // complete but naturalWidth/Height === 0 means it failed (broken src)
                     img.style.display = 'none';
                 }
             }
