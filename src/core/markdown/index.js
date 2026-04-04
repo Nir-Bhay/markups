@@ -191,6 +191,11 @@ class MarkdownService {
             if (node.tagName === 'A' && node.hasAttribute('target')) {
                 node.setAttribute('rel', 'noopener noreferrer');
             }
+            
+            // Issue #24: Hide images initially. They will be unhidden via JS upon successful load.
+            if (node.tagName === 'IMG') {
+                node.style.display = 'none';
+            }
         });
     }
 

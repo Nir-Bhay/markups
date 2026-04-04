@@ -384,6 +384,20 @@ class App {
         window.addEventListener('resize', debounce(() => {
             editorService.layout();
         }, 100));
+
+        // Global capture of image loading successes to reveal conditionally hidden images
+        document.addEventListener('load', function(event) {
+            if (event.target && event.target.tagName === 'IMG') {
+                event.target.style.display = '';
+            }
+        }, true);
+
+        // Global capture of image loading errors to prevent layout shifts (Issue #24)
+        document.addEventListener('error', function(event) {
+            if (event.target && event.target.tagName === 'IMG') {
+                event.target.style.display = 'none';
+            }
+        }, true);
     }
 
     /**
