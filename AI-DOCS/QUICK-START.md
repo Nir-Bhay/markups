@@ -109,7 +109,7 @@ AI-DOCS/
 | **AI Writer** | `src/features/ai-writer/index.js` | 1-300 | `ui.js`, `service.js` |
 | **Templates** | `src/features/templates/index.js` | 50-200 | `config/templates.js` |
 | **Snippets** | `src/features/snippets/index.js` | 50-140 | `config/snippets.js` |
-| **Focus** | `src/features/focus/index.js` | 1-200 | — |
+| **Focus** | `src/features/focus/index.js` | 1-1400 | `src/app.js` |
 | **Fullscreen** | `src/features/fullscreen/index.js` | 1-150 | — |
 | **Typewriter** | `src/features/typewriter/index.js` | 1-180 | — |
 | **Linter** | `src/features/linter/index.js` | 1-400 | HTML: 1150-1190 |

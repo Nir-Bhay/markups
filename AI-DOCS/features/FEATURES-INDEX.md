@@ -325,7 +325,7 @@
 | Property | Value |
 |----------|-------|
 | **File** | `src/features/focus/index.js` |
-| **Lines** | 1-200 |
+| **Lines** | 1-1400 |
 | **Shortcut** | Ctrl+Shift+F |
 | **CSS Class** | `.focus-mode` |
 
@@ -336,8 +336,8 @@
 - ESC to exit
 
 **Key Functions**:
-- `enableFocus()` - Lines 50-100
-- `disableFocus()` - Lines 120-160
+- `enable()` - Lines 126-173
+- `disable()` - Lines 179-223
 
 ---
 
