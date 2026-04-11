@@ -1278,7 +1278,12 @@ let convert = (markdown) => {
     // options variable removed as headerIds and mangle are deprecated
     // Resolve image store references to actual data URLs before rendering
     let resolvedMarkdown = resolveImageReferences(markdown);
-    let html = marked.parse(resolvedMarkdown);
+    
+    // Strip image attributes {width=...} before rendering to prevent visibility in preview
+    // Note: processPreviewImages will still find them in the raw markdown if needed
+    let renderableMarkdown = resolvedMarkdown.replace(/(!\[[^\]]*\]\([^)]+\))\s*\{[^}]*(width|height|align)=[^}]*\}/g, '$1');
+    
+    let html = marked.parse(renderableMarkdown);
     let sanitized = DOMPurify.sanitize(html, { ADD_ATTR: ['id'] });
 
     const outputElement = document.querySelector('#output');
@@ -4801,7 +4806,8 @@ let processPreviewImages = (container) => {
 let parseImageAttributes = (content) => {
     const result = [];
     // Match: ![alt](src){width=123 height=456 align=center}
-    const pattern = /!\[([^\]]*)\]\(([^)]+)\)(\{([^}]+)\})?/g;
+    // Updated to support potential whitespace/newline between the image and the attributes
+    const pattern = /!\[([^\]]*)\]\(([^)]+)\)\s*(\{([^}]+)\})?/g;
     let match;
     
     while ((match = pattern.exec(content)) !== null) {

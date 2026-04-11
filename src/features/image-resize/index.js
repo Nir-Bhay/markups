@@ -615,7 +615,7 @@ class ImageResizeManager {
         // 1. Try to find markups-img: pattern (internal image references)
         if (domSrc.startsWith('data:') || originalSrc.startsWith('markups-img:')) {
             // This is likely an uploaded image - find markups-img: patterns
-            const markupsImgPattern = /!\[([^\]]*)\]\((markups-img:[^)]+)\)(\{[^}]*\})?/g;
+            const markupsImgPattern = /!\[([^\]]*)\]\((markups-img:[^)]+)\)\s*(\{[^}]*\})?/g;
             let matches = [...content.matchAll(markupsImgPattern)];
             
             if (matches.length > 0) {
@@ -643,7 +643,7 @@ class ImageResizeManager {
             const escapedSrc = this._escapeRegex(domSrc);
             try {
                 const mdPattern = new RegExp(
-                    `!\\[([^\\]]*)\\]\\(${escapedSrc}\\)(\\{[^}]*\\})?`,
+                    `!\\[([^\\]]*)\\]\\(${escapedSrc}\\)\\s*(\\{[^}]*\\})?`,
                     'g'
                 );
 
@@ -687,7 +687,7 @@ class ImageResizeManager {
 
         // 4. Fallback: Find by image index for any remaining cases
         if (!found) {
-            const allMdImages = [...content.matchAll(/!\[([^\]]*)\]\(([^)]+)\)(\{[^}]*\})?/g)];
+            const allMdImages = [...content.matchAll(/!\[([^\]]*)\]\(([^)]+)\)\s*(\{[^}]*\})?/g)];
             const previewImages = document.querySelectorAll('#output img[data-loaded]');
             const imgIndex = Array.from(previewImages).indexOf(img);
             
