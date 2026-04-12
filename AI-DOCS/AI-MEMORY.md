@@ -103,10 +103,12 @@ markups/
 | - Help Button | 269-277 | `#help-button` | Help modal |
 | - View Toggle | 280-285 | `.view-mode-toggle` | Editor/Split/Preview |
 | - Theme Toggle | 288-309 | `#dark-mode-toggle` | Dark/Light mode |
-| **Toolbar** | 350-550 | `.enhanced-toolbar` | Rich text controls |
+| **Toolbar** | 350-656 | `.premium-toolbar` + `#toolbar-overflow-sheet` + `#toolbar-text-color` + `#toolbar-highlight-color` + `#toolbar-special-chars` | Rich text controls + grouped overflow tools |
 | - Bold/Italic/etc | 380-480 | `.toolbar-btn` | Formatting buttons |
 | - Headings | 500-530 | `.dropdown` | H1-H6 dropdown |
 | - Insert Menu | 540-600 | `.insert-menu` | Link/Image/Table |
+| - Direct Color Controls | 470-475 | `#toolbar-text-color`, `#toolbar-highlight-color`, `#toolbar-special-chars` | Text/highlight palettes + special characters |
+| - Advanced Menu | 578-656 | `#toolbar-overflow-sheet` | Diagram presets, advanced formatting, utilities |
 | **Main Container** | 650-750 | `.main-container` | Editor + Preview |
 | - Editor | 670-680 | `#editor` | Monaco editor mount |
 | - Divider | 690-695 | `.divider` | Resizable split |
@@ -128,7 +130,7 @@ markups/
 
 ### 🔘 **Adding a Toolbar Button**
 
-**Location**: `index.html` lines 350-550
+**Location**: `index.html` lines 350-656
 
 ```html
 <!-- Line ~420 in index.html -->
@@ -138,7 +140,7 @@ markups/
 </button>
 ```
 
-**Handler**: Add in `src/features/toolbar/index.js` (lines 50-300)
+**Handler**: Add in `src/features/toolbar/index.js` (lines 50-300). For advanced overflow actions, update `src/features/mobile/index.js` too.
 
 ---
 

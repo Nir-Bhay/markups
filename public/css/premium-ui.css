@@ -6102,7 +6102,7 @@ body.resizing .monaco-editor {
 
 /* ---- Mobile Toolbar Overflow ---- */
 .toolbar-overflow-btn {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
@@ -6123,8 +6123,8 @@ body.resizing .monaco-editor {
 
 .toolbar-overflow-sheet {
   display: none;
-  position: absolute;
-  top: 100%;
+  position: fixed;
+  top: calc(var(--toolbar-height) + 8px);
   right: 8px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-light);
@@ -6132,17 +6132,83 @@ body.resizing .monaco-editor {
   box-shadow: var(--shadow-xl);
   z-index: var(--z-dropdown);
   padding: 8px;
-  min-width: 200px;
+  min-width: 320px;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 .toolbar-overflow-sheet.active {
   display: block;
 }
 
+#callout-dropdown-sheet {
+  min-width: 360px;
+}
+
+#callout-dropdown-sheet .toolbar-overflow-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+#callout-dropdown-sheet .toolbar-overflow-section {
+  padding: 4px 4px 6px;
+  font-size: 0.7rem;
+}
+
+#callout-dropdown-sheet .toolbar-overflow-item {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  min-height: 0;
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
+  width: 100%;
+}
+
+#callout-dropdown-sheet .toolbar-overflow-item:hover,
+#callout-dropdown-sheet .toolbar-overflow-item:active {
+  background: var(--bg-hover);
+  border-color: var(--callout-accent, var(--border-light));
+}
+
+#callout-dropdown-sheet .callout-dropdown-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background: var(--callout-accent, var(--primary-color));
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+#callout-dropdown-sheet .callout-dropdown-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .toolbar-overflow-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
+}
+
+.toolbar-overflow-section {
+  grid-column: 1 / -1;
+  padding: 6px 4px 2px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
 }
 
 .toolbar-overflow-item {
@@ -6496,6 +6562,27 @@ body.resizing .monaco-editor {
   .toolbar-overflow-item {
     min-height: 44px;
     padding: 8px;
+  }
+
+  #callout-dropdown-sheet {
+    min-width: auto;
+  }
+
+  #callout-dropdown-sheet .toolbar-overflow-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #callout-dropdown-sheet .toolbar-overflow-item {
+    min-height: 0;
+    padding: 12px 14px;
+  }
+
+  #callout-dropdown-sheet .toolbar-overflow-item span {
+    display: inline;
+  }
+
+  #callout-dropdown-sheet .callout-dropdown-label {
+    display: block;
   }
 
   .mobile-nav-drawer {

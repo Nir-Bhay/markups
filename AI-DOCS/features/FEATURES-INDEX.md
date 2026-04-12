@@ -67,9 +67,9 @@
 |----------|-------|
 | **File** | `src/features/toolbar/index.js` |
 | **Lines** | 50-300 |
-| **DOM ID** | `#toolbar`, `.toolbar-btn` |
-| **HTML** | `index.html` lines 350-550 |
-| **CSS** | `premium-ui.css` lines 442-554 |
+| **DOM ID** | `#toolbar`, `#toolbar-overflow-sheet`, `#toolbar-text-color`, `#toolbar-highlight-color`, `#toolbar-special-chars`, `.toolbar-btn` |
+| **HTML** | `index.html` lines 350-656 |
+| **CSS** | `premium-ui.css` lines 442-554, 6104-6178 |
 
 **Buttons Provided**:
 - Text formatting: Bold, Italic, Strikethrough
@@ -78,7 +78,9 @@
 - Code: Block, Inline
 - Lists: Bullet, Numbered, Tasks
 - Blocks: Quote, HR
-- Tools: Emoji, AI, TOC
+- Tools: Emoji, text color, highlight color, special characters, AI, TOC, advanced overflow menu
+- Direct color controls: text color palette, highlight color palette, special characters
+- Overflow contents: diagram presets and advanced formatting tools
 
 **Key Functions**:
 - `initToolbar()` - Lines 50-100

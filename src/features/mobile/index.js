@@ -6,6 +6,148 @@
  */
 
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import {
+    toolbarManager,
+    prefixLine,
+    insertText,
+    wrapSelection,
+    wrapSelectionHtml,
+    transformSelection,
+    getSelection,
+} from '../toolbar/index.js';
+
+const getOverflowSelection = () => getSelection() || 'Content here';
+
+const getDateFormatted = (format = 'iso') => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+
+    switch (format) {
+        case 'iso':
+            return now.toISOString().slice(0, 10);
+        case 'long':
+            return now.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+            });
+        case 'short':
+            return `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+        case 'time':
+            return now.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        case 'datetime':
+            return `${now.toISOString().slice(0, 10)} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        case 'unix':
+            return String(Math.floor(now.getTime() / 1000));
+        default:
+            return now.toISOString().slice(0, 10);
+    }
+};
+
+const generateLorem = (type = 'paragraph') => {
+    const sentences = [
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+        'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+        'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore.',
+        'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia.',
+        'Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit.',
+        'Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet.',
+        'Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse.',
+        'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis.',
+        'Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit.',
+    ];
+
+    switch (type) {
+        case 'sentence':
+            return sentences[0];
+        case 'short':
+            return sentences.slice(0, 3).join(' ');
+        case 'long':
+            return `${sentences.join(' ')} ${sentences.slice(0, 5).join(' ')}`;
+        case 'paragraph':
+        default:
+            return sentences.slice(0, 5).join(' ');
+    }
+};
+
+const DIAGRAM_PRESETS = [
+    {
+        action: 'diagram-flowchart',
+        icon: '🔷',
+        label: 'Flowchart',
+        content: '\n```mermaid\ngraph TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[Continue]\n    B -->|No| D[Stop]\n```\n',
+    },
+    {
+        action: 'diagram-sequence',
+        icon: '↔️',
+        label: 'Sequence',
+        content: '\n```mermaid\nsequenceDiagram\n    Alice->>Bob: Hello Bob\n    Bob-->>Alice: Hi Alice\n```\n',
+    },
+    {
+        action: 'diagram-class',
+        icon: '🧱',
+        label: 'Class',
+        content: '\n```mermaid\nclassDiagram\n    class Animal {\n        +name\n        +eat()\n    }\n    Animal <|-- Dog\n```\n',
+    },
+    {
+        action: 'diagram-state',
+        icon: '⚙️',
+        label: 'State',
+        content: '\n```mermaid\nstateDiagram-v2\n    [*] --> Idle\n    Idle --> Active\n    Active --> [*]\n```\n',
+    },
+    {
+        action: 'diagram-mindmap',
+        icon: '🧠',
+        label: 'Mindmap',
+        content: '\n```mermaid\nmindmap\n  root((Idea))\n    Branch 1\n    Branch 2\n```\n',
+    },
+    {
+        action: 'diagram-gantt',
+        icon: '📅',
+        label: 'Gantt',
+        content: '\n```mermaid\ngantt\n    title Project Timeline\n    dateFormat  YYYY-MM-DD\n    section Planning\n    Research :a1, 2026-01-01, 3d\n```\n',
+    },
+];
+
+const outdentSelection = () => {
+    const editor = typeof window !== 'undefined' ? window.editor : null;
+    if (!editor) return;
+
+    const selection = editor.getSelection();
+    const model = editor.getModel();
+    if (!selection || !model) return;
+
+    for (let lineNumber = selection.startLineNumber; lineNumber <= selection.endLineNumber; lineNumber += 1) {
+        const line = model.getLineContent(lineNumber);
+        if (line.startsWith('  ')) {
+            editor.executeEdits('toolbar', [{
+                range: {
+                    startLineNumber: lineNumber,
+                    startColumn: 1,
+                    endLineNumber: lineNumber,
+                    endColumn: 3,
+                },
+                text: '',
+            }]);
+        } else if (line.startsWith('\t')) {
+            editor.executeEdits('toolbar', [{
+                range: {
+                    startLineNumber: lineNumber,
+                    startColumn: 1,
+                    endLineNumber: lineNumber,
+                    endColumn: 2,
+                },
+                text: '',
+            }]);
+        }
+    }
+
+    editor.focus();
+};
 
 /**
  * MobileUIManager class
@@ -23,6 +165,7 @@ class MobileUIManager {
         this.overlay = null;
         this.viewSwitcher = null;
         this.overflowSheet = null;
+        this._overflowActionHandlers = {};
         this.currentView = 'editor';
         this._swipeState = null;
         this._boundOutsideClick = null;
@@ -409,10 +552,20 @@ class MobileUIManager {
         if (!overflowBtn || !this.overflowSheet) return;
 
         overflowBtn.setAttribute('aria-expanded', 'false');
+        this._renderToolbarOverflowMenu(overflowBtn);
+
+        const setOverflowState = (isOpen) => {
+            this.overflowSheet.classList.toggle('active', isOpen);
+            overflowBtn.setAttribute('aria-expanded', String(isOpen));
+            if (isOpen) {
+                this._positionToolbarOverflow(overflowBtn);
+            }
+        };
+
         overflowBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const isOpen = this.overflowSheet.classList.toggle('active');
-            overflowBtn.setAttribute('aria-expanded', String(isOpen));
+            const isOpen = !this.overflowSheet.classList.contains('active');
+            setOverflowState(isOpen);
         });
 
         // Close on outside click
@@ -420,36 +573,170 @@ class MobileUIManager {
             if (this.overflowSheet &&
                 !this.overflowSheet.contains(e.target) &&
                 e.target !== overflowBtn) {
-                this.overflowSheet.classList.remove('active');
-                overflowBtn.setAttribute('aria-expanded', 'false');
+                setOverflowState(false);
             }
         });
 
-        // Wire overflow items to toolbar buttons
-        const actionMap = {
-            'strikethrough': '#toolbar-strikethrough',
-            'table': '#toolbar-table',
-            'hr': '#toolbar-hr',
-            'quote': '#toolbar-quote',
-            'task': '#toolbar-task',
-            'ol': '#toolbar-ol',
-            'emoji': '#toolbar-emoji',
-            'codeblock': '#toolbar-code'
+        this.overflowSheet.addEventListener('click', (e) => {
+            const button = e.target.closest('button[data-action]');
+            if (!button) return;
+
+            const action = button.dataset.action;
+            const handler = this._overflowActionHandlers[action];
+            if (!handler) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            setOverflowState(false);
+            handler();
+        });
+
+        window.addEventListener('resize', () => {
+            if (this.overflowSheet.classList.contains('active')) {
+                this._positionToolbarOverflow(overflowBtn);
+            }
+        });
+    }
+
+    _positionToolbarOverflow(overflowBtn) {
+        if (!this.overflowSheet) return;
+
+        const rect = overflowBtn.getBoundingClientRect();
+        this.overflowSheet.style.top = `${Math.round(rect.bottom + 8)}px`;
+        this.overflowSheet.style.bottom = 'auto';
+
+        if (this.isMobile()) {
+            this.overflowSheet.style.left = '4px';
+            this.overflowSheet.style.right = '4px';
+        } else {
+            this.overflowSheet.style.left = 'auto';
+            this.overflowSheet.style.right = `${Math.max(8, Math.round(window.innerWidth - rect.right))}px`;
+        }
+    }
+
+    _renderToolbarOverflowMenu(overflowBtn) {
+        if (!this.overflowSheet) return;
+
+        this.overflowSheet.innerHTML = '';
+        this._overflowActionHandlers = {};
+
+        const grid = document.createElement('div');
+        grid.className = 'toolbar-overflow-grid';
+
+        const addSection = (label) => {
+            const section = document.createElement('div');
+            section.className = 'toolbar-overflow-section';
+            section.textContent = label;
+            grid.appendChild(section);
         };
 
-        this.overflowSheet.querySelectorAll('.toolbar-overflow-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const action = item.dataset.action;
-                const selector = actionMap[action];
-                if (selector) {
-                    // .click() works on hidden elements — no need to show them
-                    const btn = document.querySelector(selector);
-                    if (btn) btn.click();
-                }
-                this.overflowSheet.classList.remove('active');
-                overflowBtn.setAttribute('aria-expanded', 'false');
-            });
+        const addItem = (action, icon, label, handler) => {
+            this._overflowActionHandlers[action] = handler;
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'toolbar-overflow-item';
+            button.dataset.action = action;
+            button.title = label;
+            button.innerHTML = `
+                <span class="toolbar-overflow-icon">${icon}</span>
+                <span>${label}</span>
+            `;
+
+            grid.appendChild(button);
+        };
+
+        addSection('Formatting');
+        addItem('underline', '<u>U</u>', 'Underline', () => wrapSelectionHtml('u'));
+        addItem('superscript', 'X²', 'Superscript', () => wrapSelectionHtml('sup'));
+        addItem('subscript', 'X₂', 'Subscript', () => wrapSelectionHtml('sub'));
+        addItem('kbd', 'K', 'Keyboard Key', () => wrapSelectionHtml('kbd'));
+        addItem('h4', 'H4', 'Heading 4', () => prefixLine('#### '));
+        addItem('h5', 'H5', 'Heading 5', () => prefixLine('##### '));
+        addItem('h6', 'H6', 'Heading 6', () => prefixLine('###### '));
+        addItem('indent', '→', 'Indent', () => prefixLine('  '));
+        addItem('outdent', '←', 'Outdent', () => outdentSelection());
+
+        addSection('Insert');
+        addItem('footnote', '¹', 'Footnote', () => {
+            const id = `fn-${Date.now().toString(36).slice(-4)}`;
+            insertText(`[^${id}]\n\n[^${id}]: Footnote text`);
         });
+        addItem('abbr', '🔤', 'Abbreviation', () => insertText('\n*[ABBR]: Full Text\n'));
+        addItem('deflist', '📖', 'Definition List', () => insertText('\nTerm\n: Definition\n'));
+        addItem('details', '▸', 'Collapsible', () => {
+            const selection = getOverflowSelection();
+            insertText(`\n<details>\n<summary>Click to expand</summary>\n\n${selection}\n\n</details>\n`);
+        });
+        addItem('math-inline', 'Σ', 'Math (inline)', () => wrapSelection('$', '$'));
+        addItem('math-block', '∫', 'Math (block)', () => wrapSelection('\n$$\n', '\n$$\n'));
+        addItem('anchor', '⚓', 'Anchor / ID', () => insertText('<a id="section-name"></a>'));
+        addItem('comment', '💬', 'HTML Comment', () => wrapSelection('<!-- ', ' -->'));
+        addItem('line-break', '↵', 'Line Break', () => insertText('<br>\n'));
+
+        addSection('Diagrams');
+        DIAGRAM_PRESETS.forEach(({ action, icon, label, content }) => {
+            addItem(action, icon, label, () => insertText(content));
+        });
+
+        addSection('Transform');
+        addItem('upper', 'A', 'UPPERCASE', () => transformSelection(t => t.toUpperCase()));
+        addItem('lower', 'a', 'lowercase', () => transformSelection(t => t.toLowerCase()));
+        addItem('titlecase', 'Tt', 'Title Case', () => transformSelection(t =>
+            t.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        ));
+        addItem('sentencecase', 'Aa', 'Sentence case', () => transformSelection(t =>
+            t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()
+        ));
+        addItem('sort-asc', '↑', 'Sort Lines A→Z', () => transformSelection(t => t.split('\n').sort((a, b) => a.localeCompare(b)).join('\n')));
+        addItem('sort-desc', '↓', 'Sort Lines Z→A', () => transformSelection(t => t.split('\n').sort((a, b) => b.localeCompare(a)).join('\n')));
+        addItem('reverse-lines', '⇅', 'Reverse Lines', () => transformSelection(t => t.split('\n').reverse().join('\n')));
+        addItem('unique-lines', '◎', 'Unique Lines', () => transformSelection(t => [...new Set(t.split('\n'))].join('\n')));
+        addItem('trim-lines', '⌧', 'Trim Lines', () => transformSelection(t => t.split('\n').map((line) => line.trim()).join('\n')));
+        addItem('remove-formatting', '✕', 'Remove Markdown', () => transformSelection(t =>
+            t
+                .replace(/[*_~`#>]/g, '')
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+                .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '$1')
+                .trim()
+        ));
+        addItem('encode-uri', '%', 'URL Encode', () => transformSelection(t => encodeURIComponent(t)));
+        addItem('decode-uri', '🔓', 'URL Decode', () => transformSelection(t => {
+            try {
+                return decodeURIComponent(t);
+            } catch {
+                return t;
+            }
+        }));
+        addItem('escape-html', '&lt;', 'Escape HTML', () => transformSelection(t => {
+            const span = document.createElement('span');
+            span.textContent = t;
+            return span.innerHTML;
+        }));
+
+        addSection('Date / Time');
+        addItem('date-iso', '📅', 'ISO Date', () => insertText(getDateFormatted('iso')));
+        addItem('date-long', '📅', 'Long Date', () => insertText(getDateFormatted('long')));
+        addItem('date-short', '📅', 'Short Date', () => insertText(getDateFormatted('short')));
+        addItem('time-now', '🕐', 'Current Time', () => insertText(getDateFormatted('time')));
+        addItem('datetime-now', '📅', 'Date & Time', () => insertText(getDateFormatted('datetime')));
+        addItem('unix-ts', '⏱️', 'Unix Timestamp', () => insertText(getDateFormatted('unix')));
+
+        addSection('Lorem Ipsum');
+        addItem('lorem-sentence', '•', 'Sentence', () => insertText(generateLorem('sentence')));
+        addItem('lorem-short', '▪', 'Short', () => insertText(generateLorem('short')));
+        addItem('lorem-paragraph', '¶', 'Paragraph', () => insertText(generateLorem('paragraph')));
+        addItem('lorem-long', '▣', 'Long', () => insertText(generateLorem('long')));
+
+        addSection('Panels');
+        addItem('snippets', '⚡', 'Snippets', () => {
+            toolbarManager._openSnippets(overflowBtn);
+        });
+        addItem('word-count', '🔢', 'Word Count', () => {
+            toolbarManager._openWordCount(overflowBtn);
+        });
+
+        this.overflowSheet.appendChild(grid);
     }
 
     /* ============================

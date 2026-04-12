@@ -8,7 +8,7 @@
 
 | Task | File(s) to Modify | Lines |
 |------|-------------------|-------|
-| **Add toolbar button** | `index.html` + `src/features/toolbar/index.js` | HTML: 350-550, JS: 50-300 |
+| **Add toolbar button** | `index.html` + `src/features/toolbar/index.js` + `src/features/mobile/index.js` | HTML: 350-656, JS: 50-300 |
 | **Add export format** | `src/services/export/{format}.js` + `index.js` | Create new file + import |
 | **Add keyboard shortcut** | `src/services/shortcuts/index.js` | 390-400 (add new) |
 | **Add template** | `src/config/templates.js` | 10-500 (add new entry) |
@@ -22,7 +22,7 @@
 | **Change colors** | `public/css/style.css` | 4-57 (CSS variables) |
 | **Modify header** | `index.html` + `public/css/premium-ui.css` | HTML: 134-320, CSS: 122-440 |
 | **Style modals** | `public/css/premium-ui.css` | 1100-1230 |
-| **Edit toolbar** | `index.html` + `public/css/premium-ui.css` | HTML: 350-550, CSS: 442-554 |
+| **Edit toolbar** | `index.html` + `public/css/premium-ui.css` | HTML: 350-656, CSS: 442-554, 6104-6178 |
 | **Dark mode colors** | `src/ui/theme/index.js` | 23-56 (theme properties) |
 
 ### 🔧 Core Systems

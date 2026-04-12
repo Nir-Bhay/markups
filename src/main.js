@@ -61,6 +61,7 @@ import markedKatex from 'marked-katex-extension';
 
 // Image resize feature
 import { initImageResize } from './features/image-resize/index.js';
+import { CALLOUT_TYPES, toolbarManager, wrapSelection, wrapSelectionHtml, prefixLine, insertText, insertLink, insertImage, insertTable, getSelection } from './features/toolbar/index.js';
 
 // GFM Extensions
 import markedAlert from 'marked-alert';
@@ -626,9 +627,7 @@ renderer.image = function(token) {
     const alt = token.text || '';
     const title = token.title || '';
     
-    // Check if there's attribute syntax after the image in the raw text
-    // The marked library doesn't parse {width=...} so we need to handle it differently
-    // For now, just render standard image - the processPreviewImages will handle sizing
+    // The preview pass restores any persisted image state after rendering.
     let attrs = `src="${src}" alt="${alt}"`;
     if (title) {
         attrs += ` title="${title}"`;
@@ -1279,9 +1278,8 @@ let convert = (markdown) => {
     // Resolve image store references to actual data URLs before rendering
     let resolvedMarkdown = resolveImageReferences(markdown);
     
-    // Strip image attributes {width=...} before rendering to prevent visibility in preview
-    // Note: processPreviewImages will still find them in the raw markdown if needed
-    let renderableMarkdown = resolvedMarkdown.replace(/(!\[[^\]]*\]\([^)]+\))\s*\{[^}]*(width|height|align)=[^}]*\}/g, '$1');
+    // Strip persisted image attributes before rendering to prevent raw metadata from showing in preview
+    let renderableMarkdown = resolvedMarkdown.replace(/(!\[[^\]]*\]\([^)]+\))\s*\{[^}]*\}/g, '$1');
     
     let html = marked.parse(renderableMarkdown);
     let sanitized = DOMPurify.sanitize(html, { ADD_ATTR: ['id'] });
@@ -1853,6 +1851,92 @@ let setupSnippetsButton = () => {
             dropdown.appendChild(item);
         });
     }
+};
+
+let positionToolbarDropdown = (sheet, trigger) => {
+    const rect = trigger.getBoundingClientRect();
+    sheet.style.top = `${Math.round(rect.bottom + 8)}px`;
+    sheet.style.bottom = 'auto';
+
+    if (window.innerWidth <= 480) {
+        sheet.style.left = '4px';
+        sheet.style.right = '4px';
+    } else {
+        sheet.style.left = 'auto';
+        sheet.style.right = `${Math.max(8, Math.round(window.innerWidth - rect.right))}px`;
+    }
+};
+
+let setupCalloutDropdown = () => {
+    const trigger = document.getElementById('callout-dropdown-btn');
+    const sheet = document.getElementById('callout-dropdown-sheet');
+
+    if (!trigger || !sheet) return;
+
+    const setOpen = (isOpen) => {
+        sheet.classList.toggle('active', isOpen);
+        trigger.setAttribute('aria-expanded', String(isOpen));
+
+        if (isOpen) {
+            positionToolbarDropdown(sheet, trigger);
+        }
+    };
+
+    const renderMenu = () => {
+        if (sheet.dataset.ready === 'true') return;
+
+        const grid = document.createElement('div');
+        grid.className = 'toolbar-overflow-grid';
+
+        const section = document.createElement('div');
+        section.className = 'toolbar-overflow-section';
+        section.textContent = 'Callouts';
+        grid.appendChild(section);
+
+        CALLOUT_TYPES.forEach(({ type, label, icon, color }) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'toolbar-overflow-item';
+            item.dataset.action = `callout-${type}`;
+            item.title = label;
+            item.style.setProperty('--callout-accent', color);
+            item.innerHTML = `
+                <span class="callout-dropdown-badge" aria-hidden="true">${icon}</span>
+                <span class="callout-dropdown-label">${label}</span>
+            `;
+
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                setOpen(false);
+                const selection = getSelection() || 'Content here';
+                insertText(`\n> [!${type.toUpperCase()}]\n> ${selection}\n`);
+            });
+
+            grid.appendChild(item);
+        });
+
+        sheet.innerHTML = '';
+        sheet.appendChild(grid);
+        sheet.dataset.ready = 'true';
+    };
+
+    trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        renderMenu();
+        setOpen(!sheet.classList.contains('active'));
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!sheet.contains(e.target) && e.target !== trigger) {
+            setOpen(false);
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (sheet.classList.contains('active')) {
+            positionToolbarDropdown(sheet, trigger);
+        }
+    });
 };
 
 // ----- download utils -----
@@ -4557,99 +4641,78 @@ let setupKeyboardShortcuts = () => {
 // ----- toolbar actions -----
 
 let insertMarkdown = (type) => {
-    const selection = editor.getSelection();
-    const selectedText = editor.getModel().getValueInRange(selection);
-    let replacement = '';
-    let cursorOffset = 0;
-
     switch (type) {
         case 'bold':
-            replacement = selectedText ? `**${selectedText}**` : '**bold text**';
-            cursorOffset = selectedText ? 2 : 2;
+            wrapSelection('**', '**');
             break;
         case 'italic':
-            replacement = selectedText ? `*${selectedText}*` : '*italic text*';
-            cursorOffset = selectedText ? 1 : 1;
+            wrapSelection('*', '*');
             break;
         case 'strikethrough':
-            replacement = selectedText ? `~~${selectedText}~~` : '~~strikethrough text~~';
-            cursorOffset = selectedText ? 2 : 2;
+            wrapSelection('~~', '~~');
             break;
         case 'h1':
-            replacement = selectedText ? `# ${selectedText}` : '# Heading 1';
-            cursorOffset = 2;
+            prefixLine('# ');
             break;
         case 'h2':
-            replacement = selectedText ? `## ${selectedText}` : '## Heading 2';
-            cursorOffset = 3;
+            prefixLine('## ');
             break;
         case 'h3':
-            replacement = selectedText ? `### ${selectedText}` : '### Heading 3';
-            cursorOffset = 4;
+            prefixLine('### ');
             break;
         case 'link':
-            replacement = selectedText ? `[${selectedText}](url)` : '[link text](url)';
-            cursorOffset = selectedText ? selectedText.length + 3 : 12;
+            insertLink();
             break;
         case 'image':
-            replacement = selectedText ? `![${selectedText}](image-url)` : '![alt text](image-url)';
-            cursorOffset = selectedText ? selectedText.length + 4 : 13;
+            insertImage();
             break;
         case 'code':
-            replacement = selectedText ? `\`\`\`\n${selectedText}\n\`\`\`` : '```\ncode block\n```';
-            cursorOffset = 4;
+            wrapSelection('```\n', '\n```');
             break;
         case 'inline-code':
-            replacement = selectedText ? `\`${selectedText}\`` : '`code`';
-            cursorOffset = selectedText ? 1 : 1;
+            wrapSelection('`', '`');
             break;
         case 'ul':
-            replacement = selectedText ? `- ${selectedText}` : '- List item';
-            cursorOffset = 2;
+            prefixLine('- ');
             break;
         case 'ol':
-            replacement = selectedText ? `1. ${selectedText}` : '1. List item';
-            cursorOffset = 3;
+            prefixLine('1. ');
             break;
         case 'task':
-            replacement = selectedText ? `- [ ] ${selectedText}` : '- [ ] Task item';
-            cursorOffset = 6;
+            prefixLine('- [ ] ');
             break;
         case 'quote':
-            replacement = selectedText ? `> ${selectedText}` : '> Blockquote';
-            cursorOffset = 2;
+            prefixLine('> ');
             break;
         case 'table':
-            replacement = '| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| Cell 1   | Cell 2   | Cell 3   |';
-            cursorOffset = 2;
+            insertTable();
             break;
         case 'emoji':
-            replacement = '😊';
-            cursorOffset = 0;
+            insertText('😊');
             break;
     }
-
-    editor.executeEdits('toolbar', [{
-        range: selection,
-        text: replacement
-    }]);
-
-    // Set cursor position
-    if (!selectedText) {
-        const position = selection.getStartPosition();
-        editor.setPosition({
-            lineNumber: position.lineNumber,
-            column: position.column + cursorOffset
-        });
-    }
-
-    editor.focus();
 };
 
 let setupToolbar = () => {
+    document.getElementById('toolbar-undo').addEventListener('click', () => {
+        editor?.trigger('toolbar', 'undo');
+    });
+    document.getElementById('toolbar-redo').addEventListener('click', () => {
+        editor?.trigger('toolbar', 'redo');
+    });
     document.getElementById('toolbar-bold').addEventListener('click', () => insertMarkdown('bold'));
     document.getElementById('toolbar-italic').addEventListener('click', () => insertMarkdown('italic'));
     document.getElementById('toolbar-strikethrough').addEventListener('click', () => insertMarkdown('strikethrough'));
+    document.getElementById('toolbar-highlight').addEventListener('click', () => wrapSelectionHtml('mark'));
+    document.getElementById('toolbar-text-color').addEventListener('click', (e) => {
+        toolbarManager._openColorPicker(e.currentTarget, 'text');
+    });
+    document.getElementById('toolbar-highlight-color').addEventListener('click', (e) => {
+        toolbarManager._openColorPicker(e.currentTarget, 'highlight');
+    });
+    document.getElementById('toolbar-special-chars').addEventListener('click', (e) => {
+        toolbarManager._openSpecialChars(e.currentTarget);
+    });
     document.getElementById('toolbar-h1').addEventListener('click', () => insertMarkdown('h1'));
     document.getElementById('toolbar-h2').addEventListener('click', () => insertMarkdown('h2'));
     document.getElementById('toolbar-h3').addEventListener('click', () => insertMarkdown('h3'));
@@ -4751,23 +4814,176 @@ let resolveImageReferences = (text) => {
  * 
  * @param {HTMLElement} container - The preview container element
  */
+let decodeImageState = (serialized) => {
+    if (!serialized) return null;
+
+    try {
+        const decoded = decodeURIComponent(serialized);
+        const parsed = JSON.parse(decoded);
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+        console.warn('[Image preview] Failed to decode image state', error);
+        return null;
+    }
+};
+
+let parseImageAttributeBlock = (rawAttrs) => {
+    const attrs = {};
+    const pattern = /([A-Za-z0-9_-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+))/g;
+    let match;
+
+    while ((match = pattern.exec(rawAttrs)) !== null) {
+        const key = match[1].toLowerCase();
+        const value = match[2] ?? match[3] ?? match[4] ?? '';
+        attrs[key] = value;
+    }
+
+    return attrs;
+};
+
+let parseImageAttributes = (content) => {
+    const result = [];
+    const pattern = /!\[([^\]]*)\]\(([^)]+)\)\s*(\{([^}]+)\})?/g;
+    let match;
+
+    while ((match = pattern.exec(content)) !== null) {
+        const attrs = { src: match[2], alt: match[1] };
+
+        if (match[4]) {
+            const rawAttrs = parseImageAttributeBlock(match[4]);
+            const decodedState = decodeImageState(rawAttrs['data-ir']);
+
+            if (decodedState) {
+                Object.assign(attrs, decodedState);
+            } else {
+                if (rawAttrs.width) {
+                    const width = parseInt(rawAttrs.width, 10);
+                    if (!Number.isNaN(width)) attrs.width = width;
+                }
+
+                if (rawAttrs.height) {
+                    const height = parseInt(rawAttrs.height, 10);
+                    if (!Number.isNaN(height)) attrs.height = height;
+                }
+
+                if (rawAttrs.align) {
+                    attrs.align = rawAttrs.align;
+                }
+
+                if (rawAttrs.filter) {
+                    attrs.filter = rawAttrs.filter;
+                }
+
+                if (rawAttrs.borderradius || rawAttrs['border-radius']) {
+                    attrs.borderRadius = rawAttrs.borderradius || rawAttrs['border-radius'];
+                }
+
+                if (rawAttrs.boxshadow || rawAttrs['box-shadow']) {
+                    attrs.boxShadow = rawAttrs.boxshadow || rawAttrs['box-shadow'];
+                }
+
+                if (rawAttrs.opacity) {
+                    const opacity = parseFloat(rawAttrs.opacity);
+                    if (!Number.isNaN(opacity)) attrs.opacity = opacity;
+                }
+
+                if (rawAttrs.transform) {
+                    attrs.transform = rawAttrs.transform;
+                }
+            }
+        }
+
+        result.push(attrs);
+    }
+
+    return result;
+};
+
+let applySavedImageState = (img, state) => {
+    if (!state) return;
+
+    const width = parseInt(state.width, 10);
+    if (!Number.isNaN(width) && width > 0) {
+        img.style.width = `${width}px`;
+    } else if (state.width === null || state.width === undefined || state.width === '') {
+        img.style.width = '';
+    }
+
+    const height = parseInt(state.height, 10);
+    if (!Number.isNaN(height) && height > 0) {
+        img.style.height = `${height}px`;
+    } else if (state.height === null || state.height === undefined || state.height === '') {
+        img.style.height = '';
+    }
+
+    if (state.align) {
+        img.setAttribute('align', state.align);
+        img.style.display = 'block';
+        switch (state.align) {
+            case 'left':
+                img.style.marginLeft = '0';
+                img.style.marginRight = 'auto';
+                break;
+            case 'center':
+                img.style.marginLeft = 'auto';
+                img.style.marginRight = 'auto';
+                break;
+            case 'right':
+                img.style.marginLeft = 'auto';
+                img.style.marginRight = '0';
+                break;
+        }
+    } else {
+        img.removeAttribute('align');
+        img.style.marginLeft = '';
+        img.style.marginRight = '';
+        img.style.display = '';
+    }
+
+    const styleProps = ['filter', 'borderRadius', 'boxShadow', 'opacity', 'transform'];
+    styleProps.forEach((prop) => {
+        const value = state[prop];
+        if (value === null || value === undefined || value === '') {
+            img.style[prop] = '';
+            return;
+        }
+        if (prop === 'opacity') {
+            const opacity = typeof value === 'number' ? value : parseFloat(value);
+            img.style[prop] = Number.isNaN(opacity) ? '' : String(opacity);
+            return;
+        }
+        img.style[prop] = String(value);
+    });
+};
+
 let processPreviewImages = (container) => {
     const images = container.querySelectorAll('img');
-    
-    // Get markdown source to parse saved dimensions
+
+    // Get markdown source to parse saved image state
     const editorContent = editor ? editor.getValue() : '';
     const imageAttrsMap = parseImageAttributes(editorContent);
 
     images.forEach((img, index) => {
+        const markdownAttrs = imageAttrsMap[index] || null;
+        const domState = decodeImageState(img.getAttribute('data-ir'));
+        const imageState = domState || markdownAttrs;
+
+        if (markdownAttrs && markdownAttrs.src) {
+            img.dataset.originalSrc = markdownAttrs.src;
+            img.dataset.irIndex = index;
+        } else {
+            img.dataset.originalSrc = img.getAttribute('src') || '';
+        }
+
         // Images start hidden via CSS (:not([data-loaded="true"]))
         // We only reveal them when they successfully load
 
         const onLoad = function() {
             this.setAttribute('data-loaded', 'true');
-            
-            // Apply saved dimensions from markdown if available
-            applySavedImageDimensions(this, index, imageAttrsMap);
-            
+
+            // Apply saved dimensions and styling from markdown if available
+            applySavedImageState(this, imageState);
+
             this.removeEventListener('load', onLoad);
             this.removeEventListener('error', onError);
         };
@@ -4787,82 +5003,14 @@ let processPreviewImages = (container) => {
             if (img.naturalWidth > 0 && img.naturalHeight > 0) {
                 // Already loaded (e.g., base64 data URL) — reveal immediately
                 img.setAttribute('data-loaded', 'true');
-                // Apply saved dimensions from markdown if available
-                applySavedImageDimensions(img, index, imageAttrsMap);
+                // Apply saved dimensions and styling from markdown if available
+                applySavedImageState(img, imageState);
             } else {
                 // complete but no dimensions means it failed
                 img.style.display = 'none';
             }
         }
     });
-};
-
-/**
- * Parse image attributes from markdown source
- * Extracts {width=X height=Y align=Z} syntax from ![alt](src){attrs}
- * @param {string} content - Markdown content
- * @returns {Array} Array of attribute objects indexed by image order
- */
-let parseImageAttributes = (content) => {
-    const result = [];
-    // Match: ![alt](src){width=123 height=456 align=center}
-    // Updated to support potential whitespace/newline between the image and the attributes
-    const pattern = /!\[([^\]]*)\]\(([^)]+)\)\s*(\{([^}]+)\})?/g;
-    let match;
-    
-    while ((match = pattern.exec(content)) !== null) {
-        const attrs = {};
-        attrs.src = match[2];
-        attrs.alt = match[1];
-        
-        if (match[4]) {
-            // Parse attributes like "width=300 height=200 align=center"
-            const attrParts = match[4].split(/\s+/);
-            attrParts.forEach(part => {
-                const [key, value] = part.split('=');
-                if (key && value) {
-                    attrs[key.toLowerCase()] = value;
-                }
-            });
-        }
-        result.push(attrs);
-    }
-    
-    return result;
-};
-
-/**
- * Apply saved dimensions from markdown to an image element
- * @param {HTMLImageElement} img - Image element
- * @param {number} index - Index of image in DOM
- * @param {Array} attrsMap - Parsed attributes from markdown
- */
-let applySavedImageDimensions = (img, index, attrsMap) => {
-    if (!attrsMap || index >= attrsMap.length) return;
-    
-    const attrs = attrsMap[index];
-    if (!attrs) return;
-    
-    // Apply width
-    if (attrs.width) {
-        const width = parseInt(attrs.width, 10);
-        if (!isNaN(width) && width > 0) {
-            img.style.width = `${width}px`;
-        }
-    }
-    
-    // Apply height
-    if (attrs.height) {
-        const height = parseInt(attrs.height, 10);
-        if (!isNaN(height) && height > 0) {
-            img.style.height = `${height}px`;
-        }
-    }
-    
-    // Apply alignment
-    if (attrs.align) {
-        img.setAttribute('align', attrs.align);
-    }
 };
 
 // ----- Find & Replace Button -----
@@ -5420,7 +5568,7 @@ let setupGlobalEscapeKey = () => {
             });
 
             // Close floating panels
-            const panels = ['#lint-panel', '#toc-panel', '#snippets-dropdown'];
+            const panels = ['#lint-panel', '#toc-panel', '#snippets-dropdown', '#toolbar-overflow-sheet', '#callout-dropdown-sheet'];
             panels.forEach(panelId => {
                 const panel = document.querySelector(panelId);
                 if (panel && !panel.classList.contains('hidden')) {
@@ -5472,6 +5620,9 @@ const initializeApp = () => {
     let lastContent = loadLastContent();
     loadImageStore(); // Load image store before editor setup so convert() can resolve refs
     editor = setupEditor();
+    if (typeof window !== 'undefined') {
+        window.editor = editor;
+    }
     if (lastContent) {
         presetValue(lastContent);
     } else {
@@ -5480,6 +5631,9 @@ const initializeApp = () => {
 
     // Initialize UI components
     setupToolbar();
+    if (document.getElementById('enhanced-toolbar')) {
+        toolbarManager.initialize('#enhanced-toolbar', { render: false });
+    }
     setupResetButton();
     setupCopyButton(editor);
     setupCopyHTMLButton();
@@ -5492,6 +5646,7 @@ const initializeApp = () => {
     setupStatsButton();
     setupTemplatesButton();
     setupSnippetsButton();
+    setupCalloutDropdown();
     setupTOCButton();
 
     // Load and apply scroll sync settings BEFORE setting up the button
@@ -5583,3 +5738,4 @@ if ('serviceWorker' in navigator) {
 window.addEventListener("load", () => {
     initializeApp();
 });
+
