@@ -7,8 +7,8 @@
 import { marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 import { gfmHeadingId } from 'marked-gfm-heading-id';
-import { markedAlerts } from '@polyipseity/marked-alert';
-import { markedFootnote } from 'marked-footnote';
+
+import markedFootnote from 'marked-footnote';
 import Prism from 'prismjs';
 import DOMPurify from 'dompurify';
 import mermaid from 'mermaid';
@@ -127,7 +127,7 @@ class MarkdownService {
                 }
             }),
             gfmHeadingId(),
-            markedAlerts(),
+
             markedFootnote(),
             {
                 extensions: [katexExtension]

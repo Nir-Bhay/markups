@@ -5,7 +5,7 @@
  */
 
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
-import { storageService } from '../../core/storage/index.js';
+import { storage as storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { editorService } from '../../core/editor/index.js';
 
@@ -353,6 +353,6 @@ class ModesManager {
 export const modesManager = new ModesManager();
 
 // Export class and constants
-export { ModesManager, VIEW_MODES, SPLIT_ORIENTATION };
+export { ModesManager };
 
 export default modesManager;

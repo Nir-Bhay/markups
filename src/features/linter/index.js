@@ -519,6 +519,6 @@ class LinterManager {
 export const linterManager = new LinterManager();
 
 // Export class and constants
-export { LinterManager, SEVERITY };
+export { LinterManager };
 
 export default linterManager;

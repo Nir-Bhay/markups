@@ -5,7 +5,7 @@
  */
 
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
-import { storageService } from '../../core/storage/index.js';
+import { storage as storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { markdownService } from '../../core/markdown/index.js';
 
@@ -400,6 +400,6 @@ class GoalsManager {
 export const goalsManager = new GoalsManager();
 
 // Export class and constants
-export { GoalsManager, GOAL_TYPES };
+export { GoalsManager };
 
 export default goalsManager;
