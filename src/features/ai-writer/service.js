@@ -4,7 +4,7 @@
  * @module features/ai-writer/service
  */
 
-import { storageService } from '../../core/storage/index.js';
+import { storage as storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { APP_CONFIG } from '../../config/app.config.js';
 import { SYSTEM_PROMPT } from './system-prompt.js';

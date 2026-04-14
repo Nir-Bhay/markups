@@ -61,6 +61,7 @@ import markedKatex from 'marked-katex-extension';
 
 // Image resize feature
 import { initImageResize } from './features/image-resize/index.js';
+import { tableEditorManager } from './features/index.js';
 import { CALLOUT_TYPES, toolbarManager, wrapSelection, wrapSelectionHtml, prefixLine, insertText, insertLink, insertImage, insertTable, getSelection } from './features/toolbar/index.js';
 
 // GFM Extensions
@@ -5697,6 +5698,7 @@ const initializeApp = () => {
     
     // Initialize image resize feature
     initImageResize({ editor });
+    tableEditorManager.initialize({ editor });
 };
 
 // ----- PWA Support -----

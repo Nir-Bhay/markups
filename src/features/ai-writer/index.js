@@ -7,7 +7,7 @@
 
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
 import { editorService } from '../../core/editor/index.js';
-import { storageService } from '../../core/storage/index.js';
+import { storage as storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { toast } from '../../ui/toast/index.js';
 import { aiService } from './service.js';

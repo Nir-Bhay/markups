@@ -23,6 +23,7 @@ export { imageUploadManager, ImageUploadManager } from './image-upload/index.js'
 export { dividerManager, DividerManager } from './divider/index.js';
 export { mobileUIManager, MobileUIManager } from './mobile/index.js';
 export { importManager, ImportManager } from './import/index.js';
+export { tableEditorManager, TableEditorManager } from './table-editor/index.js';
 
 export default {
     tabs: () => import('./tabs/index.js'),
@@ -41,5 +42,6 @@ export default {
     imageUpload: () => import('./image-upload/index.js'),
     divider: () => import('./divider/index.js'),
     mobile: () => import('./mobile/index.js'),
-    import: () => import('./import/index.js')
+    import: () => import('./import/index.js'),
+    tableEditor: () => import('./table-editor/index.js')
 };
