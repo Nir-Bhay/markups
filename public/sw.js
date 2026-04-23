@@ -1,67 +1,99 @@
 // Service Worker for Markdown Live Preview
-const CACHE_NAME = 'markdown-live-preview-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/css/style.css',
-  '/favicon.png'
-];
+const APP_CACHE_PREFIX = 'markdown-live-preview-app';
+const APP_CACHE_VERSION = 'v2';
+const APP_CACHE_NAME = `${APP_CACHE_PREFIX}-${APP_CACHE_VERSION}`;
+const STATIC_ASSETS = ['/', '/index.html', '/favicon.png'];
 
-// Install event - cache static assets
+const STATIC_ASSET_PATTERN = /\.(?:js|css|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf)$/i;
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('Caching static assets');
+    caches.open(APP_CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.log('Cache addAll error:', err);
+        console.warn('Precache failed for some assets:', err);
       });
     })
   );
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
+      const staleCaches = cacheNames.filter(
+        (name) => name.startsWith(APP_CACHE_PREFIX) && name !== APP_CACHE_NAME
       );
-    })
+
+      return Promise.all(staleCaches.map((name) => caches.delete(name)));
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests
-  if (!event.request.url.startsWith(self.location.origin)) {
+  const { request } = event;
+
+  if (request.method !== 'GET') {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      if (response) {
-        return response;
-      }
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) {
+    return;
+  }
 
-      return fetch(event.request).then((response) => {
-        // Don't cache non-successful responses
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
-        }
+  // Ensure navigations and app shell check network first.
+  if (request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
+    event.respondWith(networkFirst(request));
+    return;
+  }
 
-        // Clone the response
-        const responseToCache = response.clone();
+  // Static assets get instant cached responses with background refresh.
+  if (STATIC_ASSET_PATTERN.test(url.pathname)) {
+    event.respondWith(staleWhileRevalidate(request));
+    return;
+  }
 
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-
-        return response;
-      });
-    })
-  );
+  // Default for same-origin GET requests.
+  event.respondWith(networkFirst(request));
 });
+
+async function networkFirst(request) {
+  const cache = await caches.open(APP_CACHE_NAME);
+
+  try {
+    const networkResponse = await fetch(request);
+    if (isCacheable(networkResponse)) {
+      await cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch {
+    const cachedResponse = await cache.match(request);
+    return cachedResponse || Response.error();
+  }
+}
+
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(APP_CACHE_NAME);
+  const cachedResponse = await cache.match(request);
+
+  const networkPromise = fetch(request)
+    .then((networkResponse) => {
+      if (isCacheable(networkResponse)) {
+        cache.put(request, networkResponse.clone());
+      }
+      return networkResponse;
+    })
+    .catch(() => null);
+
+  return cachedResponse || networkPromise || Response.error();
+}
+
+function isCacheable(response) {
+  return !!response && response.status === 200 && response.type === 'basic';
+}

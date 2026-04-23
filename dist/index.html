@@ -124,12 +124,12 @@
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="favicon.png">
-
-  <script type="module" crossorigin src="/assets/main-BspF7H8W.js"></script>
+
+  <script type="module" crossorigin src="/assets/main-B3JCtrra.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/assets/monaco-editor-C7stnsl5.js">
+  <link rel="modulepreload" crossorigin href="/assets/monaco-editor-Bu6MBb8W.js">
   <link rel="stylesheet" crossorigin href="/assets/monaco-editor-D6kYW_CN.css">
-  <link rel="stylesheet" crossorigin href="/assets/main-rDo8yTnI.css">
+  <link rel="stylesheet" crossorigin href="/assets/main-B9WpDNyT.css">
 </head>
 
 <body class="view-split">
@@ -543,6 +543,13 @@
 
         <!-- Mode Tools -->
         <div class="toolbar-group toolbar-modes-group">
+            <!-- Focus Mode -->
+            <button class="toolbar-btn" id="focus-button" title="Focus Mode" aria-label="Focus Mode">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 3h4M3 5v4M19 3h-4M21 5v4M5 21h4M3 19v-4M19 21h-4M21 19v-4"></path>
+                </svg>
+            </button>
             <!-- Typewriter Mode -->
             <button class="toolbar-btn" id="typewriter-button" title="Typewriter Mode" aria-label="Typewriter Mode">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -614,7 +621,7 @@
             <div class="explorer-header">
                 <span class="explorer-title">Explorer</span>
                 <div class="explorer-actions">
-                    <button class="explorer-action-btn" id="explorer-new-folder-btn" title="New folder"
+                    <button class="explorer-action-btn" id="explorer-new-folder-btn" title="Root mode: click to create at explorer root (hold Shift for nested)"
                         aria-label="New folder">
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                             <path d="M.5 3A1.5 1.5 0 0 1 2 1.5h3.793c.2 0 .39.08.53.22l1.457 1.458A.75.75 0 0 0 8.31 3.5H14A1.5 1.5 0 0 1 15.5 5v7A1.5 1.5 0 0 1 14 13.5H2A1.5 1.5 0 0 1 .5 12V3z"/>
@@ -638,6 +645,17 @@
                     <option value="name">Name</option>
                     <option value="updated">Updated</option>
                 </select>
+            </div>
+            <div class="explorer-sync-bar" id="explorer-sync-bar">
+                <select class="explorer-sync-provider" id="explorer-sync-provider" aria-label="Sync provider">
+                    <option value="google-drive">Google Drive</option>
+                    <option value="dropbox">Dropbox</option>
+                    <option value="onedrive">OneDrive</option>
+                </select>
+                <button class="explorer-sync-btn" id="explorer-sync-connect-btn" title="Connect selected provider">Connect</button>
+                <button class="explorer-sync-btn" id="explorer-sync-now-btn" title="Sync now">Sync</button>
+                <button class="explorer-sync-btn danger" id="explorer-sync-disconnect-btn" title="Disconnect provider">Disconnect</button>
+                <span class="explorer-sync-status" id="explorer-sync-status">Not connected</span>
             </div>
             <div class="explorer-tree" id="explorer-tree"></div>
             <div class="explorer-context-menu" id="explorer-context-menu" role="menu" aria-hidden="true"></div>

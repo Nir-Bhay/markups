@@ -21,6 +21,8 @@ class PWAService {
         this.deferredPrompt = null;
         this.registration = null;
         this.updateInterval = APP_CONFIG.SERVICE_WORKER_UPDATE_INTERVAL_MS || 30 * 60 * 1000;
+        this._updateReloaded = false;
+        this._activationRequested = false;
 
         PWAService.instance = this;
     }
@@ -62,10 +64,21 @@ class PWAService {
             this.registration = await navigator.serviceWorker.register('/sw.js');
             console.log('ServiceWorker registered:', this.registration.scope);
 
+            if (this.registration.waiting) {
+                this._onUpdateAvailable();
+            }
+
             // Check for updates periodically
             setInterval(() => {
                 this.checkForUpdates();
             }, this.updateInterval);
+
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (this._activationRequested && !this._updateReloaded) {
+                    this._updateReloaded = true;
+                    window.location.reload();
+                }
+            });
 
             // Listen for updates
             this.registration.addEventListener('updatefound', () => {
@@ -166,11 +179,12 @@ class PWAService {
 
             const updateBtn = updateBanner.querySelector('.pwa-update-button');
             if (updateBtn) {
-                updateBtn.addEventListener('click', () => {
-                    window.location.reload();
-                });
+                updateBtn.onclick = () => this.activateUpdate();
             }
+            return;
         }
+
+        console.info('PWA update available. Call activateUpdate() to apply.');
     }
 
     /**
@@ -178,9 +192,19 @@ class PWAService {
      */
     async activateUpdate() {
         if (this.registration?.waiting) {
+            this._activationRequested = true;
             this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            window.location.reload();
+            // Fallback in case controllerchange doesn't fire.
+            setTimeout(() => {
+                if (!this._updateReloaded) {
+                    this._updateReloaded = true;
+                    window.location.reload();
+                }
+            }, 1500);
+            return;
         }
+
+        window.location.reload();
     }
 }
 
