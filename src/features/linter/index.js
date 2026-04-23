@@ -9,6 +9,10 @@ import { markdownService } from '../../core/markdown/index.js';
 import { editorService } from '../../core/editor/index.js';
 import { debounce } from '../../utils/debounce.js';
 
+// #region agent log
+fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run3-pre',hypothesisId:'H1_H3',location:'src/features/linter/index.js:13',message:'linter module parsed',data:{severityInlineExport:true},timestamp:Date.now()})}).catch(()=>{});
+// #endregion
+
 /**
  * Issue severity levels
  */
@@ -240,6 +244,10 @@ class LinterManager {
      */
     initialize(container = null) {
         if (this.initialized) return;
+
+        // #region agent log
+        fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run3-pre',hypothesisId:'H2_H4',location:'src/features/linter/index.js:249',message:'linter initialize invoked',data:{hasContainer:!!container,hasEventBus:typeof eventBus==='object'},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
 
         if (container) {
             this.container = typeof container === 'string'
@@ -518,7 +526,7 @@ class LinterManager {
 // Export singleton instance
 export const linterManager = new LinterManager();
 
-// Export class and constants
-export { LinterManager, SEVERITY };
+// Export class (SEVERITY is already exported above)
+export { LinterManager };
 
 export default linterManager;

@@ -35,6 +35,18 @@ import Dexie from 'dexie';
  */
 
 /**
+ * @typedef {Object} FileNode
+ * @property {string} id - Node ID
+ * @property {'folder'|'file'} type - Node type
+ * @property {string} name - Node name
+ * @property {string|null} parentId - Parent node ID (null for root)
+ * @property {number|null} [noteId] - Linked note ID for file nodes
+ * @property {number} order - Sort order under same parent
+ * @property {number} createdAt - Unix timestamp (ms)
+ * @property {number} updatedAt - Unix timestamp (ms)
+ */
+
+/**
  * MarkupsDatabase
  * Extends Dexie with typed table definitions
  */
@@ -56,6 +68,14 @@ class MarkupsDatabase extends Dexie {
             settings: 'key'
         });
 
+        // Schema version 2: add virtual file tree nodes
+        this.version(2).stores({
+            notes: '++id, title, createdAt, updatedAt, *tags, favorite, category, legacyId',
+            note_versions: '++id, noteId, createdAt',
+            settings: 'key',
+            file_nodes: 'id, type, parentId, noteId, [parentId+order], updatedAt'
+        });
+
         /** @type {Dexie.Table<Note, number>} */
         this.notes = this.table('notes');
 
@@ -64,6 +84,9 @@ class MarkupsDatabase extends Dexie {
 
         /** @type {Dexie.Table<Setting, string>} */
         this.settings = this.table('settings');
+
+        /** @type {Dexie.Table<FileNode, string>} */
+        this.file_nodes = this.table('file_nodes');
     }
 }
 

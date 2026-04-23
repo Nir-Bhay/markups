@@ -9,6 +9,10 @@ import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { markdownService } from '../../core/markdown/index.js';
 
+// #region agent log
+fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run2-pre',hypothesisId:'H1_H4',location:'src/features/goals/index.js:12',message:'goals module parsed',data:{goalTypesNamedExport:true},timestamp:Date.now()})}).catch(()=>{});
+// #endregion
+
 /**
  * Goal types
  */
@@ -56,6 +60,10 @@ class GoalsManager {
      */
     initialize(container = null) {
         if (this.initialized) return;
+
+        // #region agent log
+        fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run2-pre',hypothesisId:'H2_H3',location:'src/features/goals/index.js:66',message:'goals initialize invoked',data:{hasContainer:!!container,hasStorageService:typeof storageService==='object'},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
 
         if (container) {
             this.container = typeof container === 'string'
@@ -399,7 +407,7 @@ class GoalsManager {
 // Export singleton instance
 export const goalsManager = new GoalsManager();
 
-// Export class and constants
-export { GoalsManager, GOAL_TYPES };
+// Export class (GOAL_TYPES is already exported above)
+export { GoalsManager };
 
 export default goalsManager;

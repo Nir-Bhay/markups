@@ -6,6 +6,7 @@
 
 import { noteStorage } from './noteStorage.js';
 import { NAMESPACE } from './keys.js';
+import { fileTreeStorage } from './fileTreeStorage.js';
 
 const MIGRATION_FLAG_KEY = 'markups_migrated';
 const MIGRATION_VERSION = 'v1';
@@ -234,6 +235,23 @@ export function clearLegacyData() {
     } catch (error) {
         console.error('Migration: Failed to clear legacy data:', error);
         return false;
+    }
+}
+
+/**
+ * Ensure an IndexedDB file tree exists for current notes.
+ * Safe to run multiple times.
+ * @returns {Promise<{ success: boolean, nodesCreated: number }>}
+ */
+export async function ensureFileTreeFromNotes() {
+    try {
+        const notes = await noteStorage.getAllNotes();
+        await fileTreeStorage.initTree(notes);
+        const nodes = await fileTreeStorage.getTree();
+        return { success: true, nodesCreated: nodes.length };
+    } catch (error) {
+        console.error('Migration: Failed to initialize file tree:', error);
+        return { success: false, nodesCreated: 0 };
     }
 }
 

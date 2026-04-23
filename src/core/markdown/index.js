@@ -7,7 +7,7 @@
 import { marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 import { gfmHeadingId } from 'marked-gfm-heading-id';
-import { markedAlerts } from '@polyipseity/marked-alert';
+import markedAlert from 'marked-alert';
 import { markedFootnote } from 'marked-footnote';
 import Prism from 'prismjs';
 import DOMPurify from 'dompurify';
@@ -127,7 +127,7 @@ class MarkdownService {
                 }
             }),
             gfmHeadingId(),
-            markedAlerts(),
+            markedAlert(),
             markedFootnote(),
             {
                 extensions: [katexExtension]
@@ -316,7 +316,7 @@ class MarkdownService {
             // No need to set inline styles - CSS handles initial hiding
 
             // Reveal on successful load by setting the data attribute
-            const onLoad = function() {
+            const onLoad = function () {
                 this.setAttribute('data-loaded', 'true');
                 this.removeEventListener('load', onLoad);
                 this.removeEventListener('error', onError);
@@ -324,7 +324,7 @@ class MarkdownService {
 
             // Keep hidden on failure — CSS keeps it collapsed, we just ensure
             // the error state is final by removing listeners
-            const onError = function() {
+            const onError = function () {
                 // Explicitly hide via display:none as a backup
                 // (CSS already hides via visibility, but display:none is more thorough)
                 this.style.display = 'none';

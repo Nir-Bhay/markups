@@ -4,9 +4,13 @@
  * @module services/shortcuts
  */
 
-import { eventBus, EVENTS } from '../utils/eventBus.js';
-import { storageService } from '../core/storage/index.js';
-import { STORAGE_KEYS } from '../core/storage/keys.js';
+import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { storageService } from '../../core/storage/index.js';
+import { STORAGE_KEYS } from '../../core/storage/keys.js';
+
+// #region agent log
+fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run1',hypothesisId:'H1_H3',location:'src/services/shortcuts/index.js:11',message:'shortcuts module imported',data:{eventBusImport:'../../utils/eventBus.js',storageImport:'../../core/storage/index.js'},timestamp:Date.now()})}).catch(()=>{});
+// #endregion
 
 /**
  * Default keyboard shortcuts
@@ -79,6 +83,10 @@ class ShortcutsManager {
      */
     initialize() {
         if (this.initialized) return;
+
+        // #region agent log
+        fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run1',hypothesisId:'H2_H4',location:'src/services/shortcuts/index.js:88',message:'shortcuts initialize start',data:{hasStorageService:typeof storageService==='object',storageKeysType:typeof STORAGE_KEYS},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
 
         // Load custom shortcuts
         this._loadCustomShortcuts();

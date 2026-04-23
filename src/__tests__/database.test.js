@@ -9,10 +9,11 @@ let db;
 
 function createTestDb() {
     const testDb = new Dexie('markups_db_test_' + Date.now());
-    testDb.version(1).stores({
+    testDb.version(2).stores({
         notes: '++id, title, createdAt, updatedAt, *tags, favorite, category, legacyId',
         note_versions: '++id, noteId, createdAt',
-        settings: 'key'
+        settings: 'key',
+        file_nodes: 'id, type, parentId, noteId, [parentId+order], updatedAt'
     });
     return testDb;
 }
@@ -31,9 +32,9 @@ describe('Dexie Database Schema', () => {
         expect(db.isOpen()).toBe(true);
     });
 
-    it('should have notes, note_versions, and settings tables', async () => {
+    it('should have notes, note_versions, settings and file_nodes tables', async () => {
         await db.open();
-        expect(db.tables.map(t => t.name).sort()).toEqual(['note_versions', 'notes', 'settings']);
+        expect(db.tables.map(t => t.name).sort()).toEqual(['file_nodes', 'note_versions', 'notes', 'settings']);
     });
 
     it('should create a note with auto-increment ID', async () => {

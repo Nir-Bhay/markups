@@ -138,24 +138,6 @@
             <span class="brand-name">Markups</span>
         </div>
 
-        <!-- Tabs -->
-        <div class="header-tabs" id="tabs-list">
-            <button class="header-tab active" data-tab="1">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                    <path
-                        d="M14 4.5V14a2 2 0 01-2 2H4a2 2 0 01-2-2V2a2 2 0 012-2h5.5L14 4.5zm-3 0A1.5 1.5 0 019.5 3V1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4.5h-2z" />
-                </svg>
-                <span class="tab-name">Untitled.md</span>
-                <span class="tab-close" aria-label="Close tab">×</span>
-            </button>
-            <button class="header-tab-add" id="new-tab-button" aria-label="New tab">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                    <path
-                        d="M8 4a.5.5 0 01.5.5v3h3a.5.5 0 010 1h-3v3a.5.5 0 01-1 0v-3h-3a.5.5 0 010-1h3v-3A.5.5 0 018 4z" />
-                </svg>
-            </button>
-        </div>
-
         <!-- Mobile: New File button (left side) -->
         <button class="mobile-header-btn" id="mobile-new-file-btn" aria-label="New file" title="New file">
             <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
@@ -334,6 +316,13 @@
     <div class="premium-toolbar" id="toolbar" role="toolbar" aria-label="Formatting toolbar">
         <!-- History -->
         <div class="toolbar-group">
+            <button class="toolbar-btn toolbar-btn-explorer" id="explorer-toggle-btn" title="Toggle File Explorer"
+                aria-label="Toggle File Explorer">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path
+                        d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25V2.75A1.75 1.75 0 0 0 14.25 1H1.75zm0 1.5h3v11h-3A.25.25 0 0 1 1.5 13.25V2.75c0-.138.112-.25.25-.25zm4.5 0h8a.25.25 0 0 1 .25.25v10.5a.25.25 0 0 1-.25.25h-8v-11z" />
+                </svg>
+            </button>
             <button class="toolbar-btn" id="toolbar-undo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
             <button class="toolbar-btn" id="toolbar-redo" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
         </div>
@@ -507,7 +496,7 @@
                 </svg>
             </button>
             <!-- Table of Contents -->
-            <button class="toolbar-btn" id="toc-button" title="Table of Contents" aria-label="Toggle Outline">
+            <button class="toolbar-btn" id="toc-button" title="Table of Contents" aria-label="Toggle Table of Contents">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <line x1="8" y1="6" x2="21" y2="6"></line>
@@ -624,6 +613,29 @@
 
     <!-- ==================== MAIN CONTAINER ==================== -->
     <main class="main-container" id="container">
+        <aside class="explorer-drawer" id="explorer-drawer">
+            <div class="explorer-header">
+                <span class="explorer-title">Explorer</span>
+                <div class="explorer-actions">
+                    <button class="explorer-action-btn" id="explorer-new-folder-btn" title="Root mode: click to create at explorer root (hold Shift for nested)"
+                        aria-label="New folder">
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <path d="M.5 3A1.5 1.5 0 0 1 2 1.5h3.793c.2 0 .39.08.53.22l1.457 1.458A.75.75 0 0 0 8.31 3.5H14A1.5 1.5 0 0 1 15.5 5v7A1.5 1.5 0 0 1 14 13.5H2A1.5 1.5 0 0 1 .5 12V3z"/>
+                        </svg>
+                        <span>Folder</span>
+                    </button>
+                    <button class="explorer-action-btn" id="explorer-new-file-btn" title="New file"
+                        aria-label="New file">
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+                        </svg>
+                        <span>File</span>
+                    </button>
+                </div>
+            </div>
+            <div class="explorer-tree" id="explorer-tree"></div>
+            <div class="explorer-resize-handle" id="explorer-resize-handle" aria-hidden="true"></div>
+        </aside>
 
         <!-- Document Outline (Left Sidebar) -->
         <aside class="doc-outline" id="doc-outline">

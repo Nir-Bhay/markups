@@ -205,8 +205,14 @@ class MobileUIManager {
         const newFileBtn = document.getElementById('mobile-new-file-btn');
         if (newFileBtn) {
             newFileBtn.addEventListener('click', () => {
-                const desktopNewTab = document.getElementById('new-tab-button');
-                if (desktopNewTab) desktopNewTab.click();
+                const explorerNewFile = document.getElementById('explorer-new-file-btn');
+                if (explorerNewFile) {
+                    explorerNewFile.click();
+                    return;
+                }
+                if (typeof window.__markups_createFile === 'function') {
+                    window.__markups_createFile();
+                }
             });
         }
 
@@ -306,7 +312,12 @@ class MobileUIManager {
         const newBtn = document.getElementById('mobile-new-btn');
         if (newBtn) {
             newBtn.addEventListener('click', () => {
-                document.getElementById('new-tab-button')?.click();
+                const explorerNewFile = document.getElementById('explorer-new-file-btn');
+                if (explorerNewFile) {
+                    explorerNewFile.click();
+                } else if (typeof window.__markups_createFile === 'function') {
+                    window.__markups_createFile();
+                }
                 this.closeDrawer();
                 // Re-render doc list after short delay
                 setTimeout(() => this.renderDocsList(), 100);

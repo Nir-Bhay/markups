@@ -62,6 +62,10 @@ import markedKatex from 'marked-katex-extension';
 // Image resize feature
 import { initImageResize } from './features/image-resize/index.js';
 import { CALLOUT_TYPES, toolbarManager, wrapSelection, wrapSelectionHtml, prefixLine, insertText, insertLink, insertImage, insertTable, getSelection } from './features/toolbar/index.js';
+import { noteStorage } from './core/storage/noteStorage.js';
+import { fileTreeStorage, ROOT_FOLDER_ID } from './core/storage/fileTreeStorage.js';
+import { runMigration, ensureFileTreeFromNotes } from './core/storage/migration.js';
+import { createExplorerManager } from './features/explorer/index.js';
 
 // GFM Extensions
 import markedAlert from 'marked-alert';
@@ -82,6 +86,7 @@ let scrollBarSync = true;
 let cursorSync = false;
 let darkMode = false;
 let currentTheme = 'vs';
+const TABLE_POPUP_MAX_SIZE = 20;
 
 let goalsData = {
     dailyTarget: 500,
@@ -97,6 +102,7 @@ const localStorageCursorSyncKey = 'cursor_sync_settings';
 const localStorageDarkModeKey = 'dark_mode_settings';
 const localStorageThemeKey = 'theme_settings';
 const localStorageDocsKey = 'docs';
+const localStorageTocVisibilityKey = 'toc_sidebar_visible';
 const localStorageGoalsKey = 'writing_goals';
 const localStorageImagesKey = 'image_store';
 const imageStore = new Map(); // key: imgId, value: base64 data URL
@@ -169,40 +175,91 @@ let isShowingWelcome = false;
 // ----- Tabs System -----
 let documents = [];
 let activeDocId = null;
+let explorerManager = null;
 
-let initTabs = () => {
-    const savedDocs = Storehouse.getItem(localStorageNamespace, localStorageDocsKey);
+const mapNoteToDocument = (note, node) => ({
+    id: node.id,
+    title: (node.name || note.title || 'Untitled').replace(/\.md$/i, ''),
+    content: note.content || '',
+    lastModified: note.updatedAt || Date.now(),
+    noteId: note.id,
+    parentId: node.parentId || ROOT_FOLDER_ID
+});
 
-    if (savedDocs && savedDocs.length > 0) {
-        documents = savedDocs;
-        activeDocId = documents[0].id; // Default to first if state lost
-        // Try to find last active? For now, first is fine or maybe store activeId
-    } else {
-        // Migration or init
-        const oldContent = loadLastContent() || defaultInput;
-        const newDoc = {
-            id: Date.now().toString(),
-            title: 'Untitled',
-            content: oldContent,
-            lastModified: Date.now()
-        };
-        documents = [newDoc];
-        activeDocId = newDoc.id;
-        // Mark as showing welcome content if using default
-        if (oldContent === defaultInput) {
-            isShowingWelcome = true;
+const ensureAtLeastOneDocument = async () => {
+    if (documents.length > 0) return;
+
+    const oldContent = loadLastContent() || defaultInput;
+    const created = await noteStorage.createNote({
+        title: 'Untitled',
+        content: oldContent
+    });
+    if (!created) return;
+
+    const fileNode = await fileTreeStorage.createNode({
+        type: 'file',
+        name: created.title || 'Untitled',
+        parentId: ROOT_FOLDER_ID,
+        noteId: created.id
+    });
+
+    documents = [mapNoteToDocument(created, fileNode)];
+    activeDocId = fileNode.id;
+    if (oldContent === defaultInput) {
+        isShowingWelcome = true;
+    }
+};
+
+const syncTreeFromDocuments = async () => {
+    const nodes = await fileTreeStorage.getTree();
+    explorerManager?.setNodes(nodes);
+    explorerManager?.setSelection(activeDocId);
+};
+
+const createFileInSelectedFolder = async () => {
+    await addNewTab(explorerManager?.getSelectedFolderId());
+};
+
+let initTabs = async () => {
+    await runMigration();
+    await ensureFileTreeFromNotes();
+
+    const notes = await noteStorage.getAllNotes();
+    await fileTreeStorage.initTree(notes);
+    const nodes = await fileTreeStorage.getTree();
+    const fileNodes = nodes
+        .filter((node) => node.type === 'file' && node.noteId)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+    const loadedDocs = [];
+    for (const node of fileNodes) {
+        const note = await noteStorage.getNote(node.noteId);
+        if (note) {
+            loadedDocs.push(mapNoteToDocument(note, node));
         }
     }
+    documents = loadedDocs;
+    await ensureAtLeastOneDocument();
+    activeDocId = documents[0]?.id || null;
+
+    explorerManager = createExplorerManager({
+        onOpenFile: (nodeId) => switchTab(nodeId),
+        onCreateFile: (folderId) => addNewTab(folderId),
+        onCreateFolder: (folderId) => createFolder(folderId),
+        onRenameNode: (node, newName) => renameNode(node, newName),
+        onDeleteNode: (node) => deleteNode(node),
+        onMoveNode: (payload) => moveNodeInTree(payload),
+        onLayoutChange: () => {
+            if (editor) editor.layout();
+        }
+    });
+    explorerManager.initialize();
 
     renderTabs();
+    await syncTreeFromDocuments();
     loadActiveDocument();
 
-    // Setup New Tab button
-    const newTabBtn = document.getElementById('new-tab-button');
-    if (newTabBtn) newTabBtn.addEventListener('click', () => addNewTab());
-
-    // Setup mouse wheel horizontal scroll for tabs
-    setupTabsWheelScroll();
+    window.__markups_createFile = createFileInSelectedFolder;
 };
 
 // Mouse wheel horizontal scroll for tabs
@@ -261,9 +318,6 @@ let startRenameTab = (docId, tabNameElement) => {
 let renderTabs = () => {
     const tabsList = document.getElementById('tabs-list');
     if (!tabsList) return;
-
-    // Keep the "Add Tab" button
-    const addBtn = document.getElementById('new-tab-button');
     tabsList.innerHTML = '';
 
     documents.forEach(doc => {
@@ -301,20 +355,24 @@ let renderTabs = () => {
         tabsList.appendChild(tab);
     });
 
-    if (addBtn) tabsList.appendChild(addBtn);
 };
 
-let addNewTab = () => {
-    // saveCurrentDoc(); // Auto-save happens on change anyway
-
-    const newDoc = {
-        id: Date.now().toString(),
+let addNewTab = async (parentFolderId) => {
+    const note = await noteStorage.createNote({
         title: 'Untitled',
-        content: '',
-        lastModified: Date.now()
-    };
+        content: ''
+    });
+    if (!note) return;
+    const node = await fileTreeStorage.createNode({
+        type: 'file',
+        name: note.title,
+        parentId: parentFolderId || ROOT_FOLDER_ID,
+        noteId: note.id
+    });
+    const newDoc = mapNoteToDocument(note, node);
     documents.push(newDoc);
     window.__markups_documents = documents;
+    await syncTreeFromDocuments();
     switchTab(newDoc.id);
 };
 
@@ -354,7 +412,121 @@ let closeTab = (id) => {
     }
 };
 
-let saveCurrentDoc = () => {
+let createFolder = async (parentFolderId) => {
+    await fileTreeStorage.createNode({
+        type: 'folder',
+        name: 'New Folder',
+        parentId: parentFolderId || ROOT_FOLDER_ID
+    });
+    await syncTreeFromDocuments();
+};
+
+let renameNode = async (node, explicitName = '') => {
+    const currentLabel = node.type === 'file' ? `${node.name}.md` : node.name;
+    const nextName = explicitName || prompt(`Rename ${node.type}:`, currentLabel);
+    if (!nextName || !nextName.trim()) return;
+
+    const renamedNode = await fileTreeStorage.renameNode(node.id, nextName.replace(/\.md$/i, ''));
+    if (!renamedNode) return;
+
+    if (renamedNode.type === 'file') {
+        const docIndex = documents.findIndex((doc) => doc.id === renamedNode.id);
+        if (docIndex !== -1) {
+            documents[docIndex].title = renamedNode.name;
+            const noteId = documents[docIndex].noteId;
+            if (noteId) {
+                await noteStorage.updateNote(noteId, { title: renamedNode.name });
+            }
+            saveDocsToStorage();
+            renderTabs();
+        }
+    }
+    await syncTreeFromDocuments();
+};
+
+let moveNodeInTree = async ({ draggedNode, targetNode, position, sortMode }) => {
+    if (!draggedNode || !targetNode || draggedNode.id === 'root') return;
+
+    const movingIntoFolder = targetNode.type === 'folder';
+    const newParentId = movingIntoFolder ? targetNode.id : (targetNode.parentId || ROOT_FOLDER_ID);
+
+    if (draggedNode.type === 'folder' && newParentId === draggedNode.id) return;
+
+    if (draggedNode.parentId !== newParentId) {
+        await fileTreeStorage.moveNode(draggedNode.id, newParentId);
+    }
+
+    if (sortMode === 'manual' && !movingIntoFolder) {
+        const allNodes = await fileTreeStorage.getTree();
+        const siblings = allNodes
+            .filter((node) => node.parentId === newParentId)
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        const targetIndex = siblings.findIndex((node) => node.id === targetNode.id);
+        if (targetIndex !== -1) {
+            const toIndex = position === 'before' ? targetIndex : targetIndex + 1;
+            await fileTreeStorage.reorderNode(draggedNode.id, toIndex);
+        }
+    }
+
+    await syncTreeFromDocuments();
+};
+
+let deleteNode = async (node) => {
+    const isFolder = node.type === 'folder';
+    const message = isFolder
+        ? `Delete folder "${node.name}"?`
+        : `Delete file "${node.name}.md"?`;
+    if (!confirm(`${message}\n\nThis action cannot be undone.`)) return;
+
+    if (isFolder) {
+        const allNodes = await fileTreeStorage.getTree();
+        const countDescendants = (folderId) => {
+            let count = 0;
+            const stack = [folderId];
+            while (stack.length > 0) {
+                const currentId = stack.pop();
+                const children = allNodes.filter((item) => item.parentId === currentId);
+                children.forEach((child) => {
+                    count += 1;
+                    if (child.type === 'folder') {
+                        stack.push(child.id);
+                    }
+                });
+            }
+            return count;
+        };
+
+        const totalItems = countDescendants(node.id);
+        if (totalItems > 0) {
+            const secondConfirm = confirm(
+                `Folder "${node.name}" contains ${totalItems} item${totalItems === 1 ? '' : 's'}.\n\nDelete everything inside it?`
+            );
+            if (!secondConfirm) return;
+        }
+    }
+
+    const result = await fileTreeStorage.deleteNodeRecursive(node.id);
+    if (result.deletedNoteIds.length > 0) {
+        await Promise.all(result.deletedNoteIds.map((noteId) => noteStorage.deleteNote(noteId)));
+    }
+
+    documents = documents.filter((doc) => !result.deletedNodeIds.includes(doc.id));
+    if (!documents.some((doc) => doc.id === activeDocId)) {
+        activeDocId = documents[0]?.id || null;
+    }
+    if (!activeDocId) {
+        await ensureAtLeastOneDocument();
+        activeDocId = documents[0]?.id || null;
+    }
+    window.__markups_documents = documents;
+    window.__markups_activeDocId = activeDocId;
+    saveDocsToStorage();
+    renderTabs();
+    await syncTreeFromDocuments();
+    loadActiveDocument();
+};
+
+let saveCurrentDoc = async () => {
     const content = editor.getValue();
     const docIndex = documents.findIndex(d => d.id === activeDocId);
 
@@ -370,8 +542,18 @@ let saveCurrentDoc = () => {
             documents[docIndex].title = 'Untitled';
         }
 
+        const noteId = documents[docIndex].noteId;
+        if (noteId) {
+            await noteStorage.updateNote(noteId, {
+                title: documents[docIndex].title,
+                content: documents[docIndex].content
+            });
+            await fileTreeStorage.renameNode(documents[docIndex].id, documents[docIndex].title);
+        }
+
         saveDocsToStorage();
         renderTabs(); // Refresh titles
+        syncTreeFromDocuments();
         showAutosaveIndicator();
     }
 };
@@ -537,14 +719,14 @@ let setupEditor = () => {
             if (previewElement) {
                 const lineTop = editor.getTopForLineNumber(e.position.lineNumber);
                 const editorHeight = editor.getScrollHeight();
-                
+
                 if (editorHeight > 0) {
-                     const ratio = lineTop / editorHeight;
-                     const previewScrollTop = previewElement.scrollHeight * ratio;
-                     
-                     // Center the line in the preview viewport
-                     const targetY = previewScrollTop - (previewElement.clientHeight / 2);
-                     previewElement.scrollTop = Math.max(0, targetY);
+                    const ratio = lineTop / editorHeight;
+                    const previewScrollTop = previewElement.scrollHeight * ratio;
+
+                    // Center the line in the preview viewport
+                    const targetY = previewScrollTop - (previewElement.clientHeight / 2);
+                    previewElement.scrollTop = Math.max(0, targetY);
                 }
             }
             setTimeout(() => { isCursorSyncing = false; }, 50);
@@ -622,17 +804,17 @@ renderer.heading = function (token) {
 };
 
 // Custom image renderer to support {width=X height=Y align=Z} attributes
-renderer.image = function(token) {
+renderer.image = function (token) {
     const src = token.href || '';
     const alt = token.text || '';
     const title = token.title || '';
-    
+
     // The preview pass restores any persisted image state after rendering.
     let attrs = `src="${src}" alt="${alt}"`;
     if (title) {
         attrs += ` title="${title}"`;
     }
-    
+
     return `<img ${attrs}>`;
 };
 
@@ -1277,10 +1459,10 @@ let convert = (markdown) => {
     // options variable removed as headerIds and mangle are deprecated
     // Resolve image store references to actual data URLs before rendering
     let resolvedMarkdown = resolveImageReferences(markdown);
-    
+
     // Strip persisted image attributes before rendering to prevent raw metadata from showing in preview
     let renderableMarkdown = resolvedMarkdown.replace(/(!\[[^\]]*\]\([^)]+\))\s*\{[^}]*\}/g, '$1');
-    
+
     let html = marked.parse(renderableMarkdown);
     let sanitized = DOMPurify.sanitize(html, { ADD_ATTR: ['id'] });
 
@@ -4230,36 +4412,43 @@ let setupHelpButton = () => {
     });
 };
 
-// TOC toggle button (now controls doc-outline)
+const saveTocSidebarVisibility = (isVisible) => {
+    const expiredAt = new Date(2099, 1, 1);
+    Storehouse.setItem(localStorageNamespace, localStorageTocVisibilityKey, isVisible, expiredAt);
+};
+
+const loadTocSidebarVisibility = () => {
+    const stored = Storehouse.getItem(localStorageNamespace, localStorageTocVisibilityKey);
+    if (typeof stored === 'boolean') return stored;
+    return true;
+};
+
+const applyTocVisibility = (tocSidebar, tocBtn, mobileOverlay, isVisible) => {
+    if (!tocSidebar) return;
+    tocSidebar.classList.toggle('hidden', !isVisible);
+    tocSidebar.classList.toggle('visible', isVisible && window.innerWidth <= 768);
+    if (!isVisible) {
+        mobileOverlay?.classList.remove('active');
+    }
+    tocBtn?.classList.toggle('active', isVisible);
+    saveTocSidebarVisibility(isVisible);
+};
+
+// TOC toggle button (right sidebar only)
 let setupTOCButton = () => {
     const tocBtn = document.querySelector("#toc-button");
-    const docOutline = document.querySelector("#doc-outline");
-    const outlineClose = document.querySelector("#outline-close");
     const tocSidebar = document.querySelector("#toc-sidebar");
+    const mobileOverlay = document.querySelector('#mobile-toc-overlay');
+    const initialTocVisible = loadTocSidebarVisibility();
 
-    if (tocBtn && docOutline) {
+    applyTocVisibility(tocSidebar, tocBtn, mobileOverlay, initialTocVisible);
+
+    if (tocBtn && tocSidebar) {
         tocBtn.addEventListener('click', (event) => {
             event.preventDefault();
-            docOutline.classList.toggle('visible');
-            tocBtn.classList.toggle('active');
-
-            // Also toggle right TOC sidebar visibility
-            if (tocSidebar) {
-                if (docOutline.classList.contains('visible')) {
-                    // When showing outline, also show right sidebar if it was hidden
-                    tocSidebar.classList.remove('hidden');
-                }
-            }
-
-            showToast(docOutline.classList.contains('visible') ? 'Outline shown' : 'Outline hidden', 'info', 1500);
-        });
-    }
-
-    // Close button inside outline
-    if (outlineClose && docOutline) {
-        outlineClose.addEventListener('click', () => {
-            docOutline.classList.remove('visible');
-            tocBtn?.classList.remove('active');
+            const nextVisible = tocSidebar.classList.contains('hidden');
+            applyTocVisibility(tocSidebar, tocBtn, mobileOverlay, nextVisible);
+            showToast(nextVisible ? 'Table of contents shown' : 'Table of contents hidden', 'info', 1400);
         });
     }
 
@@ -4276,41 +4465,26 @@ let setupTOCButton = () => {
 
     if (tocCloseBtn && tocSidebar) {
         tocCloseBtn.addEventListener('click', () => {
-            tocSidebar.classList.remove('visible');
-            tocSidebar.classList.add('hidden');
-            // Also hide mobile overlay
-            const mobileOverlay = document.querySelector('#mobile-toc-overlay');
-            if (mobileOverlay) mobileOverlay.classList.remove('active');
-            showToast('Table of contents hidden. Click Toggle Outline to show again.', 'info', 2500);
+            applyTocVisibility(tocSidebar, tocBtn, mobileOverlay, false);
+            showToast('Table of contents hidden', 'info', 1500);
         });
     }
 
     // Floating TOC button for mobile
     const floatingTocBtn = document.querySelector('#floating-toc-btn');
-    const mobileOverlay = document.querySelector('#mobile-toc-overlay');
 
     if (floatingTocBtn && tocSidebar) {
         floatingTocBtn.addEventListener('click', () => {
-            const isVisible = tocSidebar.classList.contains('visible');
-
-            if (isVisible) {
-                tocSidebar.classList.remove('visible');
-                tocSidebar.classList.add('hidden');
-                if (mobileOverlay) mobileOverlay.classList.remove('active');
-            } else {
-                tocSidebar.classList.add('visible');
-                tocSidebar.classList.remove('hidden');
-                if (mobileOverlay) mobileOverlay.classList.add('active');
-            }
+            const nextVisible = tocSidebar.classList.contains('hidden');
+            applyTocVisibility(tocSidebar, tocBtn, mobileOverlay, nextVisible);
+            if (nextVisible && mobileOverlay) mobileOverlay.classList.add('active');
         });
     }
 
     // Close TOC when clicking overlay
     if (mobileOverlay && tocSidebar) {
         mobileOverlay.addEventListener('click', () => {
-            tocSidebar.classList.remove('visible');
-            tocSidebar.classList.add('hidden');
-            mobileOverlay.classList.remove('active');
+            applyTocVisibility(tocSidebar, tocBtn, mobileOverlay, false);
         });
     }
 };
@@ -4358,7 +4532,7 @@ let setViewMode = (mode) => {
     const leftPane = document.getElementById('edit');      // .editor-pane
     const rightPane = document.getElementById('preview');  // .preview-pane
     const divider = document.getElementById('split-divider');
-    const tocSidebar = document.querySelector('.right-toc-sidebar');
+    const tocSidebar = document.querySelector('#toc-sidebar');
     const btns = {
         code: document.getElementById('view-code'),
         split: document.getElementById('view-split'),
@@ -4631,6 +4805,9 @@ let setupKeyboardShortcuts = () => {
         }
         // ESC: Exit Focus/Fullscreen
         else if (event.key === 'Escape') {
+            if (closeTableSizePopover()) {
+                return;
+            }
             if (isFocusMode) {
                 toggleFocusMode();
             }
@@ -4639,6 +4816,164 @@ let setupKeyboardShortcuts = () => {
 };
 
 // ----- toolbar actions -----
+
+let tableSizePopoverState = {
+    panel: null,
+    trigger: null,
+    onDocumentMouseDown: null,
+    onDocumentKeyDown: null
+};
+
+let closeTableSizePopover = () => {
+    if (!tableSizePopoverState.panel) return false;
+
+    if (tableSizePopoverState.onDocumentMouseDown) {
+        document.removeEventListener('mousedown', tableSizePopoverState.onDocumentMouseDown, true);
+    }
+    if (tableSizePopoverState.onDocumentKeyDown) {
+        document.removeEventListener('keydown', tableSizePopoverState.onDocumentKeyDown, true);
+    }
+
+    tableSizePopoverState.panel.remove();
+    tableSizePopoverState = {
+        panel: null,
+        trigger: null,
+        onDocumentMouseDown: null,
+        onDocumentKeyDown: null
+    };
+    return true;
+};
+
+let openTableSizePopover = (triggerEl) => {
+    if (!triggerEl) return;
+
+    closeTableSizePopover();
+
+    const panel = document.createElement('div');
+    panel.className = 'table-size-popover';
+    panel.innerHTML = `
+        <div class="table-size-popover-title">Insert table</div>
+        <div class="table-size-presets" role="group" aria-label="Quick table sizes">
+            <button class="table-size-preset-btn" type="button" data-rows="2" data-cols="2">2x2</button>
+            <button class="table-size-preset-btn" type="button" data-rows="3" data-cols="3">3x3</button>
+            <button class="table-size-preset-btn" type="button" data-rows="4" data-cols="4">4x4</button>
+        </div>
+        <div class="table-size-custom">
+            <label class="table-size-field">
+                <span>Rows</span>
+                <input type="number" min="1" max="${TABLE_POPUP_MAX_SIZE}" value="3" id="table-size-rows" />
+            </label>
+            <label class="table-size-field">
+                <span>Columns</span>
+                <input type="number" min="1" max="${TABLE_POPUP_MAX_SIZE}" value="3" id="table-size-cols" />
+            </label>
+        </div>
+        <div class="table-size-actions">
+            <button class="table-size-insert-btn" type="button">Insert</button>
+        </div>
+        <div class="table-size-error" aria-live="polite"></div>
+    `;
+
+    document.body.appendChild(panel);
+
+    const rect = triggerEl.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    let left = rect.left;
+    const top = rect.bottom + 8;
+
+    if (left + panelRect.width > window.innerWidth - 8) {
+        left = window.innerWidth - panelRect.width - 8;
+    }
+    if (left < 8) {
+        left = 8;
+    }
+
+    panel.style.left = `${left}px`;
+    panel.style.top = `${top}px`;
+
+    const rowsInput = panel.querySelector('#table-size-rows');
+    const colsInput = panel.querySelector('#table-size-cols');
+    const insertBtn = panel.querySelector('.table-size-insert-btn');
+    const errorEl = panel.querySelector('.table-size-error');
+
+    const parseSafeDimension = (value) => {
+        const n = Number.parseInt(String(value), 10);
+        if (!Number.isFinite(n) || n < 1) return null;
+        return Math.min(n, TABLE_POPUP_MAX_SIZE);
+    };
+
+    const insertWithSize = (rows, cols) => {
+        insertTable(rows, cols);
+        closeTableSizePopover();
+    };
+
+    const showError = (message) => {
+        errorEl.textContent = message;
+    };
+
+    panel.querySelectorAll('.table-size-preset-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const rows = Number.parseInt(btn.dataset.rows, 10);
+            const cols = Number.parseInt(btn.dataset.cols, 10);
+            insertWithSize(rows, cols);
+        });
+    });
+
+    const submitCustom = () => {
+        const rows = parseSafeDimension(rowsInput.value);
+        const cols = parseSafeDimension(colsInput.value);
+
+        if (!rows || !cols) {
+            showError(`Please enter valid numbers between 1 and ${TABLE_POPUP_MAX_SIZE}.`);
+            return;
+        }
+
+        rowsInput.value = String(rows);
+        colsInput.value = String(cols);
+        showError('');
+        insertWithSize(rows, cols);
+    };
+
+    rowsInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            submitCustom();
+        }
+    });
+    colsInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            submitCustom();
+        }
+    });
+    insertBtn.addEventListener('click', submitCustom);
+
+    const onDocumentMouseDown = (event) => {
+        const target = event.target;
+        if (!panel.contains(target) && !triggerEl.contains(target)) {
+            closeTableSizePopover();
+        }
+    };
+    const onDocumentKeyDown = (event) => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeTableSizePopover();
+        }
+    };
+
+    document.addEventListener('mousedown', onDocumentMouseDown, true);
+    document.addEventListener('keydown', onDocumentKeyDown, true);
+
+    tableSizePopoverState = {
+        panel,
+        trigger: triggerEl,
+        onDocumentMouseDown,
+        onDocumentKeyDown
+    };
+
+    rowsInput.focus();
+    rowsInput.select();
+};
 
 let insertMarkdown = (type) => {
     switch (type) {
@@ -4724,7 +5059,9 @@ let setupToolbar = () => {
     document.getElementById('toolbar-ol').addEventListener('click', () => insertMarkdown('ol'));
     document.getElementById('toolbar-task').addEventListener('click', () => insertMarkdown('task'));
     document.getElementById('toolbar-quote').addEventListener('click', () => insertMarkdown('quote'));
-    document.getElementById('toolbar-table').addEventListener('click', () => insertMarkdown('table'));
+    document.getElementById('toolbar-table').addEventListener('click', (event) => {
+        openTableSizePopover(event.currentTarget);
+    });
     document.getElementById('toolbar-emoji').addEventListener('click', () => insertMarkdown('emoji'));
 };
 
@@ -4978,7 +5315,7 @@ let processPreviewImages = (container) => {
         // Images start hidden via CSS (:not([data-loaded="true"]))
         // We only reveal them when they successfully load
 
-        const onLoad = function() {
+        const onLoad = function () {
             this.setAttribute('data-loaded', 'true');
 
             // Apply saved dimensions and styling from markdown if available
@@ -4988,7 +5325,7 @@ let processPreviewImages = (container) => {
             this.removeEventListener('error', onError);
         };
 
-        const onError = function() {
+        const onError = function () {
             // Keep hidden on failure (CSS already hides, display:none is backup)
             this.style.display = 'none';
             this.removeEventListener('load', onLoad);
@@ -5213,6 +5550,7 @@ let setupDragDropTabs = () => {
                         const [moved] = documents.splice(fromIndex, 1);
                         documents.splice(toIndex, 0, moved);
                         saveDocsToStorage();
+                        fileTreeStorage.reorderNode(moved.id, toIndex);
                         renderTabs();
                         showToast('Tab reordered', 'info', 1000);
                     }
@@ -5423,23 +5761,25 @@ let setupDivider = () => {
     const leftPane = document.getElementById('edit');
     const rightPane = document.getElementById('preview');
     const container = document.getElementById('container');
-    const outline = document.getElementById('doc-outline');
 
     if (!divider || !leftPane || !rightPane || !container) return;
 
     let isDragging = false;
 
-    // Helper to calculate available width (excluding outline sidebar)
+    // Helper to calculate available width (excluding explorer sidebar)
     const getAvailableWidth = () => {
         const containerRect = container.getBoundingClientRect();
-        const outlineWidth = outline && outline.classList.contains('visible') ? outline.offsetWidth : 0;
+        const explorer = document.getElementById('explorer-drawer');
+        const explorerWidth = explorer && explorer.classList.contains('open') ? explorer.offsetWidth : 0;
         const dividerWidth = divider.offsetWidth || 8;
-        return containerRect.width - outlineWidth - dividerWidth;
+        return containerRect.width - explorerWidth - dividerWidth;
     };
 
-    // Helper to get outline offset
+    // Helper to get left sidebar offset
     const getOutlineOffset = () => {
-        return outline && outline.classList.contains('visible') ? outline.offsetWidth : 0;
+        const explorer = document.getElementById('explorer-drawer');
+        const explorerWidth = explorer && explorer.classList.contains('open') ? explorer.offsetWidth : 0;
+        return explorerWidth;
     };
 
     divider.addEventListener('mouseenter', () => {
@@ -5613,7 +5953,7 @@ let setupGlobalEscapeKey = () => {
 };
 
 // ----- entry point -----
-const initializeApp = () => {
+const initializeApp = async () => {
     // Define custom Monaco themes first
     defineCustomThemes();
 
@@ -5661,7 +6001,11 @@ const initializeApp = () => {
     setupFocusMode();
     setupTypewriterButton();
     setupFullscreenButton();
-    setupViewButtons(); initTabs(); setupSearch(); setupLinter(); setupGoals();
+    setupViewButtons();
+    await initTabs();
+    setupSearch();
+    setupLinter();
+    setupGoals();
     setupKeyboardShortcuts();
     setupGlobalEscapeKey();
 
@@ -5694,7 +6038,7 @@ const initializeApp = () => {
 
     // Initialize stats with current content
     updateStats(editor.getValue());
-    
+
     // Initialize image resize feature
     initImageResize({ editor });
 };
@@ -5736,6 +6080,8 @@ if ('serviceWorker' in navigator) {
 }
 
 window.addEventListener("load", () => {
-    initializeApp();
+    initializeApp().catch((error) => {
+        console.error('Failed to initialize app:', error);
+    });
 });
 

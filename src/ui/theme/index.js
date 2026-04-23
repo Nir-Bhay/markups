@@ -216,7 +216,7 @@ class ThemeManager {
 // Export singleton instance
 export const themeManager = new ThemeManager();
 
-// Export class and constants
-export { ThemeManager, THEMES };
+// Export class
+export { ThemeManager };
 
 export default themeManager;

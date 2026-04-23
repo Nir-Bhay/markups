@@ -11,10 +11,11 @@ let noteStorage;
 
 async function setupFreshDb() {
     const testDb = new Dexie('markups_db_migration_test_' + Date.now());
-    testDb.version(1).stores({
+    testDb.version(2).stores({
         notes: '++id, title, createdAt, updatedAt, *tags, favorite, category, legacyId',
         note_versions: '++id, noteId, createdAt',
-        settings: 'key'
+        settings: 'key',
+        file_nodes: 'id, type, parentId, noteId, [parentId+order], updatedAt'
     });
     return testDb;
 }
@@ -108,6 +109,24 @@ describe('Data Migration', () => {
             const all = await db.notes.toArray();
             expect(all[0].title).toBe('Note 1');
             expect(all[1].legacyId).toBe('l2');
+        });
+    });
+
+    describe('file tree bootstrapping', () => {
+        it('should support file_nodes table in migration schema', async () => {
+            await db.file_nodes.put({
+                id: 'root',
+                type: 'folder',
+                name: 'Workspace',
+                parentId: null,
+                order: 0,
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+            });
+
+            const root = await db.file_nodes.get('root');
+            expect(root).toBeDefined();
+            expect(root.type).toBe('folder');
         });
     });
 
