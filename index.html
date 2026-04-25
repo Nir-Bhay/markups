@@ -320,7 +320,7 @@
                 aria-label="Toggle File Explorer">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path
-                        d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25V2.75A1.75 1.75 0 0 0 14.25 1H1.75zm0 1.5h3v11h-3A.25.25 0 0 1 1.5 13.25V2.75c0-.138.112-.25.25-.25zm4.5 0h8a.25.25 0 0 1 .25.25v10.5a.25.25 0 0 1-.25.25h-8v-11z" />
+                        d="M1.75 2A1.75 1.75 0 0 0 0 3.75v8.5C0 13.216.784 14 1.75 14h12.5A1.75 1.75 0 0 0 16 12.25V5.75A1.75 1.75 0 0 0 14.25 4H8.707a1.75 1.75 0 0 1-1.237-.513l-.957-.957A1.75 1.75 0 0 0 5.275 2H1.75zm0 1.5h3.525a.25.25 0 0 1 .177.073l.957.957A3.25 3.25 0 0 0 8.707 5.5h5.543a.25.25 0 0 1 .25.25v6.5a.25.25 0 0 1-.25.25H1.75a.25.25 0 0 1-.25-.25v-8.5c0-.138.112-.25.25-.25z" />
                 </svg>
             </button>
             <button class="toolbar-btn" id="toolbar-undo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
@@ -456,8 +456,8 @@
                     <path d="M0 8a.5.5 0 01.5-.5h15a.5.5 0 010 1H.5A.5.5 0 010 8z" />
                 </svg>
             </button>
-            <button class="toolbar-btn" id="callout-dropdown-btn" title="Callouts" aria-label="Callouts" aria-haspopup="true"
-                aria-expanded="false">
+            <button class="toolbar-btn" id="callout-dropdown-btn" title="Callouts" aria-label="Callouts"
+                aria-haspopup="true" aria-expanded="false">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -466,9 +466,11 @@
                 </svg>
             </button>
             <button class="toolbar-btn toolbar-btn-text" id="toolbar-text-color" title="Text Color"
-                aria-label="Text Color"><span style="border-bottom:2px solid currentColor;padding-bottom:1px;">A</span></button>
+                aria-label="Text Color"><span
+                    style="border-bottom:2px solid currentColor;padding-bottom:1px;">A</span></button>
             <button class="toolbar-btn toolbar-btn-text" id="toolbar-highlight-color" title="Highlight Color"
-                aria-label="Highlight Color"><span style="background:rgba(250, 204, 21, 0.45);padding:0 2px;border-radius:2px;color:var(--text-primary);">A</span></button>
+                aria-label="Highlight Color"><span
+                    style="background:rgba(250, 204, 21, 0.45);padding:0 2px;border-radius:2px;color:var(--text-primary);">A</span></button>
             <button class="toolbar-btn toolbar-btn-text" id="toolbar-special-chars" title="Special Characters"
                 aria-label="Special Characters">Ω</button>
         </div>
@@ -489,10 +491,13 @@
                 </svg>
             </button>
             <!-- AI Writer -->
-            <button class="toolbar-btn" id="ai-writer-button" title="AI Writing Assistant (Ctrl+Shift+A)" aria-label="AI Writing Assistant">
+            <button class="toolbar-btn" id="ai-writer-button" title="AI Writing Assistant (Ctrl+Shift+A)"
+                aria-label="AI Writing Assistant">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    <polygon
+                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                    </polygon>
                 </svg>
             </button>
             <!-- Table of Contents -->
@@ -617,17 +622,20 @@
             <div class="explorer-header">
                 <span class="explorer-title">Explorer</span>
                 <div class="explorer-actions">
-                    <button class="explorer-action-btn" id="explorer-new-folder-btn" title="Root mode: click to create at explorer root (hold Shift for nested)"
+                    <button class="explorer-action-btn" id="explorer-new-folder-btn"
+                        title="Root mode: click to create at explorer root (hold Shift for nested)"
                         aria-label="New folder">
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                            <path d="M.5 3A1.5 1.5 0 0 1 2 1.5h3.793c.2 0 .39.08.53.22l1.457 1.458A.75.75 0 0 0 8.31 3.5H14A1.5 1.5 0 0 1 15.5 5v7A1.5 1.5 0 0 1 14 13.5H2A1.5 1.5 0 0 1 .5 12V3z"/>
+                            <path
+                                d="M.5 3A1.5 1.5 0 0 1 2 1.5h3.793c.2 0 .39.08.53.22l1.457 1.458A.75.75 0 0 0 8.31 3.5H14A1.5 1.5 0 0 1 15.5 5v7A1.5 1.5 0 0 1 14 13.5H2A1.5 1.5 0 0 1 .5 12V3z" />
                         </svg>
                         <span>Folder</span>
                     </button>
                     <button class="explorer-action-btn" id="explorer-new-file-btn" title="New file"
                         aria-label="New file">
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                            <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+                            <path
+                                d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z" />
                         </svg>
                         <span>File</span>
                     </button>
@@ -1299,7 +1307,8 @@
                                 <p>View source code and contribute</p>
                             </div>
                         </a>
-                        <a href="https://github.com/Nir-Bhay/markups/blob/main/README.md" class="about-card" target="_blank">
+                        <a href="https://github.com/Nir-Bhay/markups/blob/main/README.md" class="about-card"
+                            target="_blank">
                             <div class="about-card-icon about-card-icon-purple">
                                 <span class="material-symbols-outlined">menu_book</span>
                             </div>
