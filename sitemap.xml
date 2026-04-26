@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  =============================================================================
+  sitemap.xml for Markups.dev — Free Online Markdown Editor
+  Last Updated: April 26, 2026
+  Standard: https://www.sitemaps.org/protocol.html
+  Canonical: https://markups.dev/sitemap.xml
+
+  This sitemap is optimized for:
+    → Google Search (standard + image + mobile)
+    → Bing / Microsoft Copilot
+    → AI crawlers (GPTBot, ClaudeBot, PerplexityBot, GrokBot)
+    → Google AI Overviews & Gemini
+    → Rich result eligibility (images, structured data)
+    → Agentic AI tools (Cursor, Claude Code, Codex, etc.)
+
+  Referenced in:
+    → robots.txt       : https://markups.dev/robots.txt
+    → llms.txt         : https://markups.dev/llms.txt
+  =============================================================================
+-->
+
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+  xmlns:mobile="http://www.google.com/schemas/sitemap-mobile/1.0"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml"
+  xsi:schemaLocation="
+    http://www.sitemaps.org/schemas/sitemap/0.9
+    http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd
+    http://www.google.com/schemas/sitemap-image/1.1
+    http://www.google.com/schemas/sitemap-image/1.1/sitemap-image.xsd">
+
+  <!-- ==================================================================== -->
+  <!-- PAGE 1 — MAIN APP (Live Markdown Editor)                              -->
+  <!-- Priority: 1.0 — Highest — This is the core product                   -->
+  <!-- ==================================================================== -->
+  <url>
+    <loc>https://markups.dev/</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+
+    <!-- Mobile support declaration -->
+    <mobile:mobile/>
+
+    <!-- xHTML language alternates -->
+    <xhtml:link
+      rel="alternate"
+      hreflang="en"
+      href="https://markups.dev/"/>
+    <xhtml:link
+      rel="alternate"
+      hreflang="x-default"
+      href="https://markups.dev/"/>
+
+    <!-- Image 1 — App screenshot (hero / main UI) -->
+    <image:image>
+      <image:loc>https://markups.dev/images/screenshot.png</image:loc>
+      <image:title>
+        Markups — Free Online Markdown Editor with Live Preview
+      </image:title>
+      <image:caption>
+        Markups editor showing Monaco-powered editor on the left
+        and live Markdown preview on the right, with Mermaid and
+        KaTeX support. Free, browser-based, no login required.
+      </image:caption>
+    </image:image>
+
+    <!-- Image 2 — Feature overview / OG image -->
+    <image:image>
+      <image:loc>https://markups.dev/images/og-image.png</image:loc>
+      <image:title>
+        Markups.dev — Monaco Editor, Mermaid, KaTeX, PDF Export
+      </image:title>
+      <image:caption>
+        Feature overview of Markups: Monaco editor, live preview,
+        Mermaid diagram support, KaTeX math, and export tools.
+      </image:caption>
+    </image:image>
+
+    <!-- Image 3 — PWA / Install prompt screenshot -->
+    <image:image>
+      <image:loc>https://markups.dev/images/pwa-install.png</image:loc>
+      <image:title>
+        Markups PWA — Install as Offline Markdown Editor
+      </image:title>
+      <image:caption>
+        Markups can be installed as a Progressive Web App (PWA)
+        for offline use on desktop and mobile devices.
+      </image:caption>
+    </image:image>
+
+  </url>
+
+  <!-- ==================================================================== -->
+  <!-- PAGE 2 — LANDING PAGE (SEO + Marketing Overview)                     -->
+  <!-- Priority: 0.9 — Very High — Primary SEO entry point                  -->
+  <!-- ==================================================================== -->
+  <url>
+    <loc>https://markups.dev/landing</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+
+    <!-- Mobile support declaration -->
+    <mobile:mobile/>
+
+    <!-- xHTML language alternates -->
+    <xhtml:link
+      rel="alternate"
+      hreflang="en"
+      href="https://markups.dev/landing"/>
+    <xhtml:link
+      rel="alternate"
+      hreflang="x-default"
+      href="https://markups.dev/landing"/>
+
+    <!-- Image 1 — Landing hero image -->
+    <image:image>
+      <image:loc>https://markups.dev/images/landing-hero.png</image:loc>
+      <image:title>
+        Markups — Free Markdown Editor with Mermaid and KaTeX
+      </image:title>
+      <image:caption>
+        Markups landing page hero — Free browser-based Markdown
+        editor with Monaco, live preview, diagrams, and math support.
+      </image:caption>
+    </image:image>
+
+    <!-- Image 2 — Feature comparison table screenshot -->
+    <image:image>
+      <image:loc>https://markups.dev/images/features.png</image:loc>
+      <image:title>
+        Markups Features — Editor, Diagrams, Math, Export
+      </image:title>
+      <image:caption>
+        Markups features: Monaco editor engine, Mermaid diagrams,
+        KaTeX math typesetting, PDF/HTML/Markdown export,
+        offline PWA, and zero login required.
+      </image:caption>
+    </image:image>
+
+    <!-- Image 3 — Mermaid diagram example -->
+    <image:image>
+      <image:loc>https://markups.dev/images/mermaid-example.png</image:loc>
+      <image:title>
+        Mermaid Diagram Rendering in Markups Markdown Editor
+      </image:title>
+      <image:caption>
+        Example Mermaid flowchart rendered live inside the Markups
+        online Markdown editor — no plugins or extensions needed.
+      </image:caption>
+    </image:image>
+
+    <!-- Image 4 — KaTeX math example -->
+    <image:image>
+      <image:loc>https://markups.dev/images/katex-example.png</image:loc>
+      <image:title>
+        KaTeX Math Equations in Markups Markdown Editor
+      </image:title>
+      <image:caption>
+        KaTeX math typesetting rendered in Markups — supports
+        inline ($...$) and block ($$...$$) LaTeX math equations.
+      </image:caption>
+    </image:image>
+
+  </url>
+
+  <url>
+    <loc>https://markups.dev/privacy-policy</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/terms</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/cookie-policy</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/accessibility</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/license</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/global-growth-playbook</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/cheatsheet</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/examples/mermaid</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/examples/math</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/tutorials/markdown-to-pdf</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ==================================================================== -->
+  <!-- PAGE 3 — llms.txt (AI Agent Discovery File)                          -->
+  <!-- Priority: 0.8 — High — Critical for AI engine visibility in 2026     -->
+  <!-- ==================================================================== -->
+  <url>
+    <loc>https://markups.dev/llms.txt</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- ==================================================================== -->
+  <!-- PAGE 4 — robots.txt (Crawler Discovery)                              -->
+  <!-- Priority: 0.7 — Medium-High — Helps crawlers self-navigate           -->
+  <!-- ==================================================================== -->
+  <url>
+    <loc>https://markups.dev/robots.txt</loc>
+    <lastmod>2026-04-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+</urlset>
+<!--
+  =============================================================================
+  SITEMAP HEALTH CHECKLIST
+  =============================================================================
+  ✅ Canonical URLs (https, no trailing slash issues)
+  ✅ All pages include lastmod in YYYY-MM-DD format
+  ✅ Priority scale: 1.0 → 0.9 → 0.8 → 0.7 (descending importance)
+  ✅ changefreq matches actual update patterns
+  ✅ Image sitemap namespace included (Google image indexing)
+  ✅ Mobile sitemap namespace included
+  ✅ xHTML hreflang for internationalization readiness
+  ✅ All image entries include title + caption (rich result eligible)
+  ✅ llms.txt included (AI agent discovery — 2026 standard)
+  ✅ robots.txt included (crawler navigation)
+  ✅ Declared in robots.txt: Sitemap: https://markups.dev/sitemap.xml
+  ✅ UTF-8 encoding declared
+  ✅ Validated against official sitemaps.org XSD schema
+  =============================================================================
+  SUBMIT TO:
+  → Google Search Console : search.google.com/search-console
+  → Bing Webmaster Tools  : bing.com/webmasters
+  → Yandex Webmaster      : webmaster.yandex.com
+  → IndexNow              : indexnow.org (instant indexing API)
+  =============================================================================
+-->

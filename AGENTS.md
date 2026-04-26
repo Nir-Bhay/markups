@@ -1,3 +1,8 @@
+---
+description: 
+alwaysApply: true
+---
+
 # 🤖 AI Agents Instructions - Markups Project
 
 ## 🎯 For ALL AI Agents (Claude, Copilot, Gemini, Cursor, Windsurf, etc.)
@@ -221,3 +226,17 @@ UI Layer → Features Layer → Core Layer → Services Layer → Utils Layer
 
 **Last Updated**: 2026-04-04  
 **Goal**: 10x faster AI navigation with zero file scanning
+
+---
+
+## SEO/GEO Mandatory Workflow Rule
+
+For any request related to SEO, AEO, GEO, AI visibility, ranking, metadata, schema, sitemap, robots, or content ranking:
+
+1. Follow `AI-DOCS/modification-guides/seo-geo-multi-agent-workflow.md` first.
+2. Use explicit ownership lock maps (one writer per file).
+3. Pass all workflow gates before merge/release.
+4. Log evidence in `docs/seo-geo/runs/`.
+5. Update execution status in `docs/seo-geo/MASTER-BACKLOG.md`.
+
+If there is any conflict between speed and safety, choose safety and preserve app stability.

@@ -1,3 +1,8 @@
+---
+description: 
+alwaysApply: true
+---
+
 # 🤖 Claude Instructions - Markups Project
 
 ## 🎯 Primary Navigation - ALWAYS START HERE

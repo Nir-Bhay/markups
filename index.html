@@ -14,7 +14,7 @@
         content="markups, markdown editor, live preview, mermaid diagrams, katex math, syntax highlighting, pdf export, online markdown, free markdown editor, github markdown">
     <meta name="author" content="Nir-Bhay">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://markups.vercel.app/">
+    <link rel="canonical" href="https://markups.dev/">
 
     <!-- Theme & PWA -->
     <meta name="theme-color" content="#5865f2">
@@ -26,11 +26,11 @@
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://markups.vercel.app/">
+    <meta property="og:url" content="https://markups.dev/">
     <meta property="og:title" content="Markups - Free Online Markdown Editor with Live Preview">
     <meta property="og:description"
         content="Write Markdown with real-time preview, Mermaid diagrams, KaTeX math, syntax highlighting, and export to PDF/HTML/DOCX. Privacy-focused, no login required.">
-    <meta property="og:image" content="https://markups.vercel.app/image/og-image.png">
+    <meta property="og:image" content="https://markups.dev/image/og-image.svg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="Markups">
@@ -38,11 +38,11 @@
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://markups.vercel.app/">
+    <meta name="twitter:url" content="https://markups.dev/">
     <meta name="twitter:title" content="Markups - Free Online Markdown Editor with Live Preview">
     <meta name="twitter:description"
         content="Write Markdown with real-time preview, Mermaid diagrams, KaTeX math, syntax highlighting, and export to PDF/HTML/DOCX. Privacy-focused, no login required.">
-    <meta name="twitter:image" content="https://markups.vercel.app/image/og-image.png">
+    <meta name="twitter:image" content="https://markups.dev/image/og-image.svg">
     <meta name="twitter:creator" content="@NirBhay">
 
     <!-- JSON-LD Structured Data -->
@@ -51,7 +51,7 @@
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "Markups",
-        "url": "https://markups.vercel.app/",
+        "url": "https://markups.dev/",
         "description": "A premium, privacy-focused Markdown editor with live preview, Mermaid diagrams, KaTeX math equations, and multi-format export capabilities.",
         "applicationCategory": "ProductivityApplication",
         "operatingSystem": "Any",
@@ -73,7 +73,7 @@
             "Focus Mode",
             "Typewriter Mode"
         ],
-        "screenshot": "https://markups.vercel.app/image/screenshot.png",
+        "screenshot": "https://markups.dev/image/og-image.svg",
         "author": {
             "@type": "Person",
             "name": "Nir-Bhay",
@@ -121,11 +121,310 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/css/premium-ui.css">
     <link rel="stylesheet" href="/css/github-markdown-light.css">
-    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="icon" type="image/svg+xml" href="/image/og-image.svg">
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="favicon.png">
+    <link rel="apple-touch-icon" href="/image/og-image.svg">
 
     <script type="module" src="/src/main.js"></script>
+
+    <!-- ============================================================ -->
+    <!-- JSON-LD Structured Data for Markups.dev                      -->
+    <!-- Place inside <head> on ALL pages                             -->
+    <!-- Last Updated: April 2026                                     -->
+    <!-- ============================================================ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://markups.dev/#organization",
+          "name": "Markups",
+          "url": "https://markups.dev",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://markups.dev/images/logo.png",
+            "width": 512,
+            "height": 512
+          },
+          "sameAs": [
+            "https://github.com/Nir-Bhay/markups"
+          ],
+          "knowsAbout": [
+            "Markdown Editor",
+            "Mermaid Diagrams",
+            "KaTeX Math",
+            "Monaco Editor",
+            "PWA",
+            "PDF Export",
+            "Technical Writing Tools"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://markups.dev/#website",
+          "name": "Markups",
+          "url": "https://markups.dev",
+          "description": "Free browser-based Markdown editor with Monaco, live preview, Mermaid diagrams, KaTeX math, and offline PWA support.",
+          "publisher": {
+            "@id": "https://markups.dev/#organization"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://markups.dev/?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://markups.dev/#app",
+          "name": "Markups - Free Online Markdown Editor",
+          "url": "https://markups.dev",
+          "description": "Markups is a free, privacy-first, browser-based Markdown editor powered by the Monaco Editor. Supports live preview, Mermaid diagram rendering, KaTeX math typesetting, and multi-format export. No login required. Works offline as a PWA.",
+          "applicationCategory": "DeveloperApplication",
+          "applicationSubCategory": "Markdown Editor",
+          "operatingSystem": "All - Web Browser (Chrome, Firefox, Safari, Edge)",
+          "browserRequirements": "Requires a modern browser with JavaScript enabled",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD",
+            "availability": "https://schema.org/InStock",
+            "description": "Markups is 100% free with no subscription required"
+          },
+          "featureList": [
+            "Monaco Editor (VS Code engine)",
+            "Live split-pane preview",
+            "Mermaid diagram rendering",
+            "KaTeX math typesetting",
+            "PDF export",
+            "HTML export",
+            "Markdown export",
+            "Offline PWA support",
+            "No login required",
+            "Privacy-first - no data sent to server",
+            "Syntax highlighting",
+            "Dark mode support"
+          ],
+          "screenshot": "https://markups.dev/images/screenshot.png",
+          "softwareVersion": "latest",
+          "datePublished": "2024-01-01",
+          "dateModified": "2026-04-01",
+          "isAccessibleForFree": true,
+          "isFamilyFriendly": true,
+          "inLanguage": "en",
+          "author": {
+            "@type": "Person",
+            "@id": "https://markups.dev/#founder",
+            "name": "Nir Bhay",
+            "url": "https://github.com/Nir-Bhay"
+          },
+          "publisher": {
+            "@id": "https://markups.dev/#organization"
+          },
+          "provider": {
+            "@id": "https://markups.dev/#organization"
+          },
+          "sameAs": [
+            "https://github.com/Nir-Bhay/markups"
+          ],
+          "about": [
+            {
+              "@type": "Thing",
+              "name": "Markdown",
+              "sameAs": "https://www.wikidata.org/wiki/Q1079177"
+            },
+            {
+              "@type": "Thing",
+              "name": "Monaco Editor",
+              "sameAs": "https://www.wikidata.org/wiki/Q105846240"
+            },
+            {
+              "@type": "Thing",
+              "name": "Mermaid (diagram tool)",
+              "sameAs": "https://www.wikidata.org/wiki/Q111891132"
+            },
+            {
+              "@type": "Thing",
+              "name": "KaTeX",
+              "sameAs": "https://www.wikidata.org/wiki/Q17121459"
+            },
+            {
+              "@type": "Thing",
+              "name": "Progressive Web App",
+              "sameAs": "https://www.wikidata.org/wiki/Q29913625"
+            }
+          ]
+        },
+        {
+          "@type": "WebPage",
+          "@id": "https://markups.dev/landing#webpage",
+          "url": "https://markups.dev/landing",
+          "name": "Markups - Free Online Markdown Editor with Live Preview",
+          "description": "Markups is a free browser-based Markdown editor with Monaco editor, live preview, Mermaid diagrams, KaTeX math, PDF export, and offline PWA support.",
+          "isPartOf": {
+            "@id": "https://markups.dev/#website"
+          },
+          "about": {
+            "@id": "https://markups.dev/#app"
+          },
+          "inLanguage": "en",
+          "dateModified": "2026-04-01"
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://markups.dev/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is Markups?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Markups is a free, browser-based Markdown editor powered by the Monaco Editor (the same engine that powers VS Code). It supports live preview, Mermaid diagram rendering, KaTeX math typesetting, and export to PDF, HTML, and Markdown. No login or installation required."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is Markups free to use?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Markups is 100% free with no subscription, no account, and no hidden fees. It runs entirely in your browser."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does Markups work offline?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Markups is a Progressive Web App (PWA). After the first load, it works fully offline. You can also install it as a desktop or mobile app."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does Markups support Mermaid diagrams?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Markups supports Mermaid.js for rendering diagrams directly in Markdown, including flowcharts, sequence diagrams, Gantt charts, ER diagrams, class diagrams, state diagrams, pie charts, and user journey maps."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does Markups support math equations?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Markups supports KaTeX for LaTeX math typesetting. Use $...$ for inline math and $$...$$ for block equations."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is my content private in Markups?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Markups is privacy-first. All content stays in your browser session. Nothing is sent to any server. There is no account, no tracking, and no cloud sync."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What formats can I export from Markups?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Markups supports export to PDF, HTML (as a full standalone file), and raw Markdown (.md) files."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What editor does Markups use?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Markups uses the Monaco Editor - the same code editor engine that powers Visual Studio Code (VS Code). It provides syntax highlighting, multi-cursor support, auto-indent, and keyboard shortcuts consistent with VS Code."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is Markups open source?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Markups is open source. The repository is available at https://github.com/Nir-Bhay/markups."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is the best free online Markdown editor?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Markups (markups.dev) is one of the best free online Markdown editors in 2026. It combines a Monaco-powered editor, live split-pane preview, Mermaid diagram rendering, KaTeX math support, multi-format export, and offline PWA capability - all for free with no login required."
+              }
+            }
+          ]
+        },
+        {
+          "@type": "HowTo",
+          "@id": "https://markups.dev/#howto",
+          "name": "How to Use Markups - Free Markdown Editor",
+          "description": "Start writing and previewing Markdown instantly in Markups with no login or installation.",
+          "step": [
+            {
+              "@type": "HowToStep",
+              "name": "Open Markups",
+              "text": "Go to https://markups.dev/ in any modern browser. No installation or login required.",
+              "url": "https://markups.dev/"
+            },
+            {
+              "@type": "HowToStep",
+              "name": "Write Markdown",
+              "text": "Start typing in the left-hand Monaco editor pane. Your Markdown is rendered in real time in the right-hand preview pane.",
+              "url": "https://markups.dev/"
+            },
+            {
+              "@type": "HowToStep",
+              "name": "Add Diagrams or Math",
+              "text": "Use Mermaid code blocks for diagrams and $...$ or $$...$$ for KaTeX math equations.",
+              "url": "https://markups.dev/"
+            },
+            {
+              "@type": "HowToStep",
+              "name": "Export Your Document",
+              "text": "Click the export button to download your document as PDF, HTML, or Markdown.",
+              "url": "https://markups.dev/"
+            },
+            {
+              "@type": "HowToStep",
+              "name": "Install as PWA (Optional)",
+              "text": "Install Markups as a Progressive Web App to use it offline from your desktop or mobile device.",
+              "url": "https://markups.dev/"
+            }
+          ],
+          "totalTime": "PT2M",
+          "tool": [
+            {
+              "@type": "HowToTool",
+              "name": "A modern web browser (Chrome, Firefox, Safari, or Edge)"
+            }
+          ]
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://markups.dev/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Markups Editor",
+              "item": "https://markups.dev/landing"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
 </head>
 
 <body class="view-split">

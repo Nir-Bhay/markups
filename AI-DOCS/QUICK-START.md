@@ -178,3 +178,23 @@ AI-DOCS/
 ---
 
 **Last Updated**: 2026-04-04
+
+---
+
+## SEO/GEO Task Routing
+
+| Task | Workflow |
+|------|----------|
+| Run full SEO/GEO multi-agent workflow | `AI-DOCS/modification-guides/seo-geo-multi-agent-workflow.md` |
+| Execute technical SEO hygiene safely | `docs/seo-geo/MASTER-BACKLOG.md` → Phase 2 items |
+| Run GEO/AEO content hardening | `docs/seo-geo/MASTER-BACKLOG.md` → Phase 3 items |
+| Plan content expansion waves | `docs/seo-geo/MASTER-BACKLOG.md` → Phase 4 items |
+| Verify KPI and reporting loop | `docs/seo-geo/OPERATING-MODEL.md` + `docs/seo-geo/runs/` templates |
+
+### Mandatory SEO/GEO Sequence
+
+1. Read `AI-DOCS/modification-guides/seo-geo-multi-agent-workflow.md`
+2. Lock file ownership per run (single-writer rule)
+3. Execute only one phase batch at a time
+4. Log evidence in `docs/seo-geo/runs/`
+5. Update status in `docs/seo-geo/MASTER-BACKLOG.md`

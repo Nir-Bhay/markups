@@ -634,3 +634,28 @@ marked.use(myExtension({
 ---
 
 **🎯 Goal**: Make AI navigation 10x faster by providing instant access to exact file locations and line ranges for any modification task.
+
+---
+
+## SEO/GEO Operating Protocol
+
+For all ranking, SEO, AEO, and GEO tasks, use:
+
+- `AI-DOCS/modification-guides/seo-geo-multi-agent-workflow.md` (primary SOP)
+- `docs/seo-geo/OPERATING-MODEL.md` (governance and escalation)
+- `docs/seo-geo/MASTER-BACKLOG.md` (phase execution queue)
+- `docs/seo-geo/runs/` (evidence and release logs)
+
+### Execution Order
+
+1. Foundation and safety setup
+2. Technical SEO hygiene
+3. GEO/AEO structure hardening
+4. Content expansion waves
+5. KPI and optimization loop
+
+### Rules
+
+- Keep changes surgical and reversible.
+- Never run overlapping edits across agents.
+- Do not claim outcomes without evidence in run logs.

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index,follow">
+  <title>Mermaid Diagram Examples - Markups</title>
+  <meta name="description"
+    content="Copy Mermaid diagram examples for flowcharts, sequence diagrams, and project timelines in Markups.">
+  <link rel="canonical" href="https://markups.dev/seo/examples/mermaid">
+  <link rel="stylesheet" href="/css/content-pages.css">
+</head>
+
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="eyebrow">SEO / Examples</div>
+      <h1>Mermaid Diagram Examples</h1>
+      <p class="lede">These examples help users generate Mermaid diagrams quickly, then render and export them inside
+        Markups without extra tooling.</p>
+      <div class="actions">
+        <a class="button primary" href="/">Open editor</a>
+        <a class="button" href="/seo/cheatsheet">Markdown cheatsheet</a>
+        <a class="button ghost" href="/seo/examples/math">Math examples</a>
+      </div>
+      <p class="meta">Route: /seo/examples/mermaid · Last updated: 2026-04-26</p>
+    </header>
+
+    <main class="content">
+      <section class="card">
+        <h2>Direct answer</h2>
+        <p>Mermaid is useful when you want fast, text-based diagrams for docs, architecture notes, and workflows. The
+          code below is ready to paste into Markups.</p>
+      </section>
+
+      <section class="card grid two">
+        <div>
+          <h2>Flowchart</h2>
+          <pre>```mermaid
+graph TD
+  A[Idea] --> B[Draft]
+  B --> C[Preview]
+  C --> D[Publish]
+```</pre>
+        </div>
+        <div>
+          <h2>Sequence diagram</h2>
+          <pre>```mermaid
+sequenceDiagram
+  participant U as User
+  participant M as Markups
+  U->>M: Write markdown
+  M-->>U: Render preview
+```</pre>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Timeline example</h2>
+        <pre>```mermaid
+gantt
+  title Markdown workflow
+  dateFormat  YYYY-MM-DD
+  section Writing
+  Drafting     :a1, 2026-04-26, 2d
+  Review       :after a1, 1d
+  Publish      :after Review, 1d
+```</pre>
+      </section>
+
+      <section class="card">
+        <h2>How to write better diagram-driven documentation</h2>
+        <p>Use one diagram per idea. Start with a simple flow first, then add detail only if it changes a decision. For
+          system
+          docs, pair each Mermaid block with a short explanation of assumptions, input, and output. This keeps your page
+          usable
+          for both engineers and non-technical reviewers.</p>
+        <p>If a diagram becomes too dense, split it into multiple sections. Smaller diagrams are easier to maintain and
+          easier
+          to understand in exported PDF or HTML formats.</p>
+      </section>
+
+      <section class="card">
+        <h2>FAQ</h2>
+        <p><strong>Do I need JavaScript to write Mermaid?</strong> No. You only need the markdown code block. Markups
+          handles the preview.</p>
+        <p><strong>What should I try next?</strong> Export the page to PDF or HTML after you confirm the diagram looks
+          right.</p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <a href="/seo/cheatsheet">Cheatsheet</a>
+      <a href="/seo/examples/math">Math examples</a>
+      <a href="/seo/tutorials/markdown-to-pdf">Markdown to PDF tutorial</a>
+    </footer>
+  </div>
+</body>
+
+</html>

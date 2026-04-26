@@ -110,7 +110,7 @@
   </g>
   
   <!-- URL at bottom -->
-  <text x="600" y="580" font-family="Arial, sans-serif" font-size="24" fill="#5865f2" text-anchor="middle" filter="url(#glow)">markups.vercel.app</text>
+  <text x="600" y="580" font-family="Arial, sans-serif" font-size="24" fill="#5865f2" text-anchor="middle" filter="url(#glow)">markups.dev</text>
   
   <!-- Arrow marker definition -->
   <defs>

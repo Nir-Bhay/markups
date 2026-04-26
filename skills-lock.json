@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "keyword-research": {
+      "source": "aaron-he-zhu/seo-geo-claude-skills",
+      "sourceType": "github",
+      "computedHash": "ac98e4bc6d6d0da0a677cd5a84b1d2f0cbd1d0bf2a8af5284b56bd7993a40684"
+    },
+    "seo": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "computedHash": "680cc12a17e9308b4592a2751db51615c618993f75362cb8e64207f6355a8c63"
+    },
+    "seo-aeo-best-practices": {
+      "source": "sanity-io/agent-toolkit",
+      "sourceType": "github",
+      "computedHash": "b6b2dd3af3c92f82f04b830dab2cc323f299d7c2e57f7d3619a5886caa7eeb08"
+    },
+    "seo-best-practices": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "computedHash": "658f7d06c9afe58a8091aa7494d35480f405e676283e2822e368d30d4f4c89a6"
+    },
+    "seo-specialist": {
+      "source": "borghei/claude-skills",
+      "sourceType": "github",
+      "computedHash": "d6cba998f28c2533653963117089abc1efb6d0cd2a7cb63d76b2046c7c218275"
+    },
+    "web-quality-audit": {
+      "source": "addyosmani/web-quality-skills",
+      "sourceType": "github",
+      "computedHash": "04aeec0ff9071fc9cfb5b848a25946f8ca8586c842e50da4c1abbba8ceeaec40"
+    }
+  }
+}
