@@ -3277,6 +3277,7 @@ article.seo-content,
     text-decoration-color: var(--jade-500, #22c55e);
     text-underline-offset: 2px;
 }
+
 .footer-link-inline:hover {
     color: var(--jade-500, #22c55e);
 }

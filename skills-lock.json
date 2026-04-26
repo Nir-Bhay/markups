@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
+    },
     "keyword-research": {
       "source": "aaron-he-zhu/seo-geo-claude-skills",
       "sourceType": "github",
@@ -25,6 +30,11 @@
       "source": "borghei/claude-skills",
       "sourceType": "github",
       "computedHash": "d6cba998f28c2533653963117089abc1efb6d0cd2a7cb63d76b2046c7c218275"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "6337038fe1fe6bbe1b9f252ab678ee575859190bab6f0f246f4061824eb40875"
     },
     "web-quality-audit": {
       "source": "addyosmani/web-quality-skills",
