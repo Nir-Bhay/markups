@@ -2,7 +2,7 @@
 
 # ✨ Markups
 
-**A powerful, free online markdown editor with real-time preview**
+**A free Markdown editor for developers, technical writers, and students**
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNir-Bhay%2Fmarkdown-live-preview)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
@@ -38,6 +38,11 @@
 - **Syntax Highlighting** — Code blocks with Prism.js
 - **Footnotes** — Reference-style footnotes
 - **Alerts** — GitHub-style alert blocks
+
+### 🎯 Best For
+- README files and project docs
+- Technical writing and API notes
+- Study notes, outlines, and planning docs
 
 ### 📤 Export Options
 - **📄 Markdown** — Download as .md file
