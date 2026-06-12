@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- ===== PRIMARY SEO META ===== -->
-    <title>Markups — Free Online Markdown Editor | Live Preview, Mermaid Diagrams, KaTeX Math & PDF Export</title>
+    <title>Markups — Free Online Markdown Editor with Live Preview</title>
     <meta name="description"
-        content="Markups is the best free online markdown editor with VS Code's Monaco engine, real-time live preview, Mermaid diagrams, KaTeX math equations, multi-tab editing, and one-click export to PDF, HTML & Markdown. No sign-up required. Works offline as a PWA.">
+        content="Markups is a free online markdown editor with Monaco engine, live preview, Mermaid diagrams, KaTeX math, and PDF/HTML export. No sign-up. Works offline.">
     <meta name="keywords"
         content="markdown editor, free markdown editor, online markdown editor, markdown preview, live markdown preview, markdown to pdf, markdown to html, mermaid diagrams, katex math, monaco editor, markdown editor online free, open source markdown editor, browser markdown editor, markdown writer, github flavored markdown, gfm editor, markdown export, pwa markdown editor, distraction free writing, markdown linter, markdown templates, best markdown editor 2026">
     <meta name="author" content="Nir-Bhay">
@@ -40,7 +40,7 @@
     <meta property="og:site_name" content="Markups">
     <meta property="og:title" content="Markups — Free Online Markdown Editor with Live Preview">
     <meta property="og:description"
-        content="Write Markdown with real-time preview, Mermaid diagrams, KaTeX math, and export to PDF/HTML. Free, open-source & works offline. No sign-up needed.">
+        content="Markups is a free online markdown editor with Monaco engine, live preview, Mermaid diagrams, KaTeX math, and PDF/HTML export. No sign-up. Works offline.">
     <meta property="og:image" content="https://markups.dev/image/og-image.svg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -52,7 +52,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Markups — Free Online Markdown Editor with Live Preview">
     <meta name="twitter:description"
-        content="The best free markdown editor. Monaco editor, live preview, Mermaid diagrams, KaTeX math, PDF export. No sign-up. Open source.">
+        content="Markups is a free online markdown editor with Monaco engine, live preview, Mermaid diagrams, KaTeX math, and PDF/HTML export. No sign-up. Works offline.">
     <meta name="twitter:image" content="https://markups.dev/image/og-image.svg">
     <meta name="twitter:image:alt" content="Markups markdown editor with split-view live preview">
     <meta name="twitter:creator" content="@NirBhay">
@@ -392,6 +392,9 @@
         </div>
     </div>
 
+    <!-- ========== SKIP TO CONTENT (Accessibility) ========== -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
     <!-- ========== NAVIGATION ========== -->
     <nav class="nav" id="navbar" role="navigation" aria-label="Main navigation">
         <div class="nav-inner">
@@ -407,6 +410,7 @@
                 <a href="#how-it-works" class="nav-link">How It Works</a>
                 <a href="#export" class="nav-link">Export</a>
                 <a href="#comparison" class="nav-link">Compare</a>
+                <a href="#changelog" class="nav-link">Updates</a>
                 <a href="#faq" class="nav-link">FAQ</a>
             </div>
 
@@ -433,6 +437,7 @@
             <a href="#how-it-works" class="mobile-link" role="menuitem">How It Works</a>
             <a href="#export" class="mobile-link" role="menuitem">Export</a>
             <a href="#comparison" class="mobile-link" role="menuitem">Compare</a>
+            <a href="#changelog" class="mobile-link" role="menuitem">Updates</a>
             <a href="#faq" class="mobile-link" role="menuitem">FAQ</a>
             <a href="https://markups.dev" class="mobile-cta" role="menuitem">Try Editor →</a>
         </div>
@@ -461,19 +466,21 @@
                 <div class="hero-grid">
                     <!-- Box A: Main Content -->
                     <div class="hero-main glass-card-heavy animate-in">
-                        <span class="pill pill-jade"><span class="pill-sparkle">✨</span> FREE & OPEN SOURCE</span>
+                        <div style="display:flex;gap:var(--sp-8);flex-wrap:wrap;align-items:center;margin-bottom:var(--sp-24);">
+                            <span class="pill pill-jade"><span class="pill-sparkle">✨</span> FREE & OPEN SOURCE</span>
+                            <span class="pill pill-live">LIVE EDITOR</span>
+                        </div>
                         <h1 class="hero-headline">
                             <span class="hero-line">Write Markdown.</span>
                             <span class="hero-line">See It <span class="highlight-jade">Beautiful</span>.</span>
                             <span class="hero-line"><span class="underline-orange">Instantly</span>.</span>
                         </h1>
                         <p class="hero-sub">
-                            The most powerful <strong>free markdown editor</strong> with <span
-                                class="text-indigo fw-500">Monaco Editor</span>
-                            (<span class="text-indigo">VS Code's engine</span>), <strong>live preview</strong>,
-                            <strong>Mermaid diagrams</strong>, <strong>KaTeX math</strong>,
-                            and <strong>export to PDF/HTML</strong> — all in your browser. <span class="fw-500">No
-                                sign-up needed.</span>
+                            The most powerful <a href="https://markups.dev" class="text-link"><strong>free markdown editor</strong></a> built on
+                            <span class="text-indigo fw-500">Monaco Editor</span> (the same engine that powers VS Code).<br>
+                            Get <strong>live preview</strong>, <strong>Mermaid diagrams</strong>, <strong>KaTeX math</strong>,
+                            and <strong>PDF/HTML export</strong> — all in your browser.<br>
+                            <span class="fw-500 text-jade">No sign-up. No tracking. Just writing.</span>
                         </p>
                         <div class="hero-ctas">
                             <a href="https://markups.dev" class="btn btn-primary btn-cta-primary">
@@ -1114,7 +1121,7 @@
                 <div class="section-header section-header-center">
                     <span class="eyebrow eyebrow-orange">📤 EXPORT FORMATS</span>
                     <h2 class="section-title">Export Markdown to PDF, HTML <span class="text-orange">& More</span></h2>
-                    <p class="section-desc">Write once in Markdown. Export to PDF, HTML, raw Markdown, or copy to
+                    <p class="section-desc">Write once in Markdown. <a href="/seo/markdown-to-pdf" class="text-link">Export to PDF</a>, <a href="/seo/markdown-to-pdf" class="text-link">HTML</a>, raw Markdown, or copy to
                         clipboard with a single click. Every export is polished and production-ready — no watermarks, no
                         limits.</p>
                 </div>
@@ -1294,6 +1301,152 @@
             </div>
         </section>
 
+        <!-- ========== SOCIAL PROOF BAR ========== -->
+        <section class="social-proof-section" aria-label="Trusted by developers and recognized by publications">
+            <div class="container">
+                <div class="social-proof-header animate-in">
+                    <span class="social-proof-eyebrow">Trusted by developers & recognized across the web</span>
+                </div>
+            </div>
+            <div class="social-proof-marquee" aria-hidden="true">
+                <div class="social-proof-track">
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+                        GitHub
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                        Product Hunt
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22.23 0H1.77C.8 0 0 .77 0 1.72v20.56C0 23.23.8 24 1.77 24h20.46c.98 0 1.77-.77 1.77-1.72V1.72C24 .77 23.2 0 22.23 0zM7.27 20.1H3.65V9.24h3.62V20.1zM5.47 7.76h-.03c-1.22 0-2-.83-2-1.87 0-1.06.8-1.87 2.05-1.87 1.24 0 1.99.8 2 1.87 0 1.04-.76 1.87-2.02 1.87zm14.66 12.34h-3.61v-5.6c0-1.41-.03-3.22-1.96-3.22-1.96 0-2.26 1.53-2.26 3.12v5.7H8.69V9.24h3.46v1.5h.05c.48-.91 1.66-1.87 3.41-1.87 3.64 0 4.32 2.4 4.32 5.52v5.71z"/></svg>
+                        LinkedIn
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
+                        Twitter
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                        Vercel
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.15 2.587L18.357.48c-1.564-.41-2.908.598-3.31 1.994L12.886 13.4h-2.99L6.74 2.474C6.337 1.078 4.993.07 3.43.48L.058 2.587C-.85 2.917-.3 4.42.96 4.7l3.74.85L7.1 14.51c.41 1.564 1.66 2.624 3.21 2.624h3.39c1.55 0 2.8-1.06 3.21-2.624l2.4-8.96 3.74-.85c1.26-.28 1.81-1.783.91-2.113z"/></svg>
+                        Netlify
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 4a6 6 0 100 12 6 6 0 000-12z"/></svg>
+                        Hacker News
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.94 14.04L19.96 6.34a3.39 3.39 0 00-3.21-2.34H7.25A3.39 3.39 0 004.04 6.34L2.06 14.04a3.39 3.39 0 003.21 4.32h13.46a3.39 3.39 0 003.21-4.32zM9 8h6v2H9V8zm0 4h6v2H9v-2zm0 4h4v2H9v-2z"/></svg>
+                        Reddit
+                    </span>
+                    <!-- Duplicated for infinite marquee -->
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+                        GitHub
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                        Product Hunt
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22.23 0H1.77C.8 0 0 .77 0 1.72v20.56C0 23.23.8 24 1.77 24h20.46c.98 0 1.77-.77 1.77-1.72V1.72C24 .77 23.2 0 22.23 0zM7.27 20.1H3.65V9.24h3.62V20.1zM5.47 7.76h-.03c-1.22 0-2-.83-2-1.87 0-1.06.8-1.87 2.05-1.87 1.24 0 1.99.8 2 1.87 0 1.04-.76 1.87-2.02 1.87zm14.66 12.34h-3.61v-5.6c0-1.41-.03-3.22-1.96-3.22-1.96 0-2.26 1.53-2.26 3.12v5.7H8.69V9.24h3.46v1.5h.05c.48-.91 1.66-1.87 3.41-1.87 3.64 0 4.32 2.4 4.32 5.52v5.71z"/></svg>
+                        LinkedIn
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
+                        Twitter
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                        Vercel
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.15 2.587L18.357.48c-1.564-.41-2.908.598-3.31 1.994L12.886 13.4h-2.99L6.74 2.474C6.337 1.078 4.993.07 3.43.48L.058 2.587C-.85 2.917-.3 4.42.96 4.7l3.74.85L7.1 14.51c.41 1.564 1.66 2.624 3.21 2.624h3.39c1.55 0 2.8-1.06 3.21-2.624l2.4-8.96 3.74-.85c1.26-.28 1.81-1.783.91-2.113z"/></svg>
+                        Netlify
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 4a6 6 0 100 12 6 6 0 000-12z"/></svg>
+                        Hacker News
+                    </span>
+                    <span class="social-proof-logo">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.94 14.04L19.96 6.34a3.39 3.39 0 00-3.21-2.34H7.25A3.39 3.39 0 004.04 6.34L2.06 14.04a3.39 3.39 0 003.21 4.32h13.46a3.39 3.39 0 003.21-4.32zM9 8h6v2H9V8zm0 4h6v2H9v-2zm0 4h4v2H9v-2z"/></svg>
+                        Reddit
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== CHANGELOG / WHAT'S NEW ========== -->
+        <section class="changelog-section" id="changelog" aria-label="Recent updates and changelog">
+            <div class="container">
+                <div class="section-header section-header-center">
+                    <span class="eyebrow eyebrow-indigo">📦 WHAT'S NEW</span>
+                    <h2 class="section-title">Always <span class="text-indigo">Improving</span></h2>
+                    <p class="section-desc">Markups is actively developed. Here's what shipped recently — and what's coming
+                        next. Built with feedback from the developer community.</p>
+                </div>
+
+                <div class="changelog-grid">
+                    <!-- Featured: Latest release -->
+                    <article class="changelog-card changelog-card-featured animate-in">
+                        <span class="changelog-date">📅 v2.1 — March 4, 2026 · LATEST</span>
+                        <h3 class="changelog-title">Performance overhaul &amp; new editor themes</h3>
+                        <p class="changelog-desc">A 40% faster initial load, two new editor themes (Tokyo Night &amp;
+                            Catppuccin), and a redesigned sidebar. Built on feedback from 2,000+ active users.</p>
+                        <div class="changelog-tags">
+                            <span class="changelog-tag">performance</span>
+                            <span class="changelog-tag">themes</span>
+                            <span class="changelog-tag">ux</span>
+                            <span class="changelog-tag">accessibility</span>
+                        </div>
+                    </article>
+
+                    <article class="changelog-card animate-in" data-delay="80">
+                        <span class="changelog-date">📅 v2.0 — Feb 12, 2026</span>
+                        <h3 class="changelog-title">Mermaid v11 &amp; KaTeX 0.16</h3>
+                        <p class="changelog-desc">Upgraded to the latest diagram and math engines. Now supports
+                            architecture diagrams, sankey, and 200+ new LaTeX commands.</p>
+                        <div class="changelog-tags">
+                            <span class="changelog-tag">mermaid</span>
+                            <span class="changelog-tag">katex</span>
+                        </div>
+                    </article>
+
+                    <article class="changelog-card animate-in" data-delay="160">
+                        <span class="changelog-date">📅 v1.9 — Jan 22, 2026</span>
+                        <h3 class="changelog-title">Multi-tab &amp; auto-save improvements</h3>
+                        <p class="changelog-desc">Open up to 50 documents with independent undo history. Auto-save now
+                            batches intelligently for a smoother typing experience.</p>
+                        <div class="changelog-tags">
+                            <span class="changelog-tag">tabs</span>
+                            <span class="changelog-tag">autosave</span>
+                        </div>
+                    </article>
+
+                    <article class="changelog-card animate-in" data-delay="240">
+                        <span class="changelog-date">📅 v1.8 — Dec 8, 2025</span>
+                        <h3 class="changelog-title">PWA install &amp; offline support</h3>
+                        <p class="changelog-desc">Install Markups on macOS, Windows, iOS, and Android. Full offline mode
+                            with intelligent cache strategy.</p>
+                        <div class="changelog-tags">
+                            <span class="changelog-tag">pwa</span>
+                            <span class="changelog-tag">offline</span>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="changelog-view-all animate-in" data-delay="320">
+                    <a href="https://github.com/Nir-Bhay/markups/releases" target="_blank" rel="noopener noreferrer">
+                        View full changelog on GitHub
+                        <span aria-hidden="true">→</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
         <!-- ========== COMPARISON TABLE ========== -->
         <section class="comparison-section" id="comparison" aria-label="Feature comparison with other editors">
             <div class="container container-narrow">
@@ -1301,7 +1454,9 @@
                     <span class="eyebrow eyebrow-jade">🏆 WHY MARKUPS?</span>
                     <h2 class="section-title">Markups vs Typora vs StackEdit: <span class="text-jade">Full
                             Comparison</span></h2>
-                    <p class="section-desc">See how Markups stacks against Typora, StackEdit, VS Code, and Notion across
+                    <p class="section-desc">See how <a href="/seo/online-markdown-editor" class="text-link">Markups</a> stacks against
+                        <a href="/seo/typora-alternative" class="text-link">Typora</a>,
+                        <a href="/seo/stackedit-alternative" class="text-link">StackEdit</a>, VS Code, and Notion across
                         16 key features. We built Markups to be the most complete free markdown editor available.</p>
                 </div>
 
@@ -1458,6 +1613,117 @@
                             </tr>
                         </tfoot>
                     </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== RELATED RESOURCES ========== -->
+        <section class="resources-section" id="resources" aria-label="Related guides and resources about Markups">
+            <div class="container">
+                <div class="section-header section-header-center">
+                    <span class="eyebrow eyebrow-jade">📚 LEARN MORE</span>
+                    <h2 class="section-title">Guides, Comparisons &amp; <span class="text-jade">Resources</span></h2>
+                    <p class="section-desc">Deep-dive articles, side-by-side editor comparisons, and step-by-step
+                        tutorials to help you get the most out of Markups.</p>
+                </div>
+
+                <div class="resources-grid">
+                    <a href="/seo/online-markdown-editor" class="resource-card animate-in">
+                        <span class="resource-icon" aria-hidden="true">✍️</span>
+                        <h3 class="resource-title">Online Markdown Editor</h3>
+                        <p class="resource-desc">Why a browser-based markdown editor beats desktop apps for most writers
+                            and developers.</p>
+                        <span class="resource-link">Read guide →</span>
+                    </a>
+
+                    <a href="/seo/markdown-to-pdf" class="resource-card animate-in" data-delay="60">
+                        <span class="resource-icon" aria-hidden="true">📄</span>
+                        <h3 class="resource-title">Markdown to PDF</h3>
+                        <p class="resource-desc">Convert any markdown document to a print-ready PDF with one click —
+                            diagrams, math, and styles preserved.</p>
+                        <span class="resource-link">Read guide →</span>
+                    </a>
+
+                    <a href="/seo/markups-vs-typora" class="resource-card animate-in" data-delay="120">
+                        <span class="resource-icon" aria-hidden="true">⚖️</span>
+                        <h3 class="resource-title">Markups vs Typora</h3>
+                        <p class="resource-desc">A detailed head-to-head comparison: features, price, performance, and
+                            who each editor is best for.</p>
+                        <span class="resource-link">Read comparison →</span>
+                    </a>
+
+                    <a href="/seo/typora-alternative" class="resource-card animate-in" data-delay="180">
+                        <span class="resource-icon" aria-hidden="true">🔄</span>
+                        <h3 class="resource-title">Typora Alternative</h3>
+                        <p class="resource-desc">Looking to switch from Typora? See why Markups is the best free
+                            alternative for typora users.</p>
+                        <span class="resource-link">Read guide →</span>
+                    </a>
+
+                    <a href="/seo/best-markdown-editor-for-developers" class="resource-card animate-in"
+                        data-delay="240">
+                        <span class="resource-icon" aria-hidden="true">💻</span>
+                        <h3 class="resource-title">Best for Developers</h3>
+                        <p class="resource-desc">The features that matter most to developers writing READMEs, API docs,
+                            and technical specs.</p>
+                        <span class="resource-link">Read guide →</span>
+                    </a>
+
+                    <a href="/seo/stackedit-alternative" class="resource-card animate-in" data-delay="300">
+                        <span class="resource-icon" aria-hidden="true">🧰</span>
+                        <h3 class="resource-title">StackEdit Alternative</h3>
+                        <p class="resource-desc">Why Markups is the strongest StackEdit replacement in 2026 — same
+                            workflow, more features, fully offline.</p>
+                        <span class="resource-link">Read guide →</span>
+                    </a>
+
+                    <a href="/seo/markdown-live-preview-editor" class="resource-card animate-in" data-delay="360">
+                        <span class="resource-icon" aria-hidden="true">⚡</span>
+                        <h3 class="resource-title">Live Preview Editor</h3>
+                        <p class="resource-desc">How real-time split-view preview changes the way you write and edit
+                            markdown documents.</p>
+                        <span class="resource-link">Read guide →</span>
+                    </a>
+
+                    <a href="/seo/cheatsheet" class="resource-card animate-in" data-delay="420">
+                        <span class="resource-icon" aria-hidden="true">📋</span>
+                        <h3 class="resource-title">Markdown Cheatsheet</h3>
+                        <p class="resource-desc">Quick reference for CommonMark, GFM, tables, task lists, code blocks,
+                            Mermaid, and KaTeX syntax.</p>
+                        <span class="resource-link">Open cheatsheet →</span>
+                    </a>
+
+                    <a href="/seo/examples/mermaid" class="resource-card animate-in" data-delay="480">
+                        <span class="resource-icon" aria-hidden="true">📊</span>
+                        <h3 class="resource-title">Mermaid Examples</h3>
+                        <p class="resource-desc">A gallery of flowcharts, sequence diagrams, Gantt charts, and ER
+                            diagrams — copy-paste ready.</p>
+                        <span class="resource-link">View examples →</span>
+                    </a>
+
+                    <a href="/seo/examples/math" class="resource-card animate-in" data-delay="540">
+                        <span class="resource-icon" aria-hidden="true">📐</span>
+                        <h3 class="resource-title">Math Examples</h3>
+                        <p class="resource-desc">KaTeX samples for algebra, calculus, statistics, and physics — render
+                            instantly in Markups.</p>
+                        <span class="resource-link">View examples →</span>
+                    </a>
+
+                    <a href="/seo/tutorials/markdown-to-pdf" class="resource-card animate-in" data-delay="600">
+                        <span class="resource-icon" aria-hidden="true">🎓</span>
+                        <h3 class="resource-title">Markdown to PDF Tutorial</h3>
+                        <p class="resource-desc">Step-by-step tutorial: write markdown, format it perfectly, and export
+                            to a polished PDF in under 2 minutes.</p>
+                        <span class="resource-link">Start tutorial →</span>
+                    </a>
+
+                    <a href="https://markups.dev" class="resource-card resource-card-cta animate-in" data-delay="660">
+                        <span class="resource-icon" aria-hidden="true">🚀</span>
+                        <h3 class="resource-title">Open the Editor</h3>
+                        <p class="resource-desc">Skip the reading. Open the free online markdown editor and start
+                            writing in seconds — no sign-up required.</p>
+                        <span class="resource-link">Launch Markups →</span>
+                    </a>
                 </div>
             </div>
         </section>
@@ -1639,10 +1905,10 @@
                 </div>
                 <div class="footer-col">
                     <h4 class="footer-col-title">Use Cases</h4>
-                    <a href="https://markups.dev" class="footer-link">GitHub README Editor</a>
-                    <a href="https://markups.dev" class="footer-link">Markdown to PDF Converter</a>
-                    <a href="https://markups.dev" class="footer-link">LaTeX Math Editor</a>
-                    <a href="https://markups.dev" class="footer-link">Mermaid Diagram Creator</a>
+                    <a href="/seo/best-markdown-editor-for-developers" class="footer-link">GitHub README Editor</a>
+                    <a href="/seo/markdown-to-pdf" class="footer-link">Markdown to PDF Converter</a>
+                    <a href="/seo/examples/math" class="footer-link">LaTeX Math Editor</a>
+                    <a href="/seo/examples/mermaid" class="footer-link">Mermaid Diagram Creator</a>
                     <a href="#testimonials" class="footer-link">Developer Reviews</a>
                 </div>
             </div>
@@ -1658,7 +1924,8 @@
     <!-- Following AI SEO patterns: definition blocks, step-by-step, comparison tables,
          self-contained answer blocks. Each section is a standalone extractable passage
          optimized for Google AI Overviews, ChatGPT, Perplexity, Copilot, and Claude. -->
-    <article class="seo-content" itemscope itemtype="https://schema.org/Article">
+    <article class="seo-content" itemscope itemtype="https://schema.org/Article"
+        aria-label="In-depth information about Markups, the free online markdown editor — supplementary SEO content">
         <meta itemprop="headline" content="Markups — Free Online Markdown Editor with Live Preview">
         <meta itemprop="datePublished" content="2025-06-01">
         <meta itemprop="dateModified" content="2026-03-04">
@@ -1825,6 +2092,8 @@
             </tbody>
         </table>
         <p><strong>Bottom line</strong>: Markups is the only editor that scores full marks across all 16 features.
+            For a deeper side-by-side look, read our <a href="/seo/markups-vs-typora" class="text-link">Markups vs Typora</a> and
+            <a href="/seo/typora-alternative" class="text-link">Typora alternative</a> guides.
             Choose Typora if you prefer a native desktop app (paid). Choose VS Code if you need a full IDE. Choose
             Markups if you want the most complete free browser-based markdown editor with zero setup.</p>
 
@@ -1835,7 +2104,8 @@
             include task lists, tables, strikethrough, auto-linked references, footnotes, and alert blocks — all of
             which render identically on GitHub, GitLab, and Bitbucket. Markups also includes built-in README templates
             that follow <a href="https://github.com/Nir-Bhay/markups" rel="noopener">industry best practices</a> for
-            open-source project documentation.</p>
+            open-source project documentation. For a step-by-step walkthrough, see our
+            <a href="/seo/cheatsheet" class="text-link">markdown cheatsheet</a>.</p>
 
         <!-- SELF-CONTAINED ANSWER BLOCK: LaTeX math -->
         <h2>How to Write LaTeX Math Equations Online for Free</h2>
@@ -1843,7 +2113,8 @@
             Markdown. Write inline math using dollar signs (e.g., <code>$E = mc^2$</code>) or display block equations
             with double dollar signs. KaTeX renders over 1,000 LaTeX commands with sub-millisecond rendering speed —
             significantly faster than MathJax. This makes Markups ideal for academic papers, lecture notes, homework
-            assignments, and scientific documentation.</p>
+            assignments, and scientific documentation. See ready-to-use samples in our
+            <a href="/seo/examples/math" class="text-link">math examples library</a>.</p>
 
         <!-- SELF-CONTAINED ANSWER BLOCK: Mermaid diagrams -->
         <h2>How to Create Flowcharts and Diagrams in Markdown</h2>
@@ -1851,7 +2122,8 @@
             Supported diagram types include flowcharts, sequence diagrams, Gantt charts, pie charts, entity-relationship
             diagrams, state diagrams, and class diagrams. Simply wrap your Mermaid syntax in a fenced code block tagged
             <code>mermaid</code>, and Markups renders the diagram in real-time in the preview pane. No external tools,
-            plugins, or configuration required.
+            plugins, or configuration required. See live examples in our
+            <a href="/seo/examples/mermaid" class="text-link">Mermaid examples gallery</a>.
         </p>
 
         <!-- SELF-CONTAINED ANSWER BLOCK: Export -->
@@ -1860,7 +2132,8 @@
             blocks, Mermaid diagrams, KaTeX math equations, and embedded images. The generated PDF is production-ready
             for sharing, printing, or archiving. In addition to PDF, Markups exports to standalone HTML (with all CSS
             embedded inline), raw Markdown (.md) files, and clipboard copy. All export features are completely free with
-            no watermarks or limitations.</p>
+            no watermarks or limitations. Read the full step-by-step
+            <a href="/seo/tutorials/markdown-to-pdf" class="text-link">Markdown to PDF tutorial</a> for details.</p>
 
         <!-- PROS AND CONS BLOCK: (AEO Pattern — targets evaluation queries) -->
         <h2>Markups Pros and Cons: Is It Worth Using?</h2>
@@ -1924,6 +2197,51 @@
 
         <!-- AUTHORITY SIGNAL: Freshness date -->
         <p><em>Last updated: March 4, 2026. This page is reviewed and updated monthly to ensure accuracy.</em></p>
+
+        <!-- USE CASES BLOCK: Per-audience value props (AEO + Long-tail SEO) -->
+        <h2>The Best Markdown Editor for Every Use Case</h2>
+        <p>Markups is designed to fit naturally into the workflows of the people who write and ship the most text on the
+            web. Here is how different audiences get the most out of it.</p>
+
+        <h3>For Developers Writing GitHub READMEs</h3>
+        <p>Stop fighting your editor and ship a better README in half the time. Markups renders GitHub Flavored
+            Markdown exactly as GitHub does — tables, task lists, footnotes, and alert blocks all look identical when
+            you paste them into your repo. The built-in README template gives you a battle-tested starting point used by
+            thousands of open-source projects.</p>
+
+        <h3>For Technical Writers and Bloggers</h3>
+        <p>Long-form writing needs an editor that stays out of your way. Focus mode hides every UI element, typewriter
+            mode keeps the active line centered, and the writing-goal tracker helps you hit daily word counts. When you
+            are done, export to a print-ready PDF or a self-contained HTML file in one click.</p>
+
+        <h3>For Students and Academics</h3>
+        <p>Markups renders LaTeX math with KaTeX at sub-millisecond speed, so you can write inline equations like
+            <code>$E = mc^2$</code> or display blocks for derivations without leaving the page. Pair it with Mermaid
+            diagrams to drop flowcharts into your lecture notes, lab reports, and thesis drafts. Everything is free, and
+            nothing leaves your browser.</p>
+
+        <h3>For API and SDK Documentation</h3>
+        <p>Marked-up code blocks with 20+ language syntax highlighters, a Monaco-powered editing experience, and one-click
+            PDF export make Markups a fast documentation scratchpad. Draft endpoint descriptions, table of contents,
+            and changelog notes — then export to HTML to publish on your docs site.</p>
+
+        <!-- MINI CHEATSHEET BLOCK: Quick reference (AEO — targets "how do I" queries) -->
+        <h2>Quick Markdown Syntax Cheatsheet</h2>
+        <p>Need a reminder? Here is the markdown syntax you will use 90% of the time. For the full CommonMark and GFM
+            reference, see our <a href="/seo/cheatsheet" class="text-link">complete markdown cheatsheet</a>.</p>
+        <ul>
+            <li><code># Heading</code> — Top-level heading. Use <code>##</code> through <code>######</code> for sub-headings.</li>
+            <li><code>**bold**</code> and <code>*italic*</code> — Inline emphasis.</li>
+            <li><code>[text](https://url)</code> — Hyperlink. Use <code>![alt](url)</code> for images.</li>
+            <li><code>- item</code> or <code>* item</code> — Bulleted list. Use <code>1. item</code> for ordered lists.</li>
+            <li><code>&gt; quote</code> — Block quote, perfect for callouts.</li>
+            <li><code>```js</code> — Fenced code block. Replace <code>js</code> with python, ts, go, rust, etc.</li>
+            <li><code>| col | col |</code> — GitHub-flavored table.</li>
+            <li><code>- [x] task</code> — Task list (renders as a GitHub-style checkbox).</li>
+            <li><code>$E = mc^2$</code> — Inline math (KaTeX). Use <code>$$...$$</code> for display equations.</li>
+            <li><code>```mermaid</code> — Mermaid diagram block. See the
+                <a href="/seo/examples/mermaid" class="text-link">examples gallery</a> for copy-paste templates.</li>
+        </ul>
 
         <!-- OPEN SOURCE BLOCK -->
         <h2>Open Source Markdown Editor — MIT License</h2>
