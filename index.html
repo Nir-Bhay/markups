@@ -106,11 +106,14 @@
         })(window, document, "clarity", "script", "uwrtfye6w8");
     </script>
 
-    <!-- Vercel Web Analytics -->
+    <!-- Vercel Web Analytics (injected at runtime to keep Vite build happy) -->
     <script>
         window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+        var s = document.createElement('script');
+        s.defer = true;
+        s.src = '/_vercel/insights/script.js';
+        document.head.appendChild(s);
     </script>
-    <script type="module" src="/_vercel/insights/script.js"></script>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
