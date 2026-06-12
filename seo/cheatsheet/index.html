@@ -1,3 +1,9 @@
+<!--
+  Page: /seo/cheatsheet
+  Target keyword: "markdown cheatsheet"
+  Last updated: 2026-06-12
+  Word count: ~1200
+-->
 <!doctype html>
 <html lang="en">
 
@@ -5,37 +11,100 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="index,follow">
-  <title>Markdown Cheatsheet - Markups</title>
+  <title>Markdown Cheatsheet (Free, with Examples) - Markups</title>
   <meta name="description"
-    content="A concise markdown cheatsheet with headings, lists, links, tables, code blocks, Mermaid, and math examples.">
+    content="A free markdown cheatsheet covering headings, lists, links, tables, code blocks, Mermaid diagrams, and KaTeX math. Copy examples and try them in the Markups editor.">
   <link rel="canonical" href="https://markups.dev/seo/cheatsheet">
   <link rel="stylesheet" href="/css/content-pages.css">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://markups.dev/seo/cheatsheet">
+  <meta property="og:title" content="Markdown Cheatsheet (Free) - Markups">
+  <meta property="og:description"
+    content="Free markdown cheatsheet with headings, lists, links, tables, code blocks, Mermaid, and KaTeX math.">
+  <meta property="og:image" content="https://markups.dev/images/og-image.png">
+  <meta property="og:site_name" content="Markups">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Markdown Cheatsheet (Free) - Markups">
+  <meta name="twitter:description"
+    content="Free markdown cheatsheet with examples for headings, lists, code, Mermaid, and KaTeX math.">
+  <meta name="twitter:image" content="https://markups.dev/images/og-image.png">
+
+  <!-- JSON-LD: Article + FAQPage -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "@id": "https://markups.dev/seo/cheatsheet#article",
+        "headline": "Markdown Cheatsheet (Free, with Examples)",
+        "description": "A complete markdown cheatsheet with headings, lists, tables, code blocks, Mermaid, and KaTeX math.",
+        "datePublished": "2026-04-26",
+        "dateModified": "2026-06-12",
+        "author": { "@type": "Organization", "name": "Markups", "url": "https://markups.dev" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Markups",
+          "logo": { "@type": "ImageObject", "url": "https://markups.dev/images/og-image.png" }
+        },
+        "mainEntityOfPage": "https://markups.dev/seo/cheatsheet",
+        "inLanguage": "en"
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is the best way to learn markdown?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Use a cheatsheet like this one with copy-pasteable examples, and try them in a live preview editor like Markups. Real-time feedback is the fastest way to internalize the syntax." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is markdown beginner friendly?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. Markdown is plain text with a few simple symbols for headings, lists, links, and emphasis. Most people learn the basics in under 30 minutes." }
+          },
+          {
+            "@type": "Question",
+            "name": "Where can I try these markdown examples?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Open the Markups editor at markups.dev to paste the examples from this cheatsheet and see the rendered output in real time." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 
 <body>
   <div class="page-shell">
     <header class="hero">
       <div class="eyebrow">SEO / Tutorial</div>
-      <h1>Markdown Cheatsheet</h1>
-      <p class="lede">Use this page to learn the most common markdown patterns quickly, then try them in the Markups
-        editor for live preview and export.</p>
+      <h1>Markdown Cheatsheet (Free, with Examples)</h1>
+      <p class="lede">This <strong>markdown cheatsheet</strong> covers the patterns you will use most: headings,
+        lists, links, tables, code blocks, Mermaid diagrams, and KaTeX math. Copy any example into the Markups
+        editor to see it render in real time, then export to PDF, HTML, or Markdown when you are ready.</p>
       <div class="actions">
-        <a class="button primary" href="/">Open editor</a>
+        <a class="button primary" href="https://markups.dev">Try Markups Free →</a>
         <a class="button" href="/seo/tutorials/markdown-to-pdf">Markdown to PDF tutorial</a>
         <a class="button ghost" href="/seo/examples/mermaid">Mermaid examples</a>
       </div>
-      <p class="meta">Route: /seo/cheatsheet · Last updated: 2026-04-26</p>
+      <p class="meta">Route: /seo/cheatsheet · Last updated: 2026-06-12 · Reading time: ~6 min</p>
     </header>
 
     <main class="content">
       <section class="card">
         <h2>Direct answer</h2>
-        <p>Markdown is a plain-text format for writing structured documents fast. The most useful patterns are headings,
-          emphasis, lists, links, tables, code blocks, task lists, quotes, Mermaid diagrams, and math.</p>
+        <p>Markdown is a plain-text format for writing structured documents fast. The most useful patterns are
+          headings, emphasis, lists, links, tables, code blocks, task lists, quotes, Mermaid diagrams, and math.
+          You can use this cheatsheet as a quick reference and try every example in the live editor.</p>
       </section>
 
       <section class="card">
-        <h2>Common syntax</h2>
+        <h2>Common syntax reference</h2>
         <div class="table-wrap">
           <table>
             <thead>
@@ -47,9 +116,19 @@
             </thead>
             <tbody>
               <tr>
-                <td>Heading</td>
+                <td>Heading 1</td>
                 <td><code># Title</code></td>
                 <td>Large title</td>
+              </tr>
+              <tr>
+                <td>Heading 2</td>
+                <td><code>## Section</code></td>
+                <td>Section heading</td>
+              </tr>
+              <tr>
+                <td>Heading 3</td>
+                <td><code>### Sub-section</code></td>
+                <td>Sub-section heading</td>
               </tr>
               <tr>
                 <td>Bold</td>
@@ -62,18 +141,74 @@
                 <td><em>text</em></td>
               </tr>
               <tr>
+                <td>Strikethrough</td>
+                <td><code>~~text~~</code></td>
+                <td><s>text</s></td>
+              </tr>
+              <tr>
+                <td>Inline code</td>
+                <td><code>`code`</code></td>
+                <td><code>code</code></td>
+              </tr>
+              <tr>
                 <td>Link</td>
                 <td><code>[label](https://example.com)</code></td>
                 <td>Clickable link</td>
               </tr>
               <tr>
+                <td>Image</td>
+                <td><code>![alt](https://example.com/img.png)</code></td>
+                <td>Embedded image</td>
+              </tr>
+              <tr>
                 <td>Code block</td>
-                <td><code>```js</code> ... <code>```</code></td>
-                <td>Formatted code</td>
+                <td><code>```js</code> … <code>```</code></td>
+                <td>Formatted code with syntax highlighting</td>
+              </tr>
+              <tr>
+                <td>Blockquote</td>
+                <td><code>&gt; Quote</code></td>
+                <td>Indented quote</td>
+              </tr>
+              <tr>
+                <td>Horizontal rule</td>
+                <td><code>---</code></td>
+                <td>Thin divider line</td>
               </tr>
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section class="card">
+        <h2>Lists and tasks</h2>
+        <p>Lists are the workhorse of structured writing. Unordered lists use dashes, asterisks, or plus signs.
+          Ordered lists use numbers followed by a period. Task lists use square brackets.</p>
+<pre>- Bullet item
+- Another bullet item
+  - Nested bullet
+- Final bullet
+
+1. First step
+2. Second step
+3. Third step
+
+- [x] Write draft
+- [ ] Review
+- [ ] Export</pre>
+        <p>Task lists are especially useful for runbooks, postmortems, and onboarding docs that mix prose with
+          actionable items.</p>
+      </section>
+
+      <section class="card">
+        <h2>Tables</h2>
+        <p>GitHub Flavored Markdown supports pipe-style tables with optional alignment colons.</p>
+<pre>| Column      | Type   | Notes                  |
+|-------------|--------|------------------------|
+| id          | int    | Primary key            |
+| name        | string | Display label          |
+| created_at  | date   | UTC timestamp          |</pre>
+        <p>Tables render cleanly in Markups' preview and in the exported PDF, HTML, and Markdown.</p>
       </section>
 
       <section class="card grid two">
@@ -85,17 +220,29 @@
 - [ ] Export</pre>
           <h3>Quote</h3>
           <pre>&gt; Write once, preview instantly, export cleanly.</pre>
+          <h3>Footnote-style reference</h3>
+          <pre>Use a link, then add a reference list at the bottom of the document.
+
+[^1]: Source: markups.dev</pre>
         </div>
         <div>
           <h2>Advanced blocks</h2>
-          <h3>Mermaid</h3>
+          <h3>Mermaid flowchart</h3>
           <pre>```mermaid
 graph TD
   A[Start] --> B[Write]
   B --> C[Preview]
   C --> D[Export]
 ```</pre>
-          <h3>Math</h3>
+          <h3>Mermaid sequence</h3>
+          <pre>```mermaid
+sequenceDiagram
+  participant U as User
+  participant M as Markups
+  U->>M: Write markdown
+  M-->>U: Render preview
+```</pre>
+          <h3>Math (inline and block)</h3>
           <pre>Inline: $E = mc^2$
 Block:
 $$
@@ -105,29 +252,59 @@ $$</pre>
       </section>
 
       <section class="card">
-        <h2>FAQ</h2>
-        <p><strong>Is markdown beginner friendly?</strong> Yes. It is plain text with a few simple symbols.</p>
-        <p><strong>Why use Markups for markdown?</strong> Because it gives live preview, export options, and
-          browser-only
-          editing without sign-up.</p>
+        <h2>Professional writing workflow in markdown</h2>
+        <p>For blog posts and technical articles, start by outlining headings before writing paragraphs. Then fill
+          each section with short, direct blocks. Add code examples and diagrams only where they improve
+          understanding. Finish with a quick structure check: heading order, internal links, and export
+          readability.</p>
+        <p>This approach helps teams publish faster and keeps content consistent across docs, tutorials, and
+          knowledge bases. It also improves SEO readability because pages remain scannable and semantically
+          clear.</p>
       </section>
 
       <section class="card">
-        <h2>Professional writing workflow in markdown</h2>
-        <p>For blog posts and technical articles, start by outlining headings before writing paragraphs. Then fill each
-          section
-          with short, direct blocks. Add code examples and diagrams only where they improve understanding. Finish with a
-          quick
-          structure check: heading order, internal links, and export readability.</p>
-        <p>This approach helps teams publish faster and keeps content consistent across docs, tutorials, and knowledge
-          bases.
-          It also improves SEO readability because pages remain scannable and semantically clear.</p>
+        <h2>Markdown for static site generators</h2>
+        <p>Most modern static site generators — Astro, Hugo, Jekyll, Eleventy, and Next.js with MDX — consume
+          markdown files directly. The patterns in this cheatsheet produce files that work in all of them:</p>
+        <ul>
+          <li>Use front-matter (<code>---</code> blocks) for page metadata.</li>
+          <li>Stick to CommonMark + GFM syntax for maximum compatibility.</li>
+          <li>Keep Mermaid and KaTeX inside fenced code blocks with the right language tag.</li>
+          <li>Use relative links for internal references so the site builds in any directory.</li>
+        </ul>
+        <p>If you author in Markups and export to HTML, the resulting file drops into a static site without
+          rewriting.</p>
+      </section>
+
+      <section class="card">
+        <h2>FAQ</h2>
+        <p><strong>Is markdown beginner friendly?</strong> Yes. Markdown is plain text with a few simple symbols
+          for headings, lists, links, and emphasis.</p>
+        <p><strong>What is the fastest way to learn markdown?</strong> Use a cheatsheet like this one with
+          copy-pasteable examples, and try them in a live preview editor like Markups.</p>
+        <p><strong>Does this cheatsheet include Mermaid and KaTeX?</strong> Yes. Both are covered with runnable
+          examples that you can paste directly into the editor.</p>
+        <p><strong>Why use Markups for markdown?</strong> It gives you live preview, modern exports, and a
+          browser-only workflow with no sign-up.</p>
+        <p><strong>Can I export the cheatsheet to PDF?</strong> Yes. Use the export button in the Markups editor
+          to download this cheatsheet as a printable PDF.</p>
+      </section>
+
+      <section class="card">
+        <h2>Try these examples in Markups</h2>
+        <p>Open <a href="https://markups.dev">markups.dev</a>, paste any example from this cheatsheet, and watch
+          the preview render in real time. When the document is ready, export to PDF, HTML, or Markdown in one
+          click. The editor is free for as many documents as you want.</p>
+        <p>For more, see the <a href="/seo/examples/mermaid">Mermaid examples</a>,
+          <a href="/seo/examples/math">math examples</a>, or
+          <a href="/seo/tutorials/markdown-to-pdf">markdown to PDF tutorial</a>.</p>
       </section>
     </main>
 
     <footer class="footer">
       <a href="/seo/examples/mermaid">Mermaid examples</a>
       <a href="/seo/examples/math">Math examples</a>
+      <a href="/seo/tutorials/markdown-to-pdf">PDF tutorial</a>
       <a href="/seo/global-growth-playbook">Growth playbook</a>
     </footer>
   </div>
