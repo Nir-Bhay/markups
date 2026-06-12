@@ -38,17 +38,42 @@ for (const entry of readdirSync(__dirname, { withFileTypes: true })) {
 });
 
 export default defineConfig({
-    optimizeDeps: {
-        include: ['monaco-editor']
+    target: 'es2020',
+    css: {
+        devSourcemap: false
     },
     build: {
+        target: 'es2020',
+        cssCodeSplit: true,
+        minify: 'esbuild',
+        sourcemap: false,
+        reportCompressedSize: true,
+        chunkSizeWarningLimit: 800,
+        assetsInlineLimit: 4096,
         rollupOptions: {
             input,
             output: {
+                // Long-term caching: include content hash in the bundle file names
+                entryFileNames: 'assets/[name]-[hash].js',
+                chunkFileNames: 'assets/[name]-[hash].js',
+                assetFileNames: 'assets/[name]-[hash][extname]',
                 manualChunks: {
-                    'monaco-editor': ['monaco-editor']
+                    'monaco-editor': ['monaco-editor'],
+                    'mermaid-vendor': ['mermaid'],
+                    'katex-vendor': ['katex'],
+                    'markdown-vendor': ['marked', 'marked-katex-extension', 'marked-highlight', 'marked-gfm-heading-id', 'marked-footnote', 'marked-alert', 'markdownlint'],
+                    'dom-utils': ['dompurify', 'html2pdf.js', 'html2canvas', 'prismjs', 'github-markdown-css'],
+                    'storage-vendor': ['dexie']
                 }
             }
         }
+    },
+    esbuild: {
+        // Drop debugger statements in production
+        drop: ['debugger'],
+        legalComments: 'none'
+    },
+    optimizeDeps: {
+        include: ['monaco-editor']
     }
 });
