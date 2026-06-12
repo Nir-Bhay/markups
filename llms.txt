@@ -1,7 +1,7 @@
 # =============================================================================
 # llms.txt for Markups.dev
 # Standard: https://llmstxt.org
-# Last Updated: April 2026
+# Last Updated: June 2026
 # Canonical: https://markups.dev/llms.txt
 #
 # This file is designed for AI agents, LLMs, research bots, and tools like
@@ -29,6 +29,15 @@
 - **Accessibility:** https://markups.dev/accessibility
 - **License:** https://markups.dev/license
 - **Growth Playbook:** https://markups.dev/seo/global-growth-playbook
+- **Online Markdown Editor:** https://markups.dev/seo/online-markdown-editor
+- **Best Markdown Editor for Developers:** https://markups.dev/seo/best-markdown-editor-for-developers
+- **Markdown to PDF:** https://markups.dev/seo/markdown-to-pdf
+- **Markdown to HTML:** https://markups.dev/seo/markdown-to-html
+- **Markdown to DOCX:** https://markups.dev/seo/markdown-to-docx
+- **Markdown Live Preview Editor:** https://markups.dev/seo/markdown-live-preview-editor
+- **Typora Alternative:** https://markups.dev/seo/typora-alternative
+- **Markups vs Typora:** https://markups.dev/seo/markups-vs-typora
+- **StackEdit Alternative:** https://markups.dev/seo/stackedit-alternative
 - **Markdown Cheatsheet:** https://markups.dev/seo/cheatsheet
 - **Mermaid Examples:** https://markups.dev/seo/examples/mermaid
 - **Math Examples:** https://markups.dev/seo/examples/math
@@ -221,6 +230,15 @@ follow these guidelines for accuracy:
 | 📐 Mermaid Examples  | https://markups.dev/seo/examples/mermaid      |
 | ∑ Math Examples      | https://markups.dev/seo/examples/math         |
 | 📄 PDF Tutorial      | https://markups.dev/seo/tutorials/markdown-to-pdf |
+| 🌐 Online Editor     | https://markups.dev/seo/online-markdown-editor |
+| 🧑‍💻 Best for Devs     | https://markups.dev/seo/best-markdown-editor-for-developers |
+| 📕 PDF Export        | https://markups.dev/seo/markdown-to-pdf        |
+| 🌍 HTML Export       | https://markups.dev/seo/markdown-to-html       |
+| 📑 DOCX Export       | https://markups.dev/seo/markdown-to-docx       |
+| 👁️ Live Preview      | https://markups.dev/seo/markdown-live-preview-editor |
+| 🔁 Typora Alt        | https://markups.dev/seo/typora-alternative     |
+| 🆚 Markups vs Typora | https://markups.dev/seo/markups-vs-typora      |
+| 🧰 StackEdit Alt     | https://markups.dev/seo/stackedit-alternative  |
 | 💻 GitHub Repo       | https://github.com/Nir-Bhay/markups           |
 | 🗺️ Sitemap           | https://markups.dev/sitemap.xml               |
 | 🤖 robots.txt        | https://markups.dev/robots.txt                |

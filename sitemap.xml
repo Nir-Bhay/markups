@@ -2,7 +2,7 @@
 <!--
   =============================================================================
   sitemap.xml for Markups.dev — Free Online Markdown Editor
-  Last Updated: April 26, 2026
+  Last Updated: June 12, 2026
   Standard: https://www.sitemaps.org/protocol.html
   Canonical: https://markups.dev/sitemap.xml
 
@@ -200,31 +200,85 @@
   </url>
   <url>
     <loc>https://markups.dev/seo/global-growth-playbook</loc>
-    <lastmod>2026-04-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://markups.dev/seo/cheatsheet</loc>
-    <lastmod>2026-04-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://markups.dev/seo/online-markdown-editor</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/best-markdown-editor-for-developers</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/markdown-to-pdf</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/markdown-to-html</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/markdown-to-docx</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/markdown-live-preview-editor</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/typora-alternative</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/markups-vs-typora</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://markups.dev/seo/stackedit-alternative</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://markups.dev/seo/examples/mermaid</loc>
-    <lastmod>2026-04-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://markups.dev/seo/examples/math</loc>
-    <lastmod>2026-04-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://markups.dev/seo/tutorials/markdown-to-pdf</loc>
-    <lastmod>2026-04-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

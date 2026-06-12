@@ -1,3 +1,9 @@
+<!--
+  Page: /seo/global-growth-playbook
+  Type: Strategy / Internal Operating Document
+  Last updated: 2026-06-12
+  Word count: ~700
+-->
 <!doctype html>
 <html lang="en">
 
@@ -7,9 +13,23 @@
   <meta name="robots" content="index,follow">
   <title>Global Growth Playbook - Markups</title>
   <meta name="description"
-    content="A practical strategy page for Markups covering privacy-first positioning, international SEO rules, and page publishing priorities.">
+    content="A practical strategy page for Markups covering privacy-first positioning, international SEO rules, and the current page publishing priorities.">
   <link rel="canonical" href="https://markups.dev/seo/global-growth-playbook">
   <link rel="stylesheet" href="/css/content-pages.css">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://markups.dev/seo/global-growth-playbook">
+  <meta property="og:title" content="Global Growth Playbook - Markups">
+  <meta property="og:description"
+    content="A practical growth playbook for Markups covering privacy-first positioning, international SEO rules, and page publishing priorities.">
+  <meta property="og:image" content="https://markups.dev/images/og-image.png">
+  <meta property="og:site_name" content="Markups">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Global Growth Playbook - Markups">
+  <meta name="twitter:description"
+    content="Privacy-first positioning, international SEO rules, and publishing priorities for Markups.">
+  <meta name="twitter:image" content="https://markups.dev/images/og-image.png">
 </head>
 
 <body>
@@ -17,22 +37,22 @@
     <header class="hero">
       <div class="eyebrow">Strategy / SEO / GEO</div>
       <h1>Global Growth Playbook</h1>
-      <p class="lede">This page turns the research into simple operating rules: publish trust pages first, keep one page
-        per intent, and make every public page easy for humans and search systems to understand.</p>
+      <p class="lede">This page turns the research into simple operating rules: publish trust pages first, keep one
+        page per intent, and make every public page easy for humans and search systems to understand.</p>
       <div class="actions">
         <a class="button primary" href="/privacy-policy">Trust pages</a>
         <a class="button" href="/seo/cheatsheet">Cheatsheet</a>
         <a class="button ghost" href="/">Open editor</a>
       </div>
-      <p class="meta">Route: /seo/global-growth-playbook · Last updated: 2026-04-26</p>
+      <p class="meta">Route: /seo/global-growth-playbook · Last updated: 2026-06-12</p>
     </header>
 
     <main class="content">
       <section class="card">
         <h2>Direct answer</h2>
         <p>The fastest way to grow Markups internationally is to lead with privacy-first trust pages, then publish
-          focused intent pages that answer one search need each. That keeps the public site clear, maintainable, and
-          easier to cite.</p>
+          focused intent pages that answer one search need each. That keeps the public site clear, maintainable,
+          and easier for both search engines and AI assistants to cite.</p>
       </section>
 
       <section class="card">
@@ -43,6 +63,7 @@
           <li>Update the sitemap and llms.txt whenever a public page is added.</li>
           <li>Only publish claims that are visible on the page or supported by source docs.</li>
           <li>Prefer static HTML pages for discoverability and low operational risk.</li>
+          <li>Pair every public page with a JSON-LD Article + FAQ schema where appropriate.</li>
         </ol>
       </section>
 
@@ -54,7 +75,7 @@
               <tr>
                 <th>Priority</th>
                 <th>Page</th>
-                <th>Why it matters</th>
+                <th>Target intent</th>
               </tr>
             </thead>
             <tbody>
@@ -75,21 +96,66 @@
               </tr>
               <tr>
                 <td>2</td>
-                <td>/seo/cheatsheet</td>
-                <td>High-value educational entry point for markdown search traffic.</td>
+                <td>/seo/online-markdown-editor</td>
+                <td>Primary commercial intent: "online markdown editor".</td>
               </tr>
               <tr>
                 <td>2</td>
+                <td>/seo/best-markdown-editor-for-developers</td>
+                <td>Developer audience intent and competitive comparison.</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>/seo/markdown-to-pdf</td>
+                <td>Conversion intent: "markdown to pdf".</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>/seo/markdown-to-html</td>
+                <td>Web publishing intent: "markdown to html".</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>/seo/markdown-to-docx</td>
+                <td>Office workflow intent: "markdown to docx".</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>/seo/typora-alternative</td>
+                <td>Competitor alternative intent.</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>/seo/markups-vs-typora</td>
+                <td>Head-to-head comparison intent.</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>/seo/stackedit-alternative</td>
+                <td>Competitor alternative intent.</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>/seo/markdown-live-preview-editor</td>
+                <td>Workflow / feature intent.</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>/seo/cheatsheet</td>
+                <td>Educational entry point: "markdown cheatsheet".</td>
+              </tr>
+              <tr>
+                <td>4</td>
                 <td>/seo/examples/mermaid</td>
                 <td>Targets diagram-focused queries and developer workflows.</td>
               </tr>
               <tr>
-                <td>2</td>
+                <td>4</td>
                 <td>/seo/examples/math</td>
                 <td>Targets math-heavy writing and student search intent.</td>
               </tr>
               <tr>
-                <td>3</td>
+                <td>4</td>
                 <td>/seo/tutorials/markdown-to-pdf</td>
                 <td>Captures tutorial intent around a core product export flow.</td>
               </tr>
@@ -106,6 +172,7 @@
             <li>Use clear headings that match real search intent.</li>
             <li>Favour short, factual explanations over marketing claims.</li>
             <li>Add structured data only when it reflects visible page content.</li>
+            <li>Use hreflang alternates only when a true translated version exists.</li>
           </ul>
         </div>
         <div>
@@ -114,26 +181,25 @@
             <li>Lead with the privacy-first browser workflow.</li>
             <li>Use supporting pages to prove product depth, not to duplicate core pages.</li>
             <li>Cross-link trust pages, examples, and tutorials to help discovery.</li>
+            <li>Refresh cornerstone pages quarterly with new examples and FAQ entries.</li>
           </ul>
         </div>
       </section>
 
       <section class="card">
         <h2>Next recommended page family</h2>
-        <p>After this batch, the next useful pages are a README template, a Markdown export checklist, and a Mermaid
-          workflow guide. Those pages would deepen topical coverage without touching the core editor code.</p>
+        <p>After this batch, the next useful pages are a README template gallery, a Markdown export checklist,
+          and a Mermaid workflow guide. Those pages would deepen topical coverage without touching the core
+          editor code.</p>
       </section>
 
       <section class="card">
         <h2>Execution cadence (practical publishing model)</h2>
-        <p>Use a weekly cycle: publish two intent pages, refresh one existing page, and review internal linking. This
-          cadence
-          compounds topical authority without creating content debt. Track what changed, why it changed, and what
-          metrics should
-          improve in the next cycle.</p>
-        <p>For quality control, keep every page factual, scoped to one search intent, and easy to validate against the
-          actual
-          product. This maintains trust signals while scaling the content library.</p>
+        <p>Use a weekly cycle: publish two intent pages, refresh one existing page, and review internal linking.
+          This cadence compounds topical authority without creating content debt. Track what changed, why it
+          changed, and what metrics should improve in the next cycle.</p>
+        <p>For quality control, keep every page factual, scoped to one search intent, and easy to validate
+          against the actual product. This maintains trust signals while scaling the content library.</p>
       </section>
     </main>
 
@@ -141,7 +207,7 @@
       <a href="/seo/cheatsheet">Cheatsheet</a>
       <a href="/seo/examples/mermaid">Mermaid examples</a>
       <a href="/seo/examples/math">Math examples</a>
-      <a href="/seo/tutorials/markdown-to-pdf">Markdown to PDF tutorial</a>
+      <a href="/seo/tutorials/markdown-to-pdf">PDF tutorial</a>
     </footer>
   </div>
 </body>

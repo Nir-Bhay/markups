@@ -1,3 +1,9 @@
+<!--
+  Page: /seo/examples/mermaid
+  Target keyword: "mermaid diagram examples"
+  Last updated: 2026-06-12
+  Word count: ~900
+-->
 <!doctype html>
 <html lang="en">
 
@@ -5,33 +11,96 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="index,follow">
-  <title>Mermaid Diagram Examples - Markups</title>
+  <title>Mermaid Diagram Examples (Copy & Paste) - Markups</title>
   <meta name="description"
-    content="Copy Mermaid diagram examples for flowcharts, sequence diagrams, and project timelines in Markups.">
+    content="Copy-paste Mermaid diagram examples for flowcharts, sequence diagrams, Gantt charts, ER diagrams, and class diagrams. Render them live in the Markups editor.">
   <link rel="canonical" href="https://markups.dev/seo/examples/mermaid">
   <link rel="stylesheet" href="/css/content-pages.css">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://markups.dev/seo/examples/mermaid">
+  <meta property="og:title" content="Mermaid Diagram Examples (Copy & Paste) - Markups">
+  <meta property="og:description"
+    content="Copy-paste Mermaid examples for flowcharts, sequence, Gantt, ER, class, and state diagrams. Render live in Markups.">
+  <meta property="og:image" content="https://markups.dev/images/og-image.png">
+  <meta property="og:site_name" content="Markups">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Mermaid Diagram Examples - Markups">
+  <meta name="twitter:description"
+    content="Copy-paste Mermaid examples for flowcharts, sequence, Gantt, ER, class, and state diagrams.">
+  <meta name="twitter:image" content="https://markups.dev/images/og-image.png">
+
+  <!-- JSON-LD: Article + FAQPage -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "@id": "https://markups.dev/seo/examples/mermaid#article",
+        "headline": "Mermaid Diagram Examples (Copy & Paste)",
+        "description": "A library of Mermaid diagram examples that render live inside the Markups markdown editor.",
+        "datePublished": "2026-04-26",
+        "dateModified": "2026-06-12",
+        "author": { "@type": "Organization", "name": "Markups", "url": "https://markups.dev" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Markups",
+          "logo": { "@type": "ImageObject", "url": "https://markups.dev/images/og-image.png" }
+        },
+        "mainEntityOfPage": "https://markups.dev/seo/examples/mermaid",
+        "inLanguage": "en"
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I write a Mermaid diagram in markdown?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Wrap the Mermaid syntax in a fenced code block with the language tag 'mermaid'. Markups renders the diagram in the live preview and in the exported PDF and HTML." }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I need JavaScript to write Mermaid?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. You only need a markdown code block with the right syntax. Markups handles the rendering." }
+          },
+          {
+            "@type": "Question",
+            "name": "What diagram types does Mermaid support?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Flowchart, sequence, Gantt, ER, class, state, pie, user journey, and more. Markups supports all of them." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 
 <body>
   <div class="page-shell">
     <header class="hero">
       <div class="eyebrow">SEO / Examples</div>
-      <h1>Mermaid Diagram Examples</h1>
-      <p class="lede">These examples help users generate Mermaid diagrams quickly, then render and export them inside
-        Markups without extra tooling.</p>
+      <h1>Mermaid Diagram Examples (Copy & Paste)</h1>
+      <p class="lede">This page is a library of <strong>Mermaid diagram examples</strong> you can copy and paste
+        into the Markups editor. Render diagrams live in the preview pane, then export to PDF, HTML, or
+        Markdown when the document is ready.</p>
       <div class="actions">
-        <a class="button primary" href="/">Open editor</a>
+        <a class="button primary" href="https://markups.dev">Try Markups Free →</a>
         <a class="button" href="/seo/cheatsheet">Markdown cheatsheet</a>
         <a class="button ghost" href="/seo/examples/math">Math examples</a>
       </div>
-      <p class="meta">Route: /seo/examples/mermaid · Last updated: 2026-04-26</p>
+      <p class="meta">Route: /seo/examples/mermaid · Last updated: 2026-06-12 · Reading time: ~5 min</p>
     </header>
 
     <main class="content">
       <section class="card">
         <h2>Direct answer</h2>
-        <p>Mermaid is useful when you want fast, text-based diagrams for docs, architecture notes, and workflows. The
-          code below is ready to paste into Markups.</p>
+        <p>Mermaid is useful when you want fast, text-based diagrams for docs, architecture notes, and workflows.
+          The code below is ready to paste into Markups. Wrap each block in a fenced code block with the
+          <code>mermaid</code> language tag and the preview will render the diagram live.</p>
       </section>
 
       <section class="card grid two">
@@ -57,7 +126,7 @@ sequenceDiagram
       </section>
 
       <section class="card">
-        <h2>Timeline example</h2>
+        <h2>Gantt timeline</h2>
         <pre>```mermaid
 gantt
   title Markdown workflow
@@ -70,30 +139,107 @@ gantt
       </section>
 
       <section class="card">
+        <h2>Entity-Relationship diagram</h2>
+        <pre>```mermaid
+erDiagram
+  USER ||--o{ POST : writes
+  POST ||--|{ COMMENT : has
+  USER ||--o{ COMMENT : authors
+```</pre>
+      </section>
+
+      <section class="card grid two">
+        <div>
+          <h2>Class diagram</h2>
+          <pre>```mermaid
+classDiagram
+  class User {
+    +id: int
+    +name: string
+    +email: string
+  }
+  class Post {
+    +id: int
+    +title: string
+    +author: User
+  }
+  User "1" --> "*" Post : writes
+```</pre>
+        </div>
+        <div>
+          <h2>State diagram</h2>
+          <pre>```mermaid
+stateDiagram-v2
+  [*] --> Draft
+  Draft --> Review
+  Review --> Published
+  Published --> [*]
+```</pre>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Pie chart</h2>
+        <pre>```mermaid
+pie showData
+  title Documentation effort
+  "Drafting"   : 40
+  "Reviewing"  : 25
+  "Publishing" : 20
+  "Maintenance" : 15
+```</pre>
+      </section>
+
+      <section class="card">
         <h2>How to write better diagram-driven documentation</h2>
-        <p>Use one diagram per idea. Start with a simple flow first, then add detail only if it changes a decision. For
-          system
-          docs, pair each Mermaid block with a short explanation of assumptions, input, and output. This keeps your page
-          usable
-          for both engineers and non-technical reviewers.</p>
-        <p>If a diagram becomes too dense, split it into multiple sections. Smaller diagrams are easier to maintain and
-          easier
-          to understand in exported PDF or HTML formats.</p>
+        <p>Use one diagram per idea. Start with a simple flow first, then add detail only if it changes a
+          decision. For system docs, pair each Mermaid block with a short explanation of assumptions, input,
+          and output. This keeps your page usable for both engineers and non-technical reviewers.</p>
+        <p>If a diagram becomes too dense, split it into multiple sections. Smaller diagrams are easier to
+          maintain and easier to understand in exported PDF or HTML formats. For more on building clear docs,
+          see the <a href="/seo/cheatsheet">markdown cheatsheet</a>.</p>
+      </section>
+
+      <section class="card">
+        <h2>Tips for clean Mermaid output</h2>
+        <ul>
+          <li>Wrap the diagram in a fenced code block with <code>```mermaid</code> for the language tag.</li>
+          <li>Keep node labels short and consistent across the diagram.</li>
+          <li>Avoid mixing too many diagram types in a single document.</li>
+          <li>Use subgraphs to group related nodes in complex flowcharts.</li>
+          <li>Preview often — Mermaid errors are usually obvious in the live preview.</li>
+          <li>For sequence diagrams, name participants explicitly to keep the diagram readable.</li>
+        </ul>
       </section>
 
       <section class="card">
         <h2>FAQ</h2>
-        <p><strong>Do I need JavaScript to write Mermaid?</strong> No. You only need the markdown code block. Markups
-          handles the preview.</p>
-        <p><strong>What should I try next?</strong> Export the page to PDF or HTML after you confirm the diagram looks
-          right.</p>
+        <p><strong>How do I write a Mermaid diagram in markdown?</strong> Wrap the syntax in a fenced code block
+          with the language tag <code>mermaid</code>. Markups renders the diagram in the live preview.</p>
+        <p><strong>Do I need JavaScript to write Mermaid?</strong> No. You only need the markdown code block.
+          Markups handles the rendering.</p>
+        <p><strong>What diagram types are supported?</strong> Flowchart, sequence, Gantt, ER, class, state, pie,
+          user journey, and more. Markups supports all of them.</p>
+        <p><strong>Can I export diagrams to PDF?</strong> Yes. The PDF export renders Mermaid diagrams as part of
+          the page, so they appear in the printable output.</p>
+        <p><strong>What should I try next?</strong> Export the page to PDF or HTML after you confirm the
+          diagram looks right.</p>
+      </section>
+
+      <section class="card">
+        <h2>Try these examples in Markups</h2>
+        <p>Open <a href="https://markups.dev">markups.dev</a>, paste any of the examples above, and watch the
+          diagram render in real time. When the document is ready, export to PDF, HTML, or Markdown in one
+          click. The editor is free for unlimited diagrams.</p>
+        <p>For more, see the <a href="/seo/cheatsheet">markdown cheatsheet</a> or
+          <a href="/seo/examples/math">math examples</a>.</p>
       </section>
     </main>
 
     <footer class="footer">
       <a href="/seo/cheatsheet">Cheatsheet</a>
       <a href="/seo/examples/math">Math examples</a>
-      <a href="/seo/tutorials/markdown-to-pdf">Markdown to PDF tutorial</a>
+      <a href="/seo/tutorials/markdown-to-pdf">PDF tutorial</a>
     </footer>
   </div>
 </body>
