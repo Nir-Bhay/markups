@@ -110,7 +110,14 @@
     <script>
         window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
     </script>
-    <script type="module" src="/_vercel/insights/script.js"></script>
+    <script>
+        (function () {
+            var script = document.createElement('script');
+            script.defer = true;
+            script.src = '/_vercel/insights/script.js';
+            document.head.appendChild(script);
+        })();
+    </script>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
