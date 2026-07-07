@@ -1302,12 +1302,16 @@ let updateEditorMarkers = (issues) => {
 // ----- Search System -----
 let currentSearchQuery = '';
 let editorSearchDecorations = []; // Track Monaco editor search decorations
+let currentMatchIndex = -1; // Track which match is currently selected
+let allMatches = []; // Array of all match elements
 
 let setupSearch = () => {
     const searchBtn = document.getElementById('search-btn');
     const searchOverlay = document.getElementById('search-overlay');
     const searchInput = document.getElementById('search-input');
     const searchClose = document.getElementById('search-close');
+    const searchPrev = document.getElementById('search-prev');
+    const searchNext = document.getElementById('search-next');
     const matchCountEl = document.getElementById('search-match-count');
 
     if (!searchBtn || !searchOverlay || !searchInput) {
@@ -1337,6 +1341,8 @@ let setupSearch = () => {
         searchOverlay.classList.add('hidden');
         currentSearchQuery = '';
         searchInput.value = '';
+        currentMatchIndex = -1;
+        allMatches = [];
         if (matchCountEl) matchCountEl.textContent = '';
         // Clear editor decorations
         editorSearchDecorations = editor.deltaDecorations(editorSearchDecorations, []);
@@ -1346,6 +1352,7 @@ let setupSearch = () => {
     // Handle search input
     searchInput.addEventListener('input', (e) => {
         currentSearchQuery = e.target.value;
+        currentMatchIndex = -1; // Reset to first match when search term changes
         convert(editor.getValue());
         highlightEditorMatches();
         updateMatchCount();
@@ -1357,11 +1364,34 @@ let setupSearch = () => {
             clearSearch();
         }
         if (e.key === 'Enter') {
-            // Scroll to first match in preview
-            const firstMatch = document.querySelector('.search-highlight');
-            if (firstMatch) {
-                firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+            goToNextMatch();
+        }
+    });
+
+    // Navigation button handlers
+    if (searchPrev) {
+        searchPrev.addEventListener('click', () => {
+            goToPreviousMatch();
+        });
+    }
+
+    if (searchNext) {
+        searchNext.addEventListener('click', () => {
+            goToNextMatch();
+        });
+    }
+
+    // Keyboard navigation for up/down arrows (when search overlay is visible)
+    document.addEventListener('keydown', (e) => {
+        // Only navigate if search overlay is visible
+        if (searchOverlay.classList.contains('hidden')) return;
+        
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            goToPreviousMatch();
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            goToNextMatch();
         }
     });
 
@@ -1399,6 +1429,91 @@ let highlightEditorMatches = () => {
     editorSearchDecorations = editor.deltaDecorations(editorSearchDecorations, decorations);
 };
 
+// Get all current match elements
+let getMatchElements = () => {
+    return Array.from(document.querySelectorAll('#output .search-highlight'));
+};
+
+// Navigate to a specific match index
+let navigateToMatch = (index) => {
+    allMatches = getMatchElements();
+    if (allMatches.length === 0) return;
+    
+    // Ensure index is within bounds
+    index = Math.max(0, Math.min(index, allMatches.length - 1));
+    
+    // Remove current highlight from old match
+    allMatches.forEach((match, i) => {
+        if (i === currentMatchIndex) {
+            match.classList.remove('current');
+        }
+    });
+    
+    // Add current highlight to new match
+    currentMatchIndex = index;
+    if (allMatches[currentMatchIndex]) {
+        allMatches[currentMatchIndex].classList.add('current');
+        // Auto-scroll to current match
+        allMatches[currentMatchIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    updateMatchCount();
+    updateNavigationUI();
+};
+
+// Navigate to next match
+let goToNextMatch = () => {
+    allMatches = getMatchElements();
+    if (allMatches.length === 0) return;
+    
+    let nextIndex = currentMatchIndex + 1;
+    // Wrap around to first match
+    if (nextIndex >= allMatches.length) {
+        nextIndex = 0;
+    }
+    
+    navigateToMatch(nextIndex);
+};
+
+// Navigate to previous match
+let goToPreviousMatch = () => {
+    allMatches = getMatchElements();
+    if (allMatches.length === 0) return;
+    
+    let prevIndex = currentMatchIndex - 1;
+    // Wrap around to last match
+    if (prevIndex < 0) {
+        prevIndex = allMatches.length - 1;
+    }
+    
+    navigateToMatch(prevIndex);
+};
+
+// Update navigation button states and counter display
+let updateNavigationUI = () => {
+    const searchPrev = document.getElementById('search-prev');
+    const searchNext = document.getElementById('search-next');
+    const matchCountEl = document.getElementById('search-match-count');
+    
+    allMatches = getMatchElements();
+    const totalMatches = allMatches.length;
+    const hasMatches = totalMatches > 0;
+    
+    // Update button disabled states
+    if (searchPrev) searchPrev.disabled = !hasMatches;
+    if (searchNext) searchNext.disabled = !hasMatches;
+    
+    // Update counter display with "X of Y" format
+    if (matchCountEl) {
+        if (hasMatches) {
+            const displayIndex = currentMatchIndex >= 0 ? currentMatchIndex + 1 : 1;
+            matchCountEl.textContent = `${displayIndex} of ${totalMatches}`;
+        } else {
+            matchCountEl.textContent = 'No matches';
+        }
+    }
+};
+
 // Update match count display
 let updateMatchCount = () => {
     const matchCountEl = document.getElementById('search-match-count');
@@ -1416,7 +1531,13 @@ let updateMatchCount = () => {
     const editorMatches = model ? model.findMatches(currentSearchQuery, false, false, false, null, true).length : 0;
     const totalMatches = Math.max(previewMatches, editorMatches);
 
-    matchCountEl.textContent = totalMatches > 0 ? `${totalMatches} match${totalMatches !== 1 ? 'es' : ''}` : 'No matches';
+    // Initialize with first match if matches exist and no match selected
+    if (totalMatches > 0 && currentMatchIndex < 0) {
+        navigateToMatch(0);
+    } else if (totalMatches === 0) {
+        currentMatchIndex = -1;
+        updateNavigationUI();
+    }
 };
 
 let highlightText = () => {
@@ -1498,6 +1619,8 @@ let convert = (markdown) => {
     // Update TOC
     updateTOC();
     highlightText();
+    // Update navigation UI after highlighting
+    updateNavigationUI();
 };
 
 // Add copy buttons to all code blocks

@@ -4745,12 +4745,55 @@ kbd {
   color: white;
 }
 
+/* Search navigation buttons (prev/next) */
+.search-nav-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.search-nav-btn:hover:not(:disabled) {
+  background: var(--accent-primary-light);
+  color: var(--accent-primary);
+}
+
+.search-nav-btn:active:not(:disabled) {
+  background: var(--accent-primary);
+  color: white;
+  transform: scale(0.95);
+}
+
+.search-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--text-quaternary);
+}
+
 /* Search highlight in preview */
 .search-highlight {
   background: var(--warning);
   color: var(--text-primary);
   padding: 1px 3px;
   border-radius: 3px;
+  transition: all var(--transition-fast);
+}
+
+/* Current/active search highlight */
+.search-highlight.current {
+  background: var(--accent-primary);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 0 0 2px var(--accent-primary-light);
 }
 
 /* Search match counter */
