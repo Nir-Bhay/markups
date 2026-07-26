@@ -1,0 +1,15 @@
+/**
+ * Mobile Toolbar Overflow — REFERENCE ONLY
+ *
+ * Styles are integrated in public/css/premium-ui.css
+ * (search: "Mobile Toolbar Overflow" and mobile @media blocks).
+ *
+ * Runtime wiring:
+ * - HTML: #toolbar-overflow-btn, #toolbar-overflow-sheet (index.html)
+ * - JS: MobileUIManager._setupToolbarOverflow() in src/features/mobile/index.js
+ * - Init: setupMobileUI() in src/main.js → mobileUIManager.initialize()
+ *
+ * Touch targets: min 44×44px on overflow button and sheet items (mobile + coarse pointer).
+ */
+
+/* Intentionally empty — do not duplicate into production CSS. */

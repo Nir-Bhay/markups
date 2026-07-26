@@ -43,8 +43,15 @@ import { dividerManager } from './features/divider/index.js';
 import { mobileUIManager } from './features/mobile/index.js';
 import { importManager } from './features/import/index.js';
 
-// AI Writer
-import { aiWriterManager } from './features/ai-writer/index.js';
+// AI Writer — lazy-loaded on first use (P3-T1)
+let _aiWriterManager = null;
+async function getAiWriterManager() {
+    if (!_aiWriterManager) {
+        const mod = await import('./features/ai-writer/index.js');
+        _aiWriterManager = mod.aiWriterManager;
+    }
+    return _aiWriterManager;
+}
 
 // Services
 import { shortcutsManager } from './services/shortcuts/index.js';
@@ -126,15 +133,15 @@ class App {
             editor: '#editor',
             preview: '#preview',
             main: '.main-container',
-            toolbar: '.toolbar-container',
-            tabs: '.tabs-container',
-            stats: '.stats-container',
-            toc: '.toc-panel',
-            search: '.search-panel',
-            linter: '.linter-panel',
-            templates: '.templates-panel',
-            snippets: '.snippets-panel',
-            goals: '.goals-container'
+            toolbar: '#toolbar',           // Updated to match index.html ID
+            tabs: '#tabs-list',            // Updated to match index.html ID
+            stats: '#stats-button',        // Updated - stats is triggered by button
+            toc: '#toc-container',         // Updated to match index.html ID
+            search: '#search-container',    // Will need to add this ID
+            linter: '#lint-button',        // Updated - linter is triggered by button
+            templates: '#templates-button', // Updated - templates triggered by button
+            snippets: '#snippets-button',   // Updated - snippets triggered by button
+            goals: '#goals-button'          // Updated - goals triggered by button
         };
 
         const resolved = { ...defaults, ...containers };
@@ -285,9 +292,11 @@ class App {
         // File import
         importManager.initialize();
 
-        // AI Writer
+        // AI Writer — dynamic import keeps it off the critical boot path
         if (FEATURE_FLAGS.ENABLE_AI_WRITER) {
-            aiWriterManager.initialize();
+            getAiWriterManager()
+                .then((ai) => ai.initialize())
+                .catch((err) => console.warn('AI Writer load error:', err));
         }
     }
 
@@ -327,7 +336,16 @@ class App {
             'exportPDF': () => this.exportPDF(),
             'exportHTML': () => this.exportHTML(),
             'help': () => this.showHelp(),
-            'toggleAI': () => aiWriterManager.toggle()
+            'toggleAI': () => {
+                getAiWriterManager()
+                    .then((ai) => {
+                        if (!ai.initialized && FEATURE_FLAGS.ENABLE_AI_WRITER) {
+                            ai.initialize();
+                        }
+                        ai.toggle();
+                    })
+                    .catch((err) => console.warn('AI Writer load error:', err));
+            }
         });
     }
 
@@ -536,7 +554,10 @@ class App {
         toolbarManager.dispose();
         modesManager.dispose();
         shortcutsManager.dispose();
-        aiWriterManager.dispose();
+        if (_aiWriterManager) {
+            _aiWriterManager.dispose();
+            _aiWriterManager = null;
+        }
 
         this.initialized = false;
         App.instance = null;

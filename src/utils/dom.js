@@ -286,6 +286,88 @@ export function ready() {
     });
 }
 
+const FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Create a focus trap for a modal/dialog container.
+ * @param {HTMLElement} container - Element that should contain keyboard focus
+ * @param {Object} [options]
+ * @param {Function} [options.onEscape] - Called when Escape is pressed
+ * @returns {{ activate: Function, deactivate: Function }}
+ */
+export function createFocusTrap(container, options = {}) {
+    let previousFocus = null;
+    let keyHandler = null;
+    const { onEscape = null } = options;
+
+    const getFocusable = () => {
+        if (!container) return [];
+        return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
+            if (el.hasAttribute('disabled') || el.getAttribute('aria-hidden') === 'true') return false;
+            const style = window.getComputedStyle(el);
+            return style.display !== 'none' && style.visibility !== 'hidden';
+        });
+    };
+
+    const activate = () => {
+        if (!container || keyHandler) return;
+        previousFocus = document.activeElement;
+
+        const focusable = getFocusable();
+        if (focusable.length > 0) {
+            focusable[0].focus();
+        } else if (typeof container.focus === 'function') {
+            if (!container.hasAttribute('tabindex')) container.setAttribute('tabindex', '-1');
+            container.focus();
+        }
+
+        keyHandler = (e) => {
+            if (e.key === 'Escape' && typeof onEscape === 'function') {
+                onEscape(e);
+                return;
+            }
+            if (e.key !== 'Tab') return;
+
+            const items = getFocusable();
+            if (items.length === 0) {
+                e.preventDefault();
+                return;
+            }
+
+            const first = items[0];
+            const last = items[items.length - 1];
+
+            if (e.shiftKey) {
+                if (document.activeElement === first || !container.contains(document.activeElement)) {
+                    e.preventDefault();
+                    last.focus();
+                }
+            } else if (document.activeElement === last || !container.contains(document.activeElement)) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+
+        container.addEventListener('keydown', keyHandler);
+    };
+
+    const deactivate = () => {
+        if (keyHandler && container) {
+            container.removeEventListener('keydown', keyHandler);
+            keyHandler = null;
+        }
+        if (previousFocus && typeof previousFocus.focus === 'function') {
+            try {
+                previousFocus.focus();
+            } catch (_) { /* element may be gone */ }
+        }
+        previousFocus = null;
+    };
+
+    return { activate, deactivate };
+}
+
 export default {
     $, $$, byId, createElement,
     addClass, removeClass, toggleClass, hasClass,
@@ -293,5 +375,6 @@ export default {
     on, once, delegate,
     getOffset, scrollIntoView,
     setHTML, setText, val, empty, remove, clone,
-    isVisible, ready
+    isVisible, ready,
+    createFocusTrap
 };

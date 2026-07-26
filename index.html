@@ -7,7 +7,8 @@
 
     <!-- ===== SECURITY META (fallback when HTTP headers are unavailable) ===== -->
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.clarity.ms https://*.clarity.ms https://vitals.vercel-insights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.clarity.ms https://*.clarity.ms https://vitals.vercel-insights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://api.openai.com https://api.anthropic.com https://www.google-analytics.com https://analytics.google.com https://www.google.com https://*.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net wss:; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'">
 
     <!-- Primary Meta Tags -->
     <title>Markups - Free Online Markdown Editor with Live Preview</title>
@@ -439,6 +440,8 @@
 </head>
 
 <body class="view-split">
+    <!-- Skip Navigation Link (accessibility) -->
+    <a href="#editor" class="skip-nav-link" id="skip-nav-link">Skip to editor</a>
 
     <!-- ==================== HEADER ==================== -->
     <header class="premium-header" role="banner">
@@ -514,7 +517,7 @@
         <!-- Actions -->
         <div class="header-actions">
             <!-- Search -->
-            <button class="header-btn icon-with-label" id="search-btn" title="Search (Ctrl+F)">
+            <button class="header-btn icon-with-label" id="search-btn" title="Search (Ctrl+F)" aria-label="Search">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="11" r="8"></circle>
@@ -524,7 +527,8 @@
             </button>
 
             <!-- Find & Replace -->
-            <button class="header-btn icon-with-label" id="find-replace-btn" title="Find & Replace (Ctrl+Shift+H)">
+            <button class="header-btn icon-with-label" id="find-replace-btn" title="Find & Replace (Ctrl+Shift+H)"
+                aria-label="Find and Replace">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="8" r="5"></circle>
@@ -537,7 +541,8 @@
             </button>
 
             <!-- Version History -->
-            <button class="header-btn icon-with-label" id="version-history-btn" title="Version History (Ctrl+Shift+V)">
+            <button class="header-btn icon-with-label" id="version-history-btn" title="Version History (Ctrl+Shift+V)"
+                aria-label="Version History">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
@@ -547,7 +552,7 @@
             </button>
 
             <!-- Import -->
-            <button class="header-btn icon-with-label" id="import-button" title="Import File">
+            <button class="header-btn icon-with-label" id="import-button" title="Import File" aria-label="Import File">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -558,7 +563,7 @@
             </button>
 
             <!-- Help -->
-            <button class="header-btn icon-with-label" id="help-button" title="Help (Ctrl+H)">
+            <button class="header-btn icon-with-label" id="help-button" title="Help (Ctrl+H)" aria-label="Help">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
@@ -569,15 +574,18 @@
             </button>
 
             <!-- View Mode Toggle -->
-            <div class="view-mode-toggle">
-                <button class="view-mode-btn" id="view-code" data-view="editor" title="Editor only">Write</button>
-                <button class="view-mode-btn active" id="view-split" data-view="split" title="Split view">Split</button>
-                <button class="view-mode-btn" id="view-preview" data-view="preview"
-                    title="Preview only">Preview</button>
+            <div class="view-mode-toggle" role="group" aria-label="View mode">
+                <button class="view-mode-btn" id="view-code" data-view="editor" title="Editor only"
+                    aria-label="Editor only">Write</button>
+                <button class="view-mode-btn active" id="view-split" data-view="split" title="Split view"
+                    aria-label="Split view">Split</button>
+                <button class="view-mode-btn" id="view-preview" data-view="preview" title="Preview only"
+                    aria-label="Preview only">Preview</button>
             </div>
 
             <!-- Theme Toggle -->
-            <button class="header-btn icon-with-label" id="dark-mode-toggle" title="Toggle theme">
+            <button class="header-btn icon-with-label" id="dark-mode-toggle" title="Toggle theme"
+                aria-label="Toggle theme">
                 <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="5"></circle>
@@ -598,7 +606,7 @@
             </button>
 
             <!-- Settings -->
-            <button class="header-btn icon-with-label" id="settings-btn" title="Settings">
+            <button class="header-btn icon-with-label" id="settings-btn" title="Settings" aria-label="Settings">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="3"></circle>
@@ -610,7 +618,8 @@
             </button>
 
             <!-- Export -->
-            <button class="header-btn primary icon-with-label" id="export-btn" title="Export Document (Ctrl+Shift+E)">
+            <button class="header-btn primary icon-with-label" id="export-btn" title="Export Document (Ctrl+Shift+E)"
+                aria-label="Export Document">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -767,7 +776,7 @@
                 </svg>
             </button>
             <button class="toolbar-btn" id="callout-dropdown-btn" title="Callouts" aria-label="Callouts"
-                aria-haspopup="true" aria-expanded="false">
+                aria-haspopup="menu" aria-expanded="false" aria-controls="callout-dropdown-sheet">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -907,7 +916,8 @@
 
         <!-- Mobile Toolbar Overflow Button -->
         <button class="toolbar-overflow-btn" id="toolbar-overflow-btn" title="More tools"
-            aria-label="More formatting tools">
+            aria-label="More formatting tools" aria-haspopup="dialog" aria-controls="toolbar-overflow-sheet"
+            aria-expanded="false">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <circle cx="12" cy="5" r="2"></circle>
                 <circle cx="12" cy="12" r="2"></circle>
@@ -916,10 +926,12 @@
         </button>
 
         <!-- Advanced Toolbar Menu (populated by MobileUIManager) -->
-        <div class="toolbar-overflow-sheet" id="toolbar-overflow-sheet"></div>
+        <div class="toolbar-overflow-sheet" id="toolbar-overflow-sheet" role="dialog" aria-label="More formatting tools"
+            aria-hidden="true"></div>
 
         <!-- Callouts Dropdown -->
-        <div class="toolbar-overflow-sheet" id="callout-dropdown-sheet"></div>
+        <div class="toolbar-overflow-sheet" id="callout-dropdown-sheet" role="menu" aria-label="Callout styles"
+            aria-hidden="true"></div>
 
     </div>
 
@@ -1018,7 +1030,8 @@
             <aside class="toc-sidebar" id="toc-sidebar">
                 <div class="toc-header">
                     <div class="toc-section-title">ON THIS PAGE</div>
-                    <button class="toc-close-btn" id="toc-close-btn" title="Hide table of contents">
+                    <button class="toc-close-btn" id="toc-close-btn" title="Hide table of contents"
+                        aria-label="Hide table of contents">
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                             <path
                                 d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z" />
@@ -1034,7 +1047,8 @@
         </section>
 
         <!-- Floating Edit Button (visible in preview mode) -->
-        <button class="floating-edit-btn" id="floating-edit-btn" title="Switch to Edit mode">
+        <button class="floating-edit-btn" id="floating-edit-btn" title="Switch to Edit mode"
+            aria-label="Switch to Edit mode">
             <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
                 <path
                     d="M12.854.146a.5.5 0 00-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 000-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 01.5.5v.5h.5a.5.5 0 01.5.5v.5h.5a.5.5 0 01.5.5v.5h.5a.5.5 0 01.5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 016 13.5V13h-.5a.5.5 0 01-.5-.5V12h-.5a.5.5 0 01-.5-.5V11h-.5a.5.5 0 01-.5-.5V10h-.5a.499.499 0 01-.175-.032l-.179.178a.5.5 0 00-.11.168l-2 5a.5.5 0 00.65.65l5-2a.5.5 0 00.168-.11l.178-.178z" />
@@ -1043,7 +1057,7 @@
         </button>
 
         <!-- Floating TOC Button (mobile only - visible in preview mode) -->
-        <button class="floating-toc-btn" id="floating-toc-btn" title="Table of Contents">
+        <button class="floating-toc-btn" id="floating-toc-btn" title="Table of Contents" aria-label="Table of Contents">
             <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
                 <path
                     d="M2 2.5a.5.5 0 00-.5.5v1a.5.5 0 00.5.5h1a.5.5 0 00.5-.5V3a.5.5 0 00-.5-.5H2zM2 6.5a.5.5 0 00-.5.5v1a.5.5 0 00.5.5h1a.5.5 0 00.5-.5V7a.5.5 0 00-.5-.5H2zM1.5 11a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a.5.5 0 01-.5.5H2a.5.5 0 01-.5-.5v-1zM5 3a.5.5 0 000 1h9a.5.5 0 000-1H5zM5 7a.5.5 0 000 1h9a.5.5 0 000-1H5zM5 11a.5.5 0 000 1h9a.5.5 0 000-1H5z" />
@@ -1080,7 +1094,8 @@
 
         <div class="status-spacer"></div>
 
-        <button class="status-item status-btn" id="word-wrap-toggle" title="Toggle Word Wrap">
+        <button class="status-item status-btn" id="word-wrap-toggle" title="Toggle Word Wrap"
+            aria-label="Toggle Word Wrap">
             <span>Wrap: On</span>
         </button>
         <div class="status-divider"></div>
@@ -1143,13 +1158,14 @@
 
     <!-- Premium Settings Modal -->
     <div class="settings-modal-overlay" id="settings-modal-overlay"></div>
-    <div class="settings-modal" id="settings-modal">
+    <div class="settings-modal" id="settings-modal" role="dialog" aria-modal="true"
+        aria-labelledby="settings-modal-title">
         <!-- Settings Sidebar -->
         <div class="settings-sidebar">
             <div class="settings-sidebar-header">
                 <div class="settings-app-icon"></div>
                 <div class="settings-app-info">
-                    <span class="settings-app-title">Settings</span>
+                    <span class="settings-app-title" id="settings-modal-title">Settings</span>
                     <span class="settings-app-subtitle">Markdown Pro</span>
                 </div>
             </div>
@@ -1610,7 +1626,8 @@
                     </div>
 
                     <div class="about-cards">
-                        <a href="https://github.com/Nir-Bhay/markups" class="about-card" target="_blank" rel="noopener noreferrer">
+                        <a href="https://github.com/Nir-Bhay/markups" class="about-card" target="_blank"
+                            rel="noopener noreferrer">
                             <div class="about-card-icon about-card-icon-blue">
                                 <span class="material-symbols-outlined">code</span>
                             </div>
@@ -1629,7 +1646,8 @@
                                 <p>Learn how to use all features</p>
                             </div>
                         </a>
-                        <a href="https://github.com/Nir-Bhay/markups/issues" class="about-card" target="_blank" rel="noopener noreferrer">
+                        <a href="https://github.com/Nir-Bhay/markups/issues" class="about-card" target="_blank"
+                            rel="noopener noreferrer">
                             <div class="about-card-icon about-card-icon-green">
                                 <span class="material-symbols-outlined">bug_report</span>
                             </div>
@@ -1663,7 +1681,7 @@
 
     <!-- Stats Modal -->
     <div class="modal-overlay" id="stats-modal-overlay"></div>
-    <div class="modal" id="stats-modal">
+    <div class="modal" id="stats-modal" role="dialog" aria-modal="true" aria-labelledby="stats-modal-title">
         <div class="modal-header">
             <div class="modal-title-group">
                 <svg class="modal-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1672,7 +1690,7 @@
                     <line x1="12" y1="20" x2="12" y2="4"></line>
                     <line x1="6" y1="20" x2="6" y2="14"></line>
                 </svg>
-                <h2 class="modal-title">Document Statistics</h2>
+                <h2 class="modal-title" id="stats-modal-title">Document Statistics</h2>
             </div>
             <button class="modal-close" id="stats-close" aria-label="Close" title="Close (Esc)">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1766,7 +1784,7 @@
 
     <!-- Help Modal -->
     <div class="modal-overlay" id="help-modal-overlay"></div>
-    <div class="modal modal-lg" id="help-modal">
+    <div class="modal modal-lg" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
         <div class="modal-header">
             <div class="modal-title-group">
                 <svg class="modal-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1781,7 +1799,7 @@
                     <path d="M16 12h.001"></path>
                     <path d="M7 16h10"></path>
                 </svg>
-                <h2 class="modal-title">Keyboard Shortcuts</h2>
+                <h2 class="modal-title" id="help-modal-title">Keyboard Shortcuts</h2>
             </div>
             <button class="modal-close close-modal" id="help-close" aria-label="Close" title="Close (Esc)">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1848,7 +1866,8 @@
 
     <!-- Version History Modal -->
     <div class="modal-overlay" id="version-history-overlay"></div>
-    <div class="modal modal-lg" id="version-history-modal">
+    <div class="modal modal-lg" id="version-history-modal" role="dialog" aria-modal="true"
+        aria-labelledby="version-history-modal-title">
         <div class="modal-header">
             <div class="modal-title-group">
                 <svg class="modal-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1856,7 +1875,7 @@
                     <circle cx="12" cy="12" r="10"></circle>
                     <polyline points="12 6 12 12 16 14"></polyline>
                 </svg>
-                <h2 class="modal-title">Version History</h2>
+                <h2 class="modal-title" id="version-history-modal-title">Version History</h2>
             </div>
             <button class="modal-close close-modal" aria-label="Close" title="Close (Esc)">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1880,7 +1899,7 @@
 
     <!-- Goals Modal -->
     <div class="modal-overlay" id="goals-modal-overlay"></div>
-    <div class="modal" id="goals-modal">
+    <div class="modal" id="goals-modal" role="dialog" aria-modal="true" aria-labelledby="goals-modal-title">
         <div class="modal-header">
             <div class="modal-title-group">
                 <svg class="modal-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1889,7 +1908,7 @@
                     <circle cx="12" cy="12" r="6"></circle>
                     <circle cx="12" cy="12" r="2"></circle>
                 </svg>
-                <h2 class="modal-title">Writing Goals</h2>
+                <h2 class="modal-title" id="goals-modal-title">Writing Goals</h2>
             </div>
             <button class="modal-close close-goals" aria-label="Close" title="Close (Esc)">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1943,7 +1962,8 @@
 
     <!-- Templates Modal -->
     <div class="modal-overlay" id="templates-modal-overlay"></div>
-    <div class="modal modal-lg" id="templates-modal">
+    <div class="modal modal-lg" id="templates-modal" role="dialog" aria-modal="true"
+        aria-labelledby="templates-modal-title">
         <div class="modal-header">
             <div class="modal-title-group">
                 <svg class="modal-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1954,7 +1974,7 @@
                     <line x1="16" y1="17" x2="8" y2="17"></line>
                     <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
-                <h2 class="modal-title">Templates</h2>
+                <h2 class="modal-title" id="templates-modal-title">Templates</h2>
             </div>
             <button class="modal-close close-templates" aria-label="Close" title="Close (Esc)">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1999,10 +2019,10 @@
 
     <!-- ==================== EXPORT MODAL ==================== -->
     <div class="export-modal-overlay" id="export-modal-overlay"></div>
-    <div class="export-modal" id="export-modal">
+    <div class="export-modal" id="export-modal" role="dialog" aria-modal="true" aria-labelledby="export-modal-title">
         <!-- Header -->
         <div class="export-modal-header">
-            <h2 class="export-modal-title">Export Document</h2>
+            <h2 class="export-modal-title" id="export-modal-title">Export Document</h2>
             <button class="export-modal-close" id="export-modal-close" aria-label="Close">
                 <span class="material-symbols-outlined">close</span>
             </button>

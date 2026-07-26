@@ -3,8 +3,24 @@ import * as monaco from 'monaco-editor';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import 'github-markdown-css/github-markdown-light.css';
-import html2pdf from 'html2pdf.js';
-import html2canvas from 'html2canvas';
+
+// html2pdf / html2canvas — lazy-loaded on first export (P3-T1)
+let _html2pdf = null;
+let _html2canvas = null;
+async function getHtml2Pdf() {
+    if (!_html2pdf) {
+        const mod = await import('html2pdf.js');
+        _html2pdf = mod.default;
+    }
+    return _html2pdf;
+}
+async function getHtml2Canvas() {
+    if (!_html2canvas) {
+        const mod = await import('html2canvas');
+        _html2canvas = mod.default;
+    }
+    return _html2canvas;
+}
 
 // Monaco Editor Worker Setup
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
@@ -48,6 +64,7 @@ import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-yaml';
 import 'prismjs/components/prism-markdown';
 import 'prismjs/components/prism-docker';
+import 'prismjs/components/prism-markup'; // HTML, XML, SVG (Issue #42)
 import 'prismjs/themes/prism-tomorrow.css';
 
 // Mermaid for diagrams
@@ -59,13 +76,24 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import markedKatex from 'marked-katex-extension';
 
-// Image resize feature
-import { initImageResize } from './features/image-resize/index.js';
+// Image resize — dynamically imported after editor init (P3-T1)
 import { CALLOUT_TYPES, toolbarManager, wrapSelection, wrapSelectionHtml, prefixLine, insertText, insertLink, insertImage, insertTable, getSelection } from './features/toolbar/index.js';
 import { noteStorage } from './core/storage/noteStorage.js';
 import { fileTreeStorage, ROOT_FOLDER_ID } from './core/storage/fileTreeStorage.js';
 import { runMigration, ensureFileTreeFromNotes } from './core/storage/migration.js';
 import { createExplorerManager } from './features/explorer/index.js';
+
+// Import debounce utility for performance optimization
+import { debounce } from './utils/debounce.js';
+
+// Import UI components from modular architecture
+import { showToast } from './ui/toast/index.js';
+import { copyToClipboard } from './utils/clipboard.js';
+import { scrollSync } from './utils/scroll-sync.js';
+import { processPreviewVideos } from './utils/video-embed.js';
+import { createFocusTrap } from './utils/dom.js';
+import { validateImageSignature, sanitizeSvgToDataUrl } from './utils/file.js';
+import { initVersionHistory, setHasEdited } from './features/version-history/index.js';
 
 // GFM Extensions
 import markedAlert from 'marked-alert';
@@ -76,7 +104,8 @@ import markedFootnote from 'marked-footnote';
 const APP_CONFIG = {
     MAX_IMAGE_SIZE_MB: 5,
     READING_SPEED_WPM: 200,
-    SERVICE_WORKER_UPDATE_INTERVAL_MS: 30 * 60 * 1000 // 30 minutes
+    SERVICE_WORKER_UPDATE_INTERVAL_MS: 30 * 60 * 1000, // 30 minutes
+    ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
 };
 
 // Global state and constants
@@ -105,8 +134,129 @@ const localStorageDocsKey = 'docs';
 const localStorageTocVisibilityKey = 'toc_sidebar_visible';
 const localStorageGoalsKey = 'writing_goals';
 const localStorageImagesKey = 'image_store';
-const imageStore = new Map(); // key: imgId, value: base64 data URL
+/** Soft max for imageStore. Unreferenced entries are evicted first; open-tab refs are kept. */
+const IMAGE_STORE_MAX_SIZE = 15;
+const imageStore = new Map(); // key: imgId, value: base64 data URL or blob: URL
 const confirmationMessage = 'Are you sure you want to reset? Your changes will be lost.';
+
+/** Revoke blob: object URLs; data: URLs need no revoke. */
+const revokeImageStoreValue = (value) => {
+    if (typeof value === 'string' && value.startsWith('blob:')) {
+        try {
+            URL.revokeObjectURL(value);
+        } catch (_) {
+            /* ignore */
+        }
+    }
+};
+
+const collectReferencedImageIds = (texts) => {
+    const ids = new Set();
+    const re = /markups-img:(img_\w+)/g;
+    for (const text of texts) {
+        if (!text || typeof text !== 'string') continue;
+        let match;
+        re.lastIndex = 0;
+        while ((match = re.exec(text)) !== null) {
+            ids.add(match[1]);
+        }
+    }
+    return ids;
+};
+
+const getOpenDocumentImageRefs = () => collectReferencedImageIds([
+    ...(Array.isArray(documents) ? documents.map((d) => d.content) : []),
+    ...(editor ? [editor.getValue()] : [])
+]);
+
+/**
+ * Evict unreferenced images until at/under max.
+ * Never evicts images still used by open tabs (avoids broken previews).
+ */
+const evictImageStoreIfNeeded = (protectKey = null) => {
+    while (imageStore.size > IMAGE_STORE_MAX_SIZE) {
+        const referenced = getOpenDocumentImageRefs();
+        let evicted = false;
+        for (const key of imageStore.keys()) {
+            if (key === protectKey) continue;
+            if (!referenced.has(key)) {
+                revokeImageStoreValue(imageStore.get(key));
+                imageStore.delete(key);
+                evicted = true;
+                break;
+            }
+        }
+        if (!evicted) break;
+    }
+};
+
+/** Set with soft-cap eviction of unreferenced entries. */
+const imageStoreSet = (imgId, value) => {
+    if (imageStore.has(imgId)) {
+        const prev = imageStore.get(imgId);
+        if (prev !== value) {
+            revokeImageStoreValue(prev);
+        }
+        imageStore.delete(imgId);
+    }
+    imageStore.set(imgId, value);
+    evictImageStoreIfNeeded(imgId);
+};
+
+const imageStoreGet = (imgId) => imageStore.get(imgId);
+
+/** Drop store entries not referenced by any remaining document/editor content. */
+const pruneUnreferencedImages = (extraTexts = []) => {
+    const texts = [
+        ...(Array.isArray(documents) ? documents.map((d) => d.content) : []),
+        ...(editor ? [editor.getValue()] : []),
+        ...extraTexts
+    ];
+    const referenced = collectReferencedImageIds(texts);
+    let changed = false;
+    for (const key of [...imageStore.keys()]) {
+        if (!referenced.has(key)) {
+            revokeImageStoreValue(imageStore.get(key));
+            imageStore.delete(key);
+            changed = true;
+        }
+    }
+    if (changed) {
+        saveImageStore();
+    }
+    return changed;
+};
+
+/** After closing a tab, free images only used by that tab's content. */
+const cleanupImagesAfterTabClose = (closedContent) => {
+    const remainingTexts = [
+        ...(Array.isArray(documents) ? documents.map((d) => d.content) : []),
+        ...(editor ? [editor.getValue()] : [])
+    ];
+    const stillUsed = collectReferencedImageIds(remainingTexts);
+    const closedIds = collectReferencedImageIds([closedContent]);
+    let changed = false;
+    for (const id of closedIds) {
+        if (!stillUsed.has(id) && imageStore.has(id)) {
+            revokeImageStoreValue(imageStore.get(id));
+            imageStore.delete(id);
+            changed = true;
+        }
+    }
+    if (changed) {
+        saveImageStore();
+    }
+};
+
+/** Clear entire image store (revokes blob URLs). */
+// eslint-disable-next-line no-unused-vars -- reserved for full-reset / future tooling
+const clearImageStore = () => {
+    for (const value of imageStore.values()) {
+        revokeImageStoreValue(value);
+    }
+    imageStore.clear();
+    saveImageStore();
+};
 // default welcome content — shown to first-time users, auto-cleared on first real keystroke
 const defaultInput = `# Welcome to Markups ✨
 
@@ -394,6 +544,12 @@ let closeTab = (id) => {
 
     if (confirm('Are you sure you want to close this tab?')) {
         const index = documents.findIndex(d => d.id === id);
+        const closingDoc = documents[index];
+        // Capture content before removal (use live editor value if closing active tab)
+        let closedContent = closingDoc?.content || '';
+        if (id === activeDocId && editor) {
+            closedContent = editor.getValue();
+        }
 
         // If closing active tab, switch to another
         if (id === activeDocId) {
@@ -406,6 +562,9 @@ let closeTab = (id) => {
         documents = documents.filter(d => d.id !== id);
         window.__markups_documents = documents;
         saveDocsToStorage();
+
+        // Free imageStore entries only referenced by the closed tab
+        cleanupImagesAfterTabClose(closedContent);
 
         renderTabs();
         loadActiveDocument();
@@ -521,6 +680,7 @@ let deleteNode = async (node) => {
     window.__markups_documents = documents;
     window.__markups_activeDocId = activeDocId;
     saveDocsToStorage();
+    pruneUnreferencedImages();
     renderTabs();
     await syncTreeFromDocuments();
     loadActiveDocument();
@@ -631,73 +791,25 @@ let setupEditor = () => {
         let changed = editor.getValue() != defaultInput;
         if (changed) {
             hasEdited = true;
+            setHasEdited(true);
         }
         let value = editor.getValue();
-        convert(value);
+        debouncedConvert(value);  // Use debounced version for performance
         saveCurrentDoc();
         updateStats(value);
     });
 
-    // Scroll sync flag to prevent infinite loops
-    let isScrollSyncing = false;
-
-    editor.onDidScrollChange((e) => {
-        if (!scrollBarSync || isScrollSyncing) {
-            return;
-        }
-
-        isScrollSyncing = true;
-        // Use .preview-wrapper as it's the scrollable element (not #preview which has overflow: hidden)
-        const previewElement = document.querySelector('.preview-wrapper');
-        if (!previewElement) { isScrollSyncing = false; return; }
-
-        // Get editor scroll metrics
-        const scrollTop = editor.getScrollTop();
-        const scrollHeight = editor.getScrollHeight();
-        const viewportHeight = editor.getLayoutInfo().height;
-
-        // Calculate scroll ratio (0 to 1)
-        const maxScrollTop = Math.max(0, scrollHeight - viewportHeight);
-        const scrollRatio = maxScrollTop > 0 ? scrollTop / maxScrollTop : 0;
-
-        // Apply ratio to preview
-        const previewMaxScroll = Math.max(0, previewElement.scrollHeight - previewElement.clientHeight);
-        const targetY = previewMaxScroll * scrollRatio;
-
-        previewElement.scrollTop = targetY;
-
-        // Reset flag after a short delay
-        setTimeout(() => { isScrollSyncing = false; }, 50);
-    });
-
-    // Add preview-to-editor scroll sync
-    // Use .preview-wrapper as it's the scrollable element
+    // Scroll sync (Issue #39): line-anchor map instead of pure ratio
+    // Prevents drift on long docs and when <details> sections are collapsed
     const previewElement = document.querySelector('.preview-wrapper');
-    if (previewElement) previewElement.addEventListener('scroll', () => {
-        // Update outline scroll progress
-        updateOutlineScrollProgress();
-        updateActiveOutlineItem();
-
-        if (!scrollBarSync || isScrollSyncing) {
-            return;
+    scrollSync.initialize(editor, previewElement, {
+        contentRoot: document.querySelector('#output'),
+        onPreviewScroll: () => {
+            updateOutlineScrollProgress();
+            updateActiveOutlineItem();
         }
-
-        isScrollSyncing = true;
-
-        // Get preview scroll metrics
-        const scrollTop = previewElement.scrollTop;
-        const maxScrollTop = Math.max(0, previewElement.scrollHeight - previewElement.clientHeight);
-        const scrollRatio = maxScrollTop > 0 ? scrollTop / maxScrollTop : 0;
-
-        // Apply ratio to editor
-        const editorMaxScroll = Math.max(0, editor.getScrollHeight() - editor.getLayoutInfo().height);
-        const targetY = editorMaxScroll * scrollRatio;
-
-        editor.setScrollTop(targetY);
-
-        // Reset flag after a short delay
-        setTimeout(() => { isScrollSyncing = false; }, 50);
     });
+    scrollSync.setEnabled(scrollBarSync);
 
     // Typewriter Mode: Center cursor + Update cursor position in status bar
     let isCursorSyncing = false;
@@ -737,21 +849,55 @@ let setupEditor = () => {
 };
 
 // Configure marked with syntax highlighting
+// Issue #42: normalize language ids (GitHub is case-insensitive; Prism keys are lowercase)
+const PRISM_LANG_ALIASES = {
+    htm: 'markup',
+    xhtml: 'markup',
+    xml: 'xml',
+    svg: 'svg',
+    html: 'markup',
+    mathml: 'mathml',
+    ssml: 'xml',
+    atom: 'xml',
+    rss: 'xml',
+    sh: 'bash',
+    shell: 'bash',
+    zsh: 'bash',
+    console: 'bash',
+    js: 'javascript',
+    ts: 'typescript',
+    py: 'python',
+    yml: 'yaml',
+    md: 'markdown',
+    'c#': 'csharp',
+    'c++': 'cpp',
+    dockerfile: 'docker',
+    text: 'plaintext',
+    txt: 'plaintext'
+};
+
+function resolvePrismLanguage(lang) {
+    if (!lang) return null;
+    const normalized = String(lang).trim().toLowerCase();
+    const aliased = PRISM_LANG_ALIASES[normalized] || normalized;
+    if (Prism.languages[aliased]) return aliased;
+    if (Prism.languages[normalized]) return normalized;
+    return null;
+}
+
 marked.use(markedHighlight({
     langPrefix: 'language-',
     highlight(code, lang) {
-        if (lang && Prism.languages[lang]) {
-            try {
-                // Verify the grammar is a valid object before attempting highlight
-                const grammar = Prism.languages[lang];
-                if (typeof grammar !== 'object') return code;
-                return Prism.highlight(code, grammar, lang);
-            } catch (e) {
-                // Silently fall back for languages with missing dependencies (e.g., PHP needs markup-templating)
-                return code;
-            }
+        const language = resolvePrismLanguage(lang);
+        if (!language) return code;
+        try {
+            const grammar = Prism.languages[language];
+            if (typeof grammar !== 'object') return code;
+            return Prism.highlight(code, grammar, language);
+        } catch (e) {
+            // Silently fall back for languages with missing dependencies
+            return code;
         }
-        return code;
     }
 }));
 
@@ -1035,13 +1181,20 @@ let setupGoals = () => {
     const saveBtn = document.getElementById('save-goals-btn');
     const input = document.getElementById('daily-goal-input');
 
+    let goalsModalFocusTrap = null;
+
     const openModal = () => {
         modal.style.display = 'block';
         if (overlay) overlay.style.display = 'block';
         updateGoalProgress(editor.getValue());
+        goalsModalFocusTrap?.deactivate();
+        goalsModalFocusTrap = createFocusTrap(modal, { onEscape: () => closeModal() });
+        goalsModalFocusTrap.activate();
     };
 
     const closeModal = () => {
+        goalsModalFocusTrap?.deactivate();
+        goalsModalFocusTrap = null;
         modal.style.display = 'none';
         if (overlay) overlay.style.display = 'none';
     };
@@ -1346,14 +1499,14 @@ let setupSearch = () => {
         if (matchCountEl) matchCountEl.textContent = '';
         // Clear editor decorations
         editorSearchDecorations = editor.deltaDecorations(editorSearchDecorations, []);
-        convert(editor.getValue()); // Re-render without highlights
+        debouncedConvert(editor.getValue()); // Re-render without highlights (debounced for performance)
     };
 
     // Handle search input
     searchInput.addEventListener('input', (e) => {
         currentSearchQuery = e.target.value;
         currentMatchIndex = -1; // Reset to first match when search term changes
-        convert(editor.getValue());
+        debouncedConvert(editor.getValue());
         highlightEditorMatches();
         updateMatchCount();
     });
@@ -1572,12 +1725,110 @@ let highlightText = () => {
     });
 };
 
+// Convert generation token — drops stale RAF/deferred work when typing continues
+let _convertToken = 0;
+
+/**
+ * Annotate preview block elements with data-source-line attributes.
+ * Uses heading IDs (already rendered) as anchor points, then interpolates
+ * line numbers for other block elements based on DOM position.
+ * (Fixes scroll sync drift on long docs — Issue #39)
+ */
+function annotateSourceLines(outputElement, markdown) {
+    if (!outputElement || !markdown) return;
+
+    const lines = markdown.split('\n');
+
+    // Build heading line map from markdown (slug → line number)
+    const headingLineMap = new Map();
+    for (let i = 0; i < lines.length; i++) {
+        const match = /^(#{1,6})\s+(.+)$/.exec(lines[i]);
+        if (!match) continue;
+        const plainText = match[2]
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+            .replace(/[*_`~]/g, '')
+            .trim();
+        const slug = plainText.toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/[\s_-]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        if (slug) {
+            headingLineMap.set(slug, i + 1);
+        }
+    }
+
+    // Assign exact lines to heading elements (they already have IDs)
+    const allBlocks = outputElement.querySelectorAll(
+        'h1, h2, h3, h4, h5, h6, pre, p, table, ul, ol, blockquote, hr, div.mermaid, details, li'
+    );
+
+    // First: mark headings with exact line numbers
+    allBlocks.forEach(el => {
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'h4' || tag === 'h5' || tag === 'h6') {
+            const id = el.id;
+            if (id && headingLineMap.has(id)) {
+                el.setAttribute('data-source-line', String(headingLineMap.get(id)));
+            }
+        }
+    });
+
+    // Build sorted anchor list (elements with known source lines)
+    const anchors = [];
+    allBlocks.forEach(el => {
+        if (el.hasAttribute('data-source-line')) {
+            anchors.push({
+                el,
+                line: parseInt(el.getAttribute('data-source-line'), 10)
+            });
+        }
+    });
+    anchors.sort((a, b) => a.line - b.line);
+
+    // Second: estimate lines for non-heading blocks
+    // Use DOM position relative to anchored elements
+    allBlocks.forEach(el => {
+        if (el.hasAttribute('data-source-line')) return;
+
+        const elTop = el.getBoundingClientRect().top;
+        let beforeAnchor = null;
+        let afterAnchor = null;
+
+        for (const anchor of anchors) {
+            const anchorTop = anchor.el.getBoundingClientRect().top;
+            if (anchorTop <= elTop + 1) {
+                beforeAnchor = anchor;
+            } else {
+                afterAnchor = anchor;
+                break;
+            }
+        }
+
+        let estimatedLine;
+        if (beforeAnchor && afterAnchor) {
+            // Interpolate between two anchors
+            const beforeTop = beforeAnchor.el.getBoundingClientRect().top;
+            const afterTop = afterAnchor.el.getBoundingClientRect().top;
+            const ratio = afterTop > beforeTop
+                ? (elTop - beforeTop) / (afterTop - beforeTop)
+                : 0.5;
+            estimatedLine = Math.round(beforeAnchor.line + ratio * (afterAnchor.line - beforeAnchor.line));
+        } else if (beforeAnchor) {
+            estimatedLine = beforeAnchor.line + 1;
+        } else {
+            estimatedLine = 1;
+        }
+
+        el.setAttribute('data-source-line', String(estimatedLine));
+    });
+}
+
 // Render markdown text as html
+// Parse stays sync (already behind debouncedConvert); DOM write + secondary UI use rAF
 let convert = (markdown) => {
     // Reset TOC items
     tocItems = [];
 
-    // options variable removed as headerIds and mangle are deprecated
     // Resolve image store references to actual data URLs before rendering
     let resolvedMarkdown = resolveImageReferences(markdown);
 
@@ -1585,70 +1836,132 @@ let convert = (markdown) => {
     let renderableMarkdown = resolvedMarkdown.replace(/(!\[[^\]]*\]\([^)]+\))\s*\{[^}]*\}/g, '$1');
 
     let html = marked.parse(renderableMarkdown);
-    let sanitized = DOMPurify.sanitize(html, { ADD_ATTR: ['id'] });
+    // Event handlers are stripped by DOMPurify by default ("on*" is not a FORBID_ATTR wildcard)
+    let sanitized = DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true },
+        ADD_TAGS: ['video', 'source'],
+        ADD_ATTR: ['id', 'controls', 'preload', 'playsinline', 'controlslist'],
+        FORBID_TAGS: ['iframe', 'script', 'object', 'embed', 'form'],
+        FORBID_ATTR: ['style', 'srcdoc'],
+        ALLOW_DATA_ATTR: false
+    });
 
-    const outputElement = document.querySelector('#output');
-    outputElement.innerHTML = sanitized;
+    const token = ++_convertToken;
 
-    // Issue #24 Fix: Process images to prevent broken image layout shift
-    // CSS hides images by default; JS reveals them on successful load
-    processPreviewImages(outputElement);
+    // Paint preview on next frame so the editor stays responsive after debounce
+    requestAnimationFrame(() => {
+        if (token !== _convertToken) return;
 
-    // Process Mermaid diagrams
-    const mermaidBlocks = outputElement.querySelectorAll('pre code.language-mermaid');
-    if (mermaidBlocks.length > 0) {
-        mermaidBlocks.forEach(block => {
-            const pre = block.parentElement;
-            const code = block.textContent;
-            const div = document.createElement('div');
-            div.className = 'mermaid';
-            div.textContent = code;
-            pre.replaceWith(div);
+        const outputElement = document.querySelector('#output');
+        if (!outputElement) return;
+
+        outputElement.innerHTML = sanitized;
+
+        // Issue #39: Annotate preview elements with data-source-line
+        // so scroll-sync can map editor lines to preview elements accurately
+        annotateSourceLines(outputElement, renderableMarkdown);
+
+        // Issue #24 Fix: Process images to prevent broken image layout shift
+        processPreviewImages(outputElement);
+
+        // Issue #40: Embed video URLs / GitHub video attachments / YouTube-Vimeo
+        processPreviewVideos(outputElement);
+
+        // Defer Mermaid / TOC / highlights so first paint isn't blocked
+        requestAnimationFrame(() => {
+            if (token !== _convertToken) return;
+
+            const mermaidBlocks = outputElement.querySelectorAll('pre code.language-mermaid');
+            if (mermaidBlocks.length > 0) {
+                mermaidBlocks.forEach(block => {
+                    const pre = block.parentElement;
+                    const code = block.textContent;
+                    const div = document.createElement('div');
+                    div.className = 'mermaid';
+                    div.textContent = code;
+                    pre.replaceWith(div);
+                });
+
+                mermaid.run({
+                    nodes: outputElement.querySelectorAll('.mermaid')
+                }).then(() => {
+                    if (token === _convertToken) {
+                        annotateSourceLines(outputElement, renderableMarkdown);
+                        scrollSync.scheduleRebuildAnchors();
+                    }
+                }).catch(() => {
+                    if (token === _convertToken) {
+                        scrollSync.scheduleRebuildAnchors();
+                    }
+                });
+            }
+
+            addCodeCopyButtons();
+
+            // Yield once more before TOC/search highlight traversal
+            setTimeout(() => {
+                if (token !== _convertToken) return;
+                updateTOC();
+                highlightText();
+                updateNavigationUI();
+                // Issue #39: rebuild editor↔preview line anchors after render
+                scrollSync.scheduleRebuildAnchors();
+            }, 0);
         });
-
-        mermaid.run({
-            nodes: outputElement.querySelectorAll('.mermaid')
-        }).catch(() => {
-            // Silently handle mermaid rendering failures (e.g., invalid syntax during typing)
-        });
-    }
-
-    // Add copy buttons to code blocks
-    addCodeCopyButtons();
-
-    // Update TOC
-    updateTOC();
-    highlightText();
-    // Update navigation UI after highlighting
-    updateNavigationUI();
+    });
 };
 
-// Add copy buttons to all code blocks
+// Create debounced version of convert for performance (300ms delay)
+// This prevents blocking the main thread on every keystroke
+const debouncedConvert = debounce((markdown) => {
+    convert(markdown);
+}, 300);
+
+// Add GitHub-style language badge + copy button to code blocks (Issue #42 polish)
 let addCodeCopyButtons = () => {
     const codeBlocks = document.querySelectorAll('#output pre');
     codeBlocks.forEach((pre) => {
-        if (pre.querySelector('.code-copy-btn')) return; // Already has button
+        if (pre.querySelector('.code-block-header') || pre.querySelector('.code-copy-btn')) return;
+
+        const codeEl = pre.querySelector('code');
+        const langMatch = codeEl?.className?.match(/language-([\w#+-]+)/i);
+        const langLabel = langMatch ? langMatch[1].toLowerCase() : 'text';
+
+        const header = document.createElement('div');
+        header.className = 'code-block-header';
+
+        const badge = document.createElement('span');
+        badge.className = 'code-lang-badge';
+        badge.textContent = langLabel;
 
         const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
         copyBtn.className = 'code-copy-btn';
-        copyBtn.innerHTML = '📋';
+        copyBtn.textContent = 'Copy';
         copyBtn.title = 'Copy code';
-        copyBtn.addEventListener('click', () => {
-            const code = pre.querySelector('code')?.textContent || pre.textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                copyBtn.innerHTML = '✓';
+        copyBtn.setAttribute('aria-label', 'Copy code to clipboard');
+
+        copyBtn.addEventListener('click', async () => {
+            const code = codeEl?.textContent || pre.textContent || '';
+            try {
+                const ok = await copyToClipboard(code);
+                if (!ok) throw new Error('copy failed');
+                copyBtn.textContent = 'Copied!';
                 copyBtn.classList.add('copied');
                 setTimeout(() => {
-                    copyBtn.innerHTML = '📋';
+                    copyBtn.textContent = 'Copy';
                     copyBtn.classList.remove('copied');
-                }, 2000);
-            }).catch(() => {
-                copyBtn.innerHTML = '✗';
-                setTimeout(() => { copyBtn.innerHTML = '📋'; }, 1500);
-            });
+                }, 1800);
+            } catch {
+                copyBtn.textContent = 'Failed';
+                setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+            }
         });
+
+        header.appendChild(badge);
+        header.appendChild(copyBtn);
         pre.style.position = 'relative';
-        pre.appendChild(copyBtn);
+        pre.insertBefore(header, pre.firstChild);
     });
 };
 
@@ -1674,6 +1987,7 @@ let presetValue = (value) => {
     editor.revealPosition({ lineNumber: 1, column: 1 });
     editor.focus();
     hasEdited = false;
+    setHasEdited(false);
 };
 
 // ----- sync scroll position -----
@@ -1682,6 +1996,7 @@ let initScrollBarSync = (settings) => {
     let checkbox = document.querySelector('#sync-scroll-checkbox');
     checkbox.checked = settings;
     scrollBarSync = settings;
+    scrollSync.setEnabled(settings);
 
     // Sync toolbar button visual state with loaded settings
     const scrollSyncBtn = document.querySelector('#scroll-sync-button');
@@ -1692,6 +2007,7 @@ let initScrollBarSync = (settings) => {
     checkbox.addEventListener('change', (event) => {
         let checked = event.currentTarget.checked;
         scrollBarSync = checked;
+        scrollSync.setEnabled(checked);
         saveScrollBarSettings(checked);
 
         // Keep toolbar button in sync when checkbox is toggled
@@ -1716,80 +2032,31 @@ let initCursorSync = (settings) => {
 
 let enableScrollBarSync = () => {
     scrollBarSync = true;
+    scrollSync.setEnabled(true);
 };
 
 let disableScrollBarSync = () => {
     scrollBarSync = false;
+    scrollSync.setEnabled(false);
 };
 
-// ----- toast notification system -----
+// ----- toast / clipboard -----
+// showToast + copyToClipboard imported from modular APIs (ui/toast, utils/clipboard)
 
-let showToast = (message, type = 'info', duration = 3000) => {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-
-    const icons = {
-        success: '✓',
-        error: '✕',
-        warning: '⚠',
-        info: 'ℹ'
-    };
-
-    toast.innerHTML = `
-            <span class="toast-icon">${icons[type] || icons.info}</span>
-            <span class="toast-message">${message}</span>
-            <button class="toast-close">×</button>
-        `;
-
-    // Add event listener for close button
-    const closeBtn = toast.querySelector('.toast-close');
-    closeBtn.addEventListener('click', () => toast.remove());
-
-    container.appendChild(toast);
-
-    if (duration > 0) {
-        setTimeout(() => {
-            toast.classList.add('removing');
-            setTimeout(() => toast.remove(), 300);
-        }, duration);
-    }
-};
-
-// ----- clipboard utils -----
-
-let copyToClipboard = (text, successHandler, errorHandler) => {
-    navigator.clipboard.writeText(text).then(
-        () => {
-            if (successHandler) successHandler();
-        },
-
-        () => {
-            if (errorHandler) errorHandler();
-        }
-    );
-};
-
-let copyMarkdownToClipboard = () => {
+let copyMarkdownToClipboard = async () => {
     const mdContent = editor.getValue();
-    copyToClipboard(mdContent, () => {
-        showToast('Markdown copied to clipboard!', 'success');
-    }, () => {
-        showToast('Failed to copy Markdown', 'error');
-    });
+    const ok = await copyToClipboard(mdContent);
+    showToast(ok ? 'Markdown copied to clipboard!' : 'Failed to copy Markdown', ok ? 'success' : 'error');
 };
 
 let notifyCopied = () => {
     showToast('Markdown copied to clipboard!', 'success');
 };
 
-let copyHTMLToClipboard = () => {
-    const htmlContent = document.querySelector('#output').innerHTML;
-    copyToClipboard(htmlContent, () => {
-        showToast('HTML copied to clipboard!', 'success');
-    }, () => {
-        showToast('Failed to copy HTML', 'error');
-    });
+let copyHTMLToClipboard = async () => {
+    const htmlContent = document.querySelector('#output')?.innerHTML || '';
+    const ok = await copyToClipboard(htmlContent);
+    showToast(ok ? 'HTML copied to clipboard!' : 'Failed to copy HTML', ok ? 'success' : 'error');
 };
 
 // ----- stats utils -----
@@ -1851,15 +2118,24 @@ let setupStatsButton = () => {
     const closeBtn = modal?.querySelector("#stats-close");
     const closeBtnFooter = modal?.querySelector("#stats-close-btn");
 
+    let statsModalFocusTrap = null;
+
     const openModal = () => {
         if (modal) modal.style.display = "block";
         if (overlay) overlay.style.display = "block";
         // Force update stats when opening
         const text = editor.getValue();
         updateStats(text);
+        if (modal) {
+            statsModalFocusTrap?.deactivate();
+            statsModalFocusTrap = createFocusTrap(modal, { onEscape: () => closeModal() });
+            statsModalFocusTrap.activate();
+        }
     };
 
     const closeModal = () => {
+        statsModalFocusTrap?.deactivate();
+        statsModalFocusTrap = null;
         if (modal) modal.style.display = "none";
         if (overlay) overlay.style.display = "none";
     };
@@ -2007,12 +2283,21 @@ let setupTemplatesButton = () => {
     const closeBtns = document.querySelectorAll(".close-templates");
     const grid = document.querySelector("#templates-grid");
 
+    let templatesModalFocusTrap = null;
+
     const openModal = () => {
         if (modal) modal.style.display = "block";
         if (overlay) overlay.style.display = "block";
+        if (modal) {
+            templatesModalFocusTrap?.deactivate();
+            templatesModalFocusTrap = createFocusTrap(modal, { onEscape: () => closeModal() });
+            templatesModalFocusTrap.activate();
+        }
     };
 
     const closeModal = () => {
+        templatesModalFocusTrap?.deactivate();
+        templatesModalFocusTrap = null;
         if (modal) modal.style.display = "none";
         if (overlay) overlay.style.display = "none";
     };
@@ -2181,6 +2466,7 @@ let setupCalloutDropdown = () => {
     const setOpen = (isOpen) => {
         sheet.classList.toggle('active', isOpen);
         trigger.setAttribute('aria-expanded', String(isOpen));
+        sheet.setAttribute('aria-hidden', String(!isOpen));
 
         if (isOpen) {
             positionToolbarDropdown(sheet, trigger);
@@ -2204,6 +2490,7 @@ let setupCalloutDropdown = () => {
             item.className = 'toolbar-overflow-item';
             item.dataset.action = `callout-${type}`;
             item.title = label;
+            item.setAttribute('aria-label', label);
             item.style.setProperty('--callout-accent', color);
             item.innerHTML = `
                 <span class="callout-dropdown-badge" aria-hidden="true">${icon}</span>
@@ -2261,33 +2548,35 @@ let downloadMarkdown = () => {
     showToast(`Downloaded: ${filename}`, 'success');
 };
 
-let exportToPDF = () => {
+let exportToPDF = async () => {
     showToast('Generating PDF...', 'info', 2000);
-    const element = document.querySelector('#output');
-    const filename = getExportFilename('pdf');
-    const options = {
-        margin: [0.75, 0.75, 0.75, 0.75],
-        filename: filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            letterRendering: true
-        },
-        jsPDF: {
-            unit: 'in',
-            format: 'letter',
-            orientation: 'portrait'
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
+    try {
+        const html2pdf = await getHtml2Pdf();
+        const element = document.querySelector('#output');
+        const filename = getExportFilename('pdf');
+        const options = {
+            margin: [0.75, 0.75, 0.75, 0.75],
+            filename: filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                letterRendering: true
+            },
+            jsPDF: {
+                unit: 'in',
+                format: 'letter',
+                orientation: 'portrait'
+            },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
 
-    html2pdf().set(options).from(element).save().then(() => {
+        await html2pdf().set(options).from(element).save();
         showToast(`PDF exported: ${filename}`, 'success');
-    }).catch(() => {
+    } catch (_) {
         showToast('Failed to export PDF', 'error');
-    });
+    }
 };
 
 let exportToHTML = () => {
@@ -2437,24 +2726,26 @@ let exportToTXT = () => {
 };
 
 // Export as PNG Image
-let exportToPNG = () => {
+let exportToPNG = async () => {
     showToast('Generating image...', 'info', 2000);
-    const element = document.querySelector('#output');
+    try {
+        const html2canvas = await getHtml2Canvas();
+        const element = document.querySelector('#output');
 
-    html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-    }).then(canvas => {
+        const canvas = await html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+        });
         const link = document.createElement('a');
         link.download = getExportFilename('png');
         link.href = canvas.toDataURL('image/png');
         link.click();
         showToast('Image exported successfully!', 'success');
-    }).catch(() => {
+    } catch (_) {
         showToast('Failed to export image', 'error');
-    });
+    }
 };
 
 // Print document
@@ -2773,6 +3064,12 @@ let openExportModal = () => {
     // Show modal
     modal.classList.add('active');
     overlay.classList.add('active');
+
+    exportModalFocusTrap?.deactivate();
+    exportModalFocusTrap = createFocusTrap(modal, {
+        onEscape: () => closeExportModal()
+    });
+    exportModalFocusTrap.activate();
 };
 
 let closeExportModal = () => {
@@ -2780,6 +3077,9 @@ let closeExportModal = () => {
     const overlay = document.getElementById('export-modal-overlay');
     const loadingOverlay = document.getElementById('export-loading-overlay');
     const confirmBtn = document.getElementById('export-confirm-btn');
+
+    exportModalFocusTrap?.deactivate();
+    exportModalFocusTrap = null;
 
     modal?.classList.remove('active');
     overlay?.classList.remove('active');
@@ -3203,6 +3503,8 @@ let exportToPDFWithOptions = async () => {
 
         updateExportProgress(30, 'Preparing content...');
 
+        const html2pdf = await getHtml2Pdf();
+
         // Determine what element to pass to html2pdf
         let sourceElement = element;
 
@@ -3399,14 +3701,16 @@ let exportToPNGWithOptions = async () => {
     }
 
     updateExportProgress(60, 'Rendering image canvas...');
-    html2canvas(wrapper, {
-        scale: resolution,
-        useCORS: true,
-        logging: false,
-        backgroundColor: transparentBg ? null : (includeShadow ? '#f5f5f5' : '#ffffff'),
-        width: includeShadow ? width + 80 : width,
-        windowWidth: width + (includeShadow ? 80 : 0)
-    }).then(canvas => {
+    try {
+        const html2canvas = await getHtml2Canvas();
+        const canvas = await html2canvas(wrapper, {
+            scale: resolution,
+            useCORS: true,
+            logging: false,
+            backgroundColor: transparentBg ? null : (includeShadow ? '#f5f5f5' : '#ffffff'),
+            width: includeShadow ? width + 80 : width,
+            windowWidth: width + (includeShadow ? 80 : 0)
+        });
         updateExportProgress(90, 'Finalizing image...');
         // Remove wrapper
         document.body.removeChild(wrapper);
@@ -3417,12 +3721,12 @@ let exportToPNGWithOptions = async () => {
         link.click();
         showToast(`Image exported: ${filename}`, 'success');
         hideExportLoading();
-    }).catch((err) => {
-        document.body.removeChild(wrapper);
+    } catch (err) {
+        if (wrapper.parentNode) document.body.removeChild(wrapper);
         console.error('PNG export error:', err);
         failExportLoading('Failed to export image');
         showToast('Failed to export image', 'error');
-    });
+    }
 };
 
 let printDocumentWithOptions = () => {
@@ -3725,6 +4029,7 @@ let handleFileImport = (event) => {
         editor.revealPosition({ lineNumber: 1, column: 1 });
         editor.focus();
         hasEdited = true;
+        setHasEdited(true);
         showToast(`File "${file.name}" imported successfully!`, 'success');
     };
     reader.onerror = () => {
@@ -3797,6 +4102,15 @@ let handleImageDrop = (files) => {
     }
 };
 
+// Focus traps for key static modals (Phase 4 a11y)
+let exportModalFocusTrap = null;
+let helpModalFocusTrap = null;
+let settingsModalFocusTrap = null;
+
+// Validate image file signature (magic bytes) — shared util
+// (local alias kept for call sites / clarity)
+let validateImageSignatureLocal = validateImageSignature;
+
 let processImageFile = (file) => {
     // Check file size (configurable max size)
     const maxSize = APP_CONFIG.MAX_IMAGE_SIZE_MB * 1024 * 1024;
@@ -3805,36 +4119,77 @@ let processImageFile = (file) => {
         return;
     }
 
+    // Validate file type by checking extension against allowed types
+    if (!APP_CONFIG.ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        showToast('Please select a valid image file (JPEG, PNG, GIF, WebP, or SVG)', 'error');
+        return;
+    }
+
     showToast('Processing image...', 'info', 1500);
 
+    // For SVG files, sanitize the content before creating data URL
+    if (file.type === 'image/svg+xml') {
+        const textReader = new FileReader();
+        textReader.onload = (e) => {
+            const cleanDataUrl = sanitizeSvgToDataUrl(e.target.result);
+            if (!cleanDataUrl) {
+                showToast('SVG rejected: empty or unsafe content', 'error');
+                return;
+            }
+            insertImageIntoEditor(file, cleanDataUrl);
+        };
+        textReader.onerror = () => {
+            showToast('Failed to process SVG image', 'error');
+        };
+        textReader.readAsText(file);
+        return;
+    }
+
+    // For non-SVG images, read as ArrayBuffer and verify magic bytes
     const reader = new FileReader();
     reader.onload = (e) => {
-        const base64Image = e.target.result;
-        const selection = editor.getSelection();
-        const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+        const buffer = e.target.result;
+        if (!validateImageSignatureLocal(buffer, file.type)) {
+            showToast('Invalid image file: file content does not match its type', 'error');
+            return;
+        }
 
-        // Generate short unique ID and store base64 in the image store
-        const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
-        imageStore.set(imgId, base64Image);
-        saveImageStore();
+        // Create data URL from the ArrayBuffer
+        const uint8Array = new Uint8Array(buffer);
+        const binary = Array.from(uint8Array).map(b => String.fromCharCode(b)).join('');
+        const base64 = btoa(binary);
+        const dataUrl = `data:${file.type};base64,${base64}`;
 
-        // Insert short readable reference instead of enormous base64 string
-        const markdown = `![${fileName}](markups-img:${imgId})`;
-
-        editor.executeEdits('image-upload', [{
-            range: selection,
-            text: markdown
-        }]);
-
-        editor.focus();
-        showToast('Image inserted successfully!', 'success');
+        insertImageIntoEditor(file, dataUrl);
     };
 
     reader.onerror = () => {
         showToast('Failed to process image', 'error');
     };
 
-    reader.readAsDataURL(file);
+    reader.readAsArrayBuffer(file);
+};
+
+// Helper: insert image reference into editor after processing
+let insertImageIntoEditor = (file, base64Image) => {
+    const selection = editor.getSelection();
+    const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+
+    // Generate short unique ID and store base64 in the image store (LRU-capped)
+    const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+    imageStoreSet(imgId, base64Image);
+    saveImageStore();
+
+    // Insert short readable reference instead of enormous base64 string
+    const markdown = `![${fileName}](markups-img:${imgId})`;
+
+    editor.executeEdits('image-upload', [{
+        range: selection,
+        text: markdown
+    }]);
+
+    editor.focus();
+    showToast('Image inserted successfully!', 'success');
 };
 
 // ----- dark mode -----
@@ -3959,9 +4314,14 @@ let setupSettingsModal = () => {
         modal.classList.add('active');
         overlay.classList.add('active');
         loadSettingsUI();
+        settingsModalFocusTrap?.deactivate();
+        settingsModalFocusTrap = createFocusTrap(modal, { onEscape: () => closeSettingsModal() });
+        settingsModalFocusTrap.activate();
     };
 
     let closeSettingsModal = () => {
+        settingsModalFocusTrap?.deactivate();
+        settingsModalFocusTrap = null;
         modal.classList.remove('active');
         overlay.classList.remove('active');
     };
@@ -4105,6 +4465,8 @@ let setupGeneralSettings = () => {
     if (syncScrollCheckbox) {
         syncScrollCheckbox.addEventListener('change', (e) => {
             currentSettings.general.scrollSync = e.target.checked;
+            scrollBarSync = e.target.checked;
+            scrollSync.setEnabled(e.target.checked);
             showToast(e.target.checked ? 'Scroll sync enabled' : 'Scroll sync disabled', 'info', 1500);
         });
     }
@@ -4436,15 +4798,11 @@ let setupResetButton = () => {
 let setupCopyButton = (editor) => {
     const btn = document.querySelector("#copy-button");
     if (btn) {
-        btn.addEventListener('click', (event) => {
+        btn.addEventListener('click', async (event) => {
             event.preventDefault();
-            let value = editor.getValue();
-            copyToClipboard(value, () => {
-                notifyCopied();
-            },
-                () => {
-                    // nothing to do
-                });
+            const value = editor.getValue();
+            const ok = await copyToClipboard(value);
+            if (ok) notifyCopied();
         });
     }
 };
@@ -4503,9 +4861,16 @@ let setupHelpButton = () => {
     const openModal = () => {
         if (modal) modal.style.display = "block";
         if (overlay) overlay.style.display = "block";
+        helpModalFocusTrap?.deactivate();
+        if (modal) {
+            helpModalFocusTrap = createFocusTrap(modal, { onEscape: () => closeModal() });
+            helpModalFocusTrap.activate();
+        }
     };
 
     const closeModal = () => {
+        helpModalFocusTrap?.deactivate();
+        helpModalFocusTrap = null;
         if (modal) modal.style.display = "none";
         if (overlay) overlay.style.display = "none";
     };
@@ -4626,6 +4991,7 @@ let setupScrollSyncButton = () => {
         scrollSyncBtn.addEventListener('click', (event) => {
             event.preventDefault();
             scrollBarSync = !scrollBarSync;
+            scrollSync.setEnabled(scrollBarSync);
             scrollSyncBtn.classList.toggle('active', scrollBarSync);
 
             // Sync with checkbox if exists
@@ -5242,13 +5608,14 @@ let saveDarkModeSettings = (settings) => {
     Storehouse.setItem(localStorageNamespace, localStorageDarkModeKey, settings, expiredAt);
 };
 
-// ----- Image Store Persistence -----
+// ----- Image Store Persistence (LRU + tab-close cleanup) -----
 
 let loadImageStore = () => {
     const saved = Storehouse.getItem(localStorageNamespace, localStorageImagesKey);
     if (saved && typeof saved === 'object') {
+        // Load via LRU setter so oversized stores are trimmed on boot
         Object.entries(saved).forEach(([key, value]) => {
-            imageStore.set(key, value);
+            imageStoreSet(key, value);
         });
     }
 };
@@ -5262,7 +5629,7 @@ let saveImageStore = () => {
 let resolveImageReferences = (text) => {
     return text.replace(
         /markups-img:(img_\w+)/g,
-        (match, imgId) => imageStore.get(imgId) || match
+        (match, imgId) => imageStoreGet(imgId) || match
     );
 };
 
@@ -5699,134 +6066,8 @@ let setupWordWrapToggle = () => {
     });
 };
 
-// ----- Auto-Save with Version History -----
-
-const localStorageVersionsKey = 'version_history';
-const MAX_VERSIONS = 20;
-let lastVersionSaveTime = 0;
-const VERSION_SAVE_INTERVAL = 60000; // Save a version snapshot every 60 seconds of editing
-
-let loadVersionHistory = () => {
-    return Storehouse.getItem(localStorageNamespace, localStorageVersionsKey) || [];
-};
-
-let saveVersionHistory = (versions) => {
-    const expiredAt = new Date(2099, 1, 1);
-    Storehouse.setItem(localStorageNamespace, localStorageVersionsKey, versions, expiredAt);
-};
-
-let addVersionSnapshot = () => {
-    const now = Date.now();
-    if (now - lastVersionSaveTime < VERSION_SAVE_INTERVAL) return;
-
-    const content = editor.getValue();
-    if (!content || content === defaultInput) return;
-
-    const versions = loadVersionHistory();
-    const wordCount = content.split(/\s+/).filter(w => w.length > 0).length;
-
-    // Don't save if content matches the latest version
-    if (versions.length > 0 && versions[0].content === content) return;
-
-    versions.unshift({
-        timestamp: now,
-        content: content,
-        wordCount: wordCount
-    });
-
-    // Limit to MAX_VERSIONS
-    if (versions.length > MAX_VERSIONS) {
-        versions.length = MAX_VERSIONS;
-    }
-
-    saveVersionHistory(versions);
-    lastVersionSaveTime = now;
-};
-
-let setupVersionHistory = () => {
-    const modal = document.getElementById('version-history-modal');
-    const overlay = document.getElementById('version-history-overlay');
-    if (!modal || !overlay) return;
-
-    const closeBtns = modal.querySelectorAll('.close-modal');
-
-    const openModal = () => {
-        modal.style.display = 'block';
-        overlay.style.display = 'block';
-        renderVersionList();
-    };
-
-    const closeModal = () => {
-        modal.style.display = 'none';
-        overlay.style.display = 'none';
-    };
-
-    closeBtns.forEach(btn => btn.addEventListener('click', closeModal));
-    overlay.addEventListener('click', closeModal);
-
-    // Toolbar button
-    const historyBtn = document.getElementById('version-history-btn');
-    if (historyBtn) historyBtn.addEventListener('click', openModal);
-
-    // Keyboard shortcut Ctrl+Shift+V
-    document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') {
-            e.preventDefault();
-            openModal();
-        }
-    });
-
-    // Auto-save version snapshots periodically
-    setInterval(() => {
-        if (hasEdited) {
-            addVersionSnapshot();
-        }
-    }, VERSION_SAVE_INTERVAL);
-};
-
-let renderVersionList = () => {
-    const listEl = document.getElementById('version-list');
-    if (!listEl) return;
-
-    const versions = loadVersionHistory();
-
-    if (versions.length === 0) {
-        listEl.innerHTML = '<p class="empty-state">No saved versions yet. Versions are saved automatically as you edit.</p>';
-        return;
-    }
-
-    listEl.innerHTML = versions.map((v, i) => {
-        const date = new Date(v.timestamp);
-        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        const label = i === 0 ? ' (Latest)' : '';
-
-        return `
-            <div class="version-item" data-index="${i}">
-                <div class="version-info">
-                    <span class="version-date">${dateStr} at ${timeStr}${label}</span>
-                    <span class="version-meta">${v.wordCount} words</span>
-                </div>
-                <button class="version-restore-btn" data-index="${i}">Restore</button>
-            </div>
-        `;
-    }).join('');
-
-    // Attach restore handlers
-    listEl.querySelectorAll('.version-restore-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const index = parseInt(btn.dataset.index);
-            const version = versions[index];
-            if (version && confirm('Restore this version? Current content will be replaced.')) {
-                editor.setValue(version.content);
-                showToast('Version restored', 'success');
-                // Close modal
-                document.getElementById('version-history-modal').style.display = 'none';
-                document.getElementById('version-history-overlay').style.display = 'none';
-            }
-        });
-    });
-};
+// ----- Version History -----
+// Inline helpers removed — use initVersionHistory() from features/version-history/index.js
 
 // ----- Mobile Swipe Gestures -----
 // Now handled by MobileUIManager in features/mobile/index.js
@@ -6126,6 +6367,15 @@ const initializeApp = async () => {
     setupFullscreenButton();
     setupViewButtons();
     await initTabs();
+    pruneUnreferencedImages();
+    window.addEventListener('pagehide', () => {
+        for (const [key, value] of [...imageStore.entries()]) {
+            if (typeof value === 'string' && value.startsWith('blob:')) {
+                revokeImageStoreValue(value);
+                imageStore.delete(key);
+            }
+        }
+    });
     setupSearch();
     setupLinter();
     setupGoals();
@@ -6150,7 +6400,12 @@ const initializeApp = async () => {
     setupClipboardImagePaste();
     setupDragDropTabs();
     setupWordWrapToggle();
-    setupVersionHistory();
+    // Version history (modular)
+    initVersionHistory({
+        editorInstance: editor,
+        defaultContent: defaultInput,
+        hasEdited
+    });
     setupMobileSwipeGestures();
 
     // Restore saved view mode
@@ -6162,8 +6417,10 @@ const initializeApp = async () => {
     // Initialize stats with current content
     updateStats(editor.getValue());
 
-    // Initialize image resize feature
-    initImageResize({ editor });
+    // Initialize image resize feature (lazy — keep off critical boot path)
+    import('./features/image-resize/index.js')
+        .then(({ initImageResize }) => initImageResize({ editor }))
+        .catch((err) => console.warn('Image resize module load error:', err));
 };
 
 // ----- PWA Support -----

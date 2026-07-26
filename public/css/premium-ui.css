@@ -21,10 +21,10 @@
   --bg-hover: #f1f5f9;
   --bg-active: #e2e8f0;
 
-  /* Text Colors */
+  /* Text Colors — secondary meets WCAG AA (~7:1 on white) */
   --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --text-tertiary: #94a3b8;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
   --text-inverse: #ffffff;
   --text-link: #5865f2;
 
@@ -79,8 +79,8 @@ body.dark-mode {
   --bg-active: #475569;
 
   --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
 
   --border-light: #334155;
   --border-medium: #475569;
@@ -116,6 +116,28 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* ==================== SKIP NAVIGATION LINK ==================== */
+.skip-nav-link {
+  position: absolute;
+  top: -100%;
+  left: 8px;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+
+.skip-nav-link:focus,
+.skip-nav-link:focus-visible {
+  top: 8px;
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 /* ==================== HEADER ==================== */
@@ -1286,6 +1308,51 @@ body.dark-mode .header-tab .tab-name:hover {
 .preview-content {
   max-width: 100%;
   margin: 0;
+}
+
+/* Issue #40: embedded video players in preview */
+.preview-video {
+  margin: 1rem 0;
+  max-width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0d1117;
+}
+
+.preview-video video {
+  display: block;
+  width: 100%;
+  max-height: 480px;
+  background: #000;
+}
+
+.preview-video--embed {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 */
+  height: 0;
+  background: #0d1117;
+}
+
+.preview-video--embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.preview-video-fallback {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: var(--primary-color, #5865f2);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.preview-video-fallback:hover {
+  text-decoration: underline;
 }
 
 /* TOC Sidebar (Right) */
@@ -5225,9 +5292,224 @@ body.focus-mode .editor-pane {
 .markdown-body pre code {
   background: none;
   padding: 0;
-  color: inherit;
   font-size: 0.8125rem;
   line-height: 1.6;
+}
+
+/* Issue #42: marked-highlight puts language-* on <code>, NOT <pre>.
+   GitHub-like light theme (readable) + polished code chrome. */
+.markdown-body pre:has(> code[class*="language-"]) {
+  position: relative;
+  background: #f6f8fa !important;
+  border: 1px solid #d0d7de !important;
+  border-radius: 8px;
+  padding: 0 !important;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.markdown-body pre > code[class*="language-"] {
+  display: block;
+  padding: 16px !important;
+  overflow-x: auto;
+  color: #1f2328 !important;
+  background: transparent !important;
+  text-shadow: none;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+/* Language badge + copy toolbar (GitHub-style) */
+.markdown-body .code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #eaeef2;
+  border-bottom: 1px solid #d0d7de;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.markdown-body .code-lang-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: #656d76;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.markdown-body .code-copy-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  color: #24292f;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.markdown-body .code-copy-btn:hover {
+  background: #ffffff;
+  border-color: #afb8c1;
+}
+
+.markdown-body .code-copy-btn.copied {
+  color: #1a7f37;
+  border-color: #4ac26b;
+  background: #dafbe1;
+}
+
+/* GitHub Prettylights-inspired token colors (light) */
+.markdown-body pre code[class*="language-"] .token.comment,
+.markdown-body pre code[class*="language-"] .token.prolog,
+.markdown-body pre code[class*="language-"] .token.doctype,
+.markdown-body pre code[class*="language-"] .token.cdata {
+  color: #6e7781 !important;
+}
+
+.markdown-body pre code[class*="language-"] .token.punctuation {
+  color: #1f2328 !important;
+}
+
+.markdown-body pre code[class*="language-"] .token.namespace {
+  opacity: 0.85;
+}
+
+.markdown-body pre code[class*="language-"] .token.tag,
+.markdown-body pre code[class*="language-"] .token.tag .token.punctuation {
+  color: #0550ae !important;
+}
+
+.markdown-body pre code[class*="language-"] .token.tag .token.tag {
+  color: #0550ae !important;
+}
+
+.markdown-body pre code[class*="language-"] .token.attr-name {
+  color: #953800 !important;
+}
+
+.markdown-body pre code[class*="language-"] .token.attr-value,
+.markdown-body pre code[class*="language-"] .token.string,
+.markdown-body pre code[class*="language-"] .token.char {
+  color: #0a3069 !important;
+}
+
+.markdown-body pre code[class*="language-"] .token.attr-value .token.punctuation {
+  color: #0a3069 !important;
+}
+
+.markdown-body pre code[class*="language-"] .token.entity,
+.markdown-body pre code[class*="language-"] .token.operator {
+  color: #0550ae !important;
+}
+
+.markdown-body pre code[class*="language-"] .token.boolean,
+.markdown-body pre code[class*="language-"] .token.number,
+.markdown-body pre code[class*="language-"] .token.constant {
+  color: #0550ae !important;
+}
+
+.markdown-body pre code[class*="language-"] .token.keyword,
+.markdown-body pre code[class*="language-"] .token.atrule {
+  color: #cf222e !important;
+}
+
+.markdown-body pre code[class*="language-"] .token.function,
+.markdown-body pre code[class*="language-"] .token.class-name {
+  color: #8250df !important;
+}
+
+.markdown-body pre code[class*="language-"] .token.property,
+.markdown-body pre code[class*="language-"] .token.selector {
+  color: #0550ae !important;
+}
+
+.markdown-body pre code .token {
+  background: none;
+}
+
+/* Dark mode: keep vivid Prism Tomorrow-style blocks */
+body.dark-mode .markdown-body pre:has(> code[class*="language-"]) {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+
+body.dark-mode .markdown-body .code-block-header {
+  background: #21262d;
+  border-bottom-color: #30363d;
+}
+
+body.dark-mode .markdown-body .code-lang-badge {
+  color: #8b949e;
+}
+
+body.dark-mode .markdown-body .code-copy-btn {
+  background: #21262d;
+  border-color: #30363d;
+  color: #c9d1d9;
+}
+
+body.dark-mode .markdown-body .code-copy-btn:hover {
+  background: #30363d;
+  border-color: #8b949e;
+}
+
+body.dark-mode .markdown-body .code-copy-btn.copied {
+  color: #3fb950;
+  border-color: #238636;
+  background: #12261e;
+}
+
+body.dark-mode .markdown-body pre > code[class*="language-"] {
+  color: #c9d1d9 !important;
+}
+
+body.dark-mode .markdown-body pre code[class*="language-"] .token.comment,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.prolog,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.doctype,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.cdata {
+  color: #8b949e !important;
+}
+
+body.dark-mode .markdown-body pre code[class*="language-"] .token.punctuation {
+  color: #c9d1d9 !important;
+}
+
+body.dark-mode .markdown-body pre code[class*="language-"] .token.tag,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.tag .token.tag,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.tag .token.punctuation {
+  color: #7ee787 !important;
+}
+
+body.dark-mode .markdown-body pre code[class*="language-"] .token.attr-name {
+  color: #79c0ff !important;
+}
+
+body.dark-mode .markdown-body pre code[class*="language-"] .token.attr-value,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.string,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.char,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.attr-value .token.punctuation {
+  color: #a5d6ff !important;
+}
+
+body.dark-mode .markdown-body pre code[class*="language-"] .token.keyword {
+  color: #ff7b72 !important;
+}
+
+body.dark-mode .markdown-body pre code[class*="language-"] .token.function,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.class-name {
+  color: #d2a8ff !important;
 }
 
 .markdown-body blockquote {
@@ -5440,6 +5722,16 @@ body.dark-mode .markdown-body pre {
 body.dark-mode .markdown-body pre code {
   background: none;
   color: #e6edf3;
+}
+
+/* Keep Prism token colors in dark mode (don't let pre code color wipe .token.*) */
+body.dark-mode .markdown-body pre:has(> code[class*="language-"]) {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+
+body.dark-mode .markdown-body pre > code[class*="language-"] {
+  color: #c9d1d9 !important;
 }
 
 body.dark-mode .markdown-body kbd {
@@ -6413,6 +6705,21 @@ body.resizing .monaco-editor {
 }
 
 /* ========== FOCUS VISIBLE STATES FOR ACCESSIBILITY ========== */
+.toolbar-btn:focus-visible,
+.header-btn:focus-visible,
+.header-action-btn:focus-visible,
+.modal-close:focus-visible,
+.modal-btn:focus-visible,
+.export-format-btn:focus-visible,
+.toc-list a:focus-visible,
+.outline-link:focus-visible,
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
 @media (max-width: 768px) {
 
   .modal-close:focus-visible,
@@ -6934,9 +7241,13 @@ body.resizing .monaco-editor {
     display: flex !important;
   }
 
-  /* Show overflow button */
+  /* Show overflow button — min 44px touch target */
   .toolbar-overflow-btn {
     display: flex;
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
   }
 
   /* Toolbar compact on mobile */
@@ -7067,6 +7378,7 @@ body.resizing .monaco-editor {
 
   .toolbar-overflow-item {
     min-height: 44px;
+    min-width: 44px;
     padding: 8px;
   }
 
@@ -7115,8 +7427,16 @@ body.resizing .monaco-editor {
    TOUCH-SPECIFIC: Toolbar overflow items
    ============================================================ */
 @media (hover: none) and (pointer: coarse) {
+  .toolbar-overflow-btn {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+  }
+
   .toolbar-overflow-item {
     min-height: 48px;
+    min-width: 44px;
   }
 
   .mobile-doc-item {

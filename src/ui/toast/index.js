@@ -43,6 +43,19 @@ class Toast {
     initialize() {
         if (this.container) return;
 
+        // Prefer existing app container (premium-ui.css styles #toast-container)
+        const existing = document.getElementById('toast-container');
+        if (existing) {
+            this.container = existing;
+            if (!this.container.getAttribute('aria-live')) {
+                this.container.setAttribute('aria-live', 'polite');
+            }
+            if (!this.container.getAttribute('aria-atomic')) {
+                this.container.setAttribute('aria-atomic', 'true');
+            }
+            return;
+        }
+
         this.container = document.createElement('div');
         this.container.className = 'toast-container';
         this.container.setAttribute('aria-live', 'polite');
@@ -360,6 +373,17 @@ class Toast {
 
 // Export singleton instance
 export const toast = new Toast();
+
+/**
+ * Compatibility helper matching legacy signature: showToast(message, type, duration)
+ * @param {string} message
+ * @param {string} [type='info']
+ * @param {number} [duration=3000]
+ * @returns {string} Toast ID
+ */
+export function showToast(message, type = 'info', duration = 3000) {
+    return toast.show(message, { type, duration });
+}
 
 // Export class for testing
 export { Toast };

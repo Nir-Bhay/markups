@@ -18,8 +18,8 @@
   --bg-secondary: #f8fafc;
   --bg-tertiary: #f1f5f9;
   --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
   --border-color: #e2e8f0;
   --border-hover: #cbd5e1;
 
@@ -65,7 +65,7 @@ body.dark-mode {
   --bg-tertiary: #334155;
   --text-primary: #f1f5f9;
   --text-secondary: #cbd5e1;
-  --text-muted: #64748b;
+  --text-muted: #94a3b8;
   --border-color: #334155;
   --border-hover: #475569;
   --header-bg: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);

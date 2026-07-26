@@ -169,6 +169,11 @@ class MobileUIManager {
         this.currentView = 'editor';
         this._swipeState = null;
         this._boundOutsideClick = null;
+        this._boundKeydown = null;
+        this._boundOverflowOutsideClick = null;
+        this._boundOverflowResize = null;
+        this._boundBreakpointResize = null;
+        this._docsListTimers = [];
 
         MobileUIManager.instance = this;
     }
@@ -292,7 +297,7 @@ class MobileUIManager {
         }
 
         // Escape key closes drawer and overflow sheet
-        document.addEventListener('keydown', (e) => {
+        this._boundKeydown = (e) => {
             if (e.key === 'Escape') {
                 if (this.drawer?.classList.contains('active')) {
                     this.closeDrawer();
@@ -302,7 +307,8 @@ class MobileUIManager {
                     e.preventDefault();
                 }
             }
-        });
+        };
+        document.addEventListener('keydown', this._boundKeydown);
     }
 
     _setupDrawerActions() {
@@ -320,7 +326,8 @@ class MobileUIManager {
                 }
                 this.closeDrawer();
                 // Re-render doc list after short delay
-                setTimeout(() => this.renderDocsList(), 100);
+                const t = setTimeout(() => this.renderDocsList(), 100);
+                this._docsListTimers.push(t);
             });
         }
 
@@ -462,7 +469,8 @@ class MobileUIManager {
                     if (typeof window.__markups_closeTab === 'function') {
                         window.__markups_closeTab(doc.id);
                     }
-                    setTimeout(() => this.renderDocsList(), 50);
+                    const t = setTimeout(() => this.renderDocsList(), 50);
+                    this._docsListTimers.push(t);
                 });
             }
 
@@ -568,6 +576,7 @@ class MobileUIManager {
         const setOverflowState = (isOpen) => {
             this.overflowSheet.classList.toggle('active', isOpen);
             overflowBtn.setAttribute('aria-expanded', String(isOpen));
+            this.overflowSheet.setAttribute('aria-hidden', String(!isOpen));
             if (isOpen) {
                 this._positionToolbarOverflow(overflowBtn);
             }
@@ -580,13 +589,14 @@ class MobileUIManager {
         });
 
         // Close on outside click
-        document.addEventListener('click', (e) => {
+        this._boundOverflowOutsideClick = (e) => {
             if (this.overflowSheet &&
                 !this.overflowSheet.contains(e.target) &&
                 e.target !== overflowBtn) {
                 setOverflowState(false);
             }
-        });
+        };
+        document.addEventListener('click', this._boundOverflowOutsideClick);
 
         this.overflowSheet.addEventListener('click', (e) => {
             const button = e.target.closest('button[data-action]');
@@ -602,11 +612,12 @@ class MobileUIManager {
             handler();
         });
 
-        window.addEventListener('resize', () => {
+        this._boundOverflowResize = () => {
             if (this.overflowSheet.classList.contains('active')) {
                 this._positionToolbarOverflow(overflowBtn);
             }
-        });
+        };
+        window.addEventListener('resize', this._boundOverflowResize);
     }
 
     _positionToolbarOverflow(overflowBtn) {
@@ -649,6 +660,7 @@ class MobileUIManager {
             button.className = 'toolbar-overflow-item';
             button.dataset.action = action;
             button.title = label;
+            button.setAttribute('aria-label', label);
             button.innerHTML = `
                 <span class="toolbar-overflow-icon">${icon}</span>
                 <span>${label}</span>
@@ -798,7 +810,7 @@ class MobileUIManager {
     _setupResizeHandler() {
         let wasDesktop = !this.isMobile();
 
-        window.addEventListener('resize', () => {
+        this._boundBreakpointResize = () => {
             const isNowDesktop = !this.isMobile();
 
             // Crossing the breakpoint
@@ -816,7 +828,8 @@ class MobileUIManager {
             }
 
             wasDesktop = isNowDesktop;
-        });
+        };
+        window.addEventListener('resize', this._boundBreakpointResize);
     }
 
     /* ============================
@@ -833,6 +846,32 @@ class MobileUIManager {
 
     dispose() {
         this.closeDrawer();
+        if (this.overflowSheet) {
+            this.overflowSheet.classList.remove('active');
+            this.overflowSheet.setAttribute('aria-hidden', 'true');
+        }
+
+        if (this._boundKeydown) {
+            document.removeEventListener('keydown', this._boundKeydown);
+            this._boundKeydown = null;
+        }
+        if (this._boundOverflowOutsideClick) {
+            document.removeEventListener('click', this._boundOverflowOutsideClick);
+            this._boundOverflowOutsideClick = null;
+        }
+        if (this._boundOverflowResize) {
+            window.removeEventListener('resize', this._boundOverflowResize);
+            this._boundOverflowResize = null;
+        }
+        if (this._boundBreakpointResize) {
+            window.removeEventListener('resize', this._boundBreakpointResize);
+            this._boundBreakpointResize = null;
+        }
+        if (this._docsListTimers?.length) {
+            this._docsListTimers.forEach((id) => clearTimeout(id));
+            this._docsListTimers = [];
+        }
+
         MobileUIManager.instance = null;
     }
 }

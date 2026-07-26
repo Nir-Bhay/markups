@@ -13,7 +13,8 @@ export {
     on, once as onceDOM, delegate,
     getOffset, scrollIntoView,
     setHTML, setText, val, empty, remove, clone,
-    isVisible, ready
+    isVisible, ready,
+    createFocusTrap
 } from './dom.js';
 export {
     copyToClipboard,
@@ -38,6 +39,8 @@ export {
     isTextFile,
     formatFileSize,
     validateFileSize,
+    validateImageSignature,
+    sanitizeSvgToDataUrl,
     selectFiles,
     selectMarkdownFile,
     selectImageFiles

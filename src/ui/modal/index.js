@@ -5,6 +5,7 @@
  */
 
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { createFocusTrap } from '../../utils/dom.js';
 
 /**
  * Modal class
@@ -351,13 +352,17 @@ class Modal {
         document.body.appendChild(overlay);
 
         // Store modal info
-        this.activeModals.push({ id, overlay, modal, closeable, onClose });
+        this.activeModals.push({ id, overlay, modal, closeable, onClose, focusTrap: null });
 
         // Prevent body scroll
         document.body.style.overflow = 'hidden';
 
-        // Focus trap
-        this._setupFocusTrap(modal);
+        // Focus trap (Escape closes when closeable)
+        const modalInfo = this.activeModals[this.activeModals.length - 1];
+        modalInfo.focusTrap = createFocusTrap(modal, {
+            onEscape: closeable ? () => this.close(id) : null
+        });
+        modalInfo.focusTrap.activate();
 
         // Callback
         if (onOpen) {
@@ -370,33 +375,13 @@ class Modal {
     }
 
     /**
-     * Setup focus trap within modal
-     * @param {HTMLElement} modal - Modal element
+     * @deprecated Use createFocusTrap via open(); kept for API stability
+     * @param {HTMLElement} modal
      * @private
      */
     _setupFocusTrap(modal) {
-        const focusableElements = modal.querySelectorAll(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-
-        if (focusableElements.length === 0) return;
-
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        firstElement.focus();
-
-        modal.addEventListener('keydown', (e) => {
-            if (e.key === 'Tab') {
-                if (e.shiftKey && document.activeElement === firstElement) {
-                    e.preventDefault();
-                    lastElement.focus();
-                } else if (!e.shiftKey && document.activeElement === lastElement) {
-                    e.preventDefault();
-                    firstElement.focus();
-                }
-            }
-        });
+        // no-op — focus trap is attached in open()
+        void modal;
     }
 
     /**
@@ -408,6 +393,8 @@ class Modal {
         if (index === -1) return;
 
         const modalInfo = this.activeModals[index];
+        modalInfo.focusTrap?.deactivate();
+        modalInfo.focusTrap = null;
         modalInfo.overlay.classList.add('modal-exit');
 
         setTimeout(() => {

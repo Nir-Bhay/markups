@@ -22,7 +22,7 @@ import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-markdown';
 import 'prismjs/components/prism-css';
-import 'prismjs/components/prism-markup';
+import 'prismjs/components/prism-markup'; // HTML, XML, SVG, MathML aliases
 import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-yaml';
 import 'prismjs/components/prism-java';
@@ -86,6 +86,48 @@ const katexExtension = {
 class MarkdownService {
     static instance = null;
 
+    /** Map common aliases / casing to Prism language keys */
+    static LANGUAGE_ALIASES = {
+        htm: 'markup',
+        xhtml: 'markup',
+        xml: 'xml',
+        svg: 'svg',
+        mathml: 'mathml',
+        ssml: 'xml',
+        atom: 'xml',
+        rss: 'xml',
+        plaintext: 'plaintext',
+        text: 'plaintext',
+        txt: 'plaintext',
+        sh: 'bash',
+        shell: 'bash',
+        zsh: 'bash',
+        console: 'bash',
+        js: 'javascript',
+        ts: 'typescript',
+        py: 'python',
+        yml: 'yaml',
+        md: 'markdown',
+        csharp: 'csharp',
+        'c#': 'csharp',
+        cpp: 'cpp',
+        'c++': 'cpp'
+    };
+
+    /**
+     * Resolve a markdown fence language to a Prism language key.
+     * @param {string} lang
+     * @returns {string}
+     */
+    static resolvePrismLanguage(lang) {
+        if (!lang) return 'plaintext';
+        const normalized = String(lang).trim().toLowerCase();
+        const aliased = MarkdownService.LANGUAGE_ALIASES[normalized] || normalized;
+        if (Prism.languages[aliased]) return aliased;
+        if (Prism.languages[normalized]) return normalized;
+        return 'plaintext';
+    }
+
     constructor() {
         if (MarkdownService.instance) {
             return MarkdownService.instance;
@@ -113,7 +155,9 @@ class MarkdownService {
             markedHighlight({
                 langPrefix: 'language-',
                 highlight(code, lang) {
-                    const language = Prism.languages[lang] ? lang : 'plaintext';
+                    // Normalize language id (GitHub is case-insensitive; Prism keys are lowercase)
+                    // Fixes #42: ```XML / ```Xml were falling back to plaintext
+                    const language = MarkdownService.resolvePrismLanguage(lang);
                     try {
                         return Prism.highlight(
                             code,
@@ -226,9 +270,13 @@ class MarkdownService {
     sanitize(html) {
         return DOMPurify.sanitize(html, {
             USE_PROFILES: { html: true },
-            ADD_TAGS: ['iframe', 'math', 'mrow', 'mo', 'mi', 'mn', 'msup', 'mfrac', 'semantics', 'annotation'],
-            ADD_ATTR: ['target', 'class', 'id', 'style', 'data-*', 'aria-*', 'frameborder', 'allowfullscreen'],
-            ALLOW_DATA_ATTR: true
+            // Allow math + HTML5 video (players are usually injected via DOM post-process)
+            ADD_TAGS: ['math', 'mrow', 'mo', 'mi', 'mn', 'msup', 'mfrac', 'semantics', 'annotation', 'video', 'source'],
+            ADD_ATTR: ['target', 'class', 'id', 'aria-*', 'controls', 'preload', 'playsinline', 'controlslist'],
+            FORBID_TAGS: ['iframe', 'script', 'object', 'embed', 'form'],
+            // Event handlers stripped by default; "on*" is not a FORBID_ATTR wildcard
+            FORBID_ATTR: ['style', 'srcdoc'],
+            ALLOW_DATA_ATTR: false
         });
     }
 

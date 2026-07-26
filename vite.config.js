@@ -61,8 +61,10 @@ export default defineConfig({
                     'monaco-editor': ['monaco-editor'],
                     'mermaid-vendor': ['mermaid'],
                     'katex-vendor': ['katex'],
-                    'markdown-vendor': ['marked', 'marked-katex-extension', 'marked-highlight', 'marked-gfm-heading-id', 'marked-footnote', 'marked-alert', 'markdownlint'],
-                    'dom-utils': ['dompurify', 'html2pdf.js', 'html2canvas', 'prismjs', 'github-markdown-css'],
+                    'markdown-vendor': ['marked', 'marked-katex-extension', 'marked-highlight', 'marked-gfm-heading-id', 'marked-footnote', 'marked-alert'],
+                    // Keep export libs out of the eager DOM chunk so dynamic import can defer them
+                    'dom-utils': ['dompurify', 'prismjs', 'github-markdown-css'],
+                    'export-vendor': ['html2pdf.js', 'html2canvas'],
                     'storage-vendor': ['dexie']
                 }
             }

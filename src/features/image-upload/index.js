@@ -2,11 +2,25 @@
  * Image Upload Manager
  * Handles image upload via button click and drag & drop
  * @module features/image-upload
+ *
+ * Note: Production entry (`src/main.js`) uses its own `imageStore` with
+ * `markups-img:` refs, LRU soft-cap, tab-close cleanup, and blob URL revoke.
+ * This module (used by deferred `app.js`) inserts data URLs directly into
+ * markdown — keep inserts small / respect MAX_IMAGE_SIZE_MB to limit memory.
+ *
+ * Security (Phase 4): SVG is sanitized via DOMPurify; raster images are
+ * checked against magic-byte signatures before accept.
  */
 
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
 import { editorService } from '../../core/editor/index.js';
 import { APP_CONFIG } from '../../config/app.config.js';
+import {
+    readFileAsText,
+    readFileAsArrayBuffer,
+    validateImageSignature,
+    sanitizeSvgToDataUrl
+} from '../../utils/file.js';
 
 /**
  * ImageUploadManager class
@@ -21,6 +35,9 @@ class ImageUploadManager {
         }
 
         this.maxSizeMB = APP_CONFIG.MAX_IMAGE_SIZE_MB || 5;
+        this.allowedTypes = APP_CONFIG.ALLOWED_IMAGE_TYPES || [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'
+        ];
         this.fileInput = null;
         this.dropZone = null;
 
@@ -129,15 +146,15 @@ class ImageUploadManager {
     }
 
     /**
-     * Process image file
+     * Process image file (async: SVG sanitize + magic-byte check)
      * @param {File} file
      * @private
      */
-    _processFile(file) {
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
+    async _processFile(file) {
+        // Validate MIME against allowlist
+        if (!this.allowedTypes.includes(file.type)) {
             eventBus.emit(EVENTS.TOAST_SHOW, {
-                message: 'Please select an image file',
+                message: 'Please select a valid image file (JPEG, PNG, GIF, WebP, or SVG)',
                 type: 'error'
             });
             return;
@@ -159,21 +176,41 @@ class ImageUploadManager {
             duration: 1500
         });
 
-        const reader = new FileReader();
+        try {
+            let dataUrl;
 
-        reader.onload = (e) => {
-            const base64Image = e.target.result;
-            this._insertImage(file.name, base64Image);
-        };
+            if (file.type === 'image/svg+xml') {
+                const svgText = await readFileAsText(file);
+                dataUrl = sanitizeSvgToDataUrl(svgText);
+                if (!dataUrl) {
+                    eventBus.emit(EVENTS.TOAST_SHOW, {
+                        message: 'SVG rejected: empty or unsafe content',
+                        type: 'error'
+                    });
+                    return;
+                }
+            } else {
+                const buffer = await readFileAsArrayBuffer(file);
+                if (!validateImageSignature(buffer, file.type)) {
+                    eventBus.emit(EVENTS.TOAST_SHOW, {
+                        message: 'Invalid image file: file content does not match its type',
+                        type: 'error'
+                    });
+                    return;
+                }
+                const uint8Array = new Uint8Array(buffer);
+                const binary = Array.from(uint8Array).map((b) => String.fromCharCode(b)).join('');
+                dataUrl = `data:${file.type};base64,${btoa(binary)}`;
+            }
 
-        reader.onerror = () => {
+            this._insertImage(file.name, dataUrl);
+        } catch (err) {
+            console.error('Image upload failed:', err);
             eventBus.emit(EVENTS.TOAST_SHOW, {
                 message: 'Failed to process image',
                 type: 'error'
             });
-        };
-
-        reader.readAsDataURL(file);
+        }
     }
 
     /**

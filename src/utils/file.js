@@ -4,6 +4,80 @@
  * @module utils/file
  */
 
+import DOMPurify from 'dompurify';
+
+/**
+ * Validate image file signature (magic bytes) to prevent MIME spoofing.
+ * SVG is text-based and must be sanitized separately.
+ * @param {ArrayBuffer|ArrayBufferView} buffer - File contents (at least first 12 bytes)
+ * @param {string} fileType - Declared MIME type
+ * @returns {boolean} Whether the signature matches the declared type
+ */
+export function validateImageSignature(buffer, fileType) {
+    if (!buffer || !fileType) return false;
+
+    const arr = buffer instanceof ArrayBuffer
+        ? new Uint8Array(buffer)
+        : new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+
+    if (arr.length < 12 && fileType === 'image/webp') return false;
+    if (arr.length < 4) return false;
+
+    const hex = Array.from(arr.subarray(0, Math.min(12, arr.length)))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+
+    switch (fileType) {
+        case 'image/jpeg':
+            return hex.startsWith('ffd8ff');
+        case 'image/png':
+            return hex.startsWith('89504e47');
+        case 'image/gif':
+            return hex.startsWith('47494638');
+        case 'image/webp':
+            // RIFF....WEBP (bytes 0-3 RIFF, bytes 8-11 WEBP)
+            return hex.startsWith('52494646') && hex.slice(16, 24) === '57454250';
+        case 'image/svg+xml':
+            return true; // validated via sanitizeSvgToDataUrl
+        default:
+            return false;
+    }
+}
+
+/**
+ * Sanitize SVG markup and return a safe data URL.
+ * Strips script / foreignObject / event handlers (on*).
+ * @param {string} svgText - Raw SVG text
+ * @returns {string|null} data:image/svg+xml;base64,... or null if empty/unsafe after sanitize
+ */
+export function sanitizeSvgToDataUrl(svgText) {
+    if (typeof svgText !== 'string' || !svgText.trim()) return null;
+
+    const cleanSvg = DOMPurify.sanitize(svgText, {
+        USE_PROFILES: { svg: true, svgFilters: true },
+        FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'foreignObject', 'form'],
+        // Explicit handlers — DOMPurify does not expand "on*" wildcards in FORBID_ATTR
+        FORBID_ATTR: [
+            'onerror', 'onload', 'onclick', 'ondblclick', 'onmouseover', 'onmouseout',
+            'onfocus', 'onblur', 'onmouseenter', 'onmouseleave', 'onmousedown', 'onmouseup',
+            'onmousemove', 'onkeydown', 'onkeyup', 'onkeypress', 'onchange', 'onsubmit',
+            'onbegin', 'onend', 'onanimationstart', 'style', 'srcdoc'
+        ],
+        ALLOW_UNKNOWN_PROTOCOLS: false,
+        ALLOW_DATA_ATTR: false
+    });
+
+    if (!cleanSvg || !cleanSvg.trim()) return null;
+
+    // Defense-in-depth: strip residual on* attrs; require a real <svg> root
+    const stripped = cleanSvg.replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+    if (/<script[\s>]/i.test(stripped) || !/<svg[\s>]/i.test(stripped)) {
+        return null;
+    }
+
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(stripped)));
+}
+
 /**
  * Download content as file
  * @param {string} content - File content
@@ -229,6 +303,8 @@ export default {
     isTextFile,
     formatFileSize,
     validateFileSize,
+    validateImageSignature,
+    sanitizeSvgToDataUrl,
     selectFiles,
     selectMarkdownFile,
     selectImageFiles

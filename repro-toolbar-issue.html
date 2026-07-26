@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toolbar Icon Repro Case - Markups</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        
+        .repro-container {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        h1 {
+            color: #f59e0b;
+            border-bottom: 2px solid #f59e0b;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            color: #60a5fa;
+            margin-top: 30px;
+        }
+        
+        .issue-card {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 6px;
+        }
+        
+        .fix-card {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 4px solid #22c55e;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 6px;
+        }
+        
+        code {
+            background: rgba(99, 102, 241, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #a5b4fc;
+        }
+        
+        pre {
+            background: #0f172a;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .test-button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 8px 8px 8px 0;
+            transition: background 0.2s;
+        }
+        
+        .test-button:hover {
+            background: #4f46e5;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-weight: 600;
+        }
+        
+        .status.fail {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid #ef4444;
+        }
+        
+        .status.pass {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+            border: 1px solid #22c55e;
+        }
+        
+        .toolbar-demo {
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 16px 0;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .toolbar-btn-demo {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #94a3b8;
+            padding: 8px 12px;
+            margin: 4px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
+        .toolbar-btn-demo:hover {
+            background: rgba(99, 102, 241, 0.2);
+            color: #e2e8f0;
+        }
+        
+        .log-output {
+            background: #000;
+            color: #0f0;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Toolbar Action Icons - Reproduction Case</h1>
+    
+    <div class="repro-container">
+        <h2>📋 Issue Description</h2>
+        <div class="issue-card">
+            <strong>Problem:</strong> Toolbar action icons appear broken or don't work properly in the Markups editor.<br>
+            <strong>Symptoms:</strong>
+            <ul>
+                <li>Icons render incorrectly or show as broken characters</li>
+                <li>Click handlers don't fire when icons are clicked</li>
+                <li>Toolbar buttons appear unresponsive</li>
+                <li>Event listeners not properly attached</li>
+            </ul>
+        </div>
+
+        <h2>🎯 Reproduction Steps</h2>
+        <ol>
+            <li>Open the Markups editor at <code>index.html</code></li>
+            <li>Wait for the page to fully load</li>
+            <li>Click on any toolbar button (Bold, Italic, etc.)</li>
+            <li>Observe that the action doesn't trigger or icon appears broken</li>
+        </ol>
+
+        <h2>🧪 Test Cases</h2>
+        
+        <div class="toolbar-demo">
+            <strong>Demo Toolbar (Simulated):</strong><br>
+            <button class="toolbar-btn-demo" id="demo-bold">B</button>
+            <button class="toolbar-btn-demo" id="demo-italic">I</button>
+            <button class="toolbar-btn-demo" id="demo-underline">U</button>
+            <button class="toolbar-btn-demo" id="demo-broken">❌ Broken</button>
+        </div>
+
+        <button class="test-button" onclick="testToolbarInit()">Test Toolbar Initialization</button>
+        <button class="test-button" onclick="testEventListeners()">Test Event Listeners</button>
+        <button class="test-button" onclick="testIconRendering()">Test Icon Rendering</button>
+        <button class="test-button" onclick="clearLog()">Clear Log</button>
+
+        <div id="test-status"></div>
+        <div class="log-output" id="log-output"></div>
+
+        <h2>🔍 Root Cause Analysis</h2>
+        
+        <h3>Potential Issue 1: Race Condition in Initialization</h3>
+        <pre><code>// PROBLEMATIC CODE PATTERN (in src/main.js)
+// If toolbar initializes before editor is ready:
+import { toolbarManager } from './features/toolbar/index.js';
+
+// Editor not ready yet, but toolbar tries to attach events
+toolbarManager.initialize('#toolbar-container');
+
+// Later, editor initializes:
+createEditor(); // Now editor exists, but toolbar already tried to bind
+
+// Result: Toolbar buttons have no editor reference!
+</code></pre>
+
+        <h3>Potential Issue 2: InnerHTML Icon Rendering</h3>
+        <pre><code>// In toolbar/index.js, icons are set via innerHTML:
+el.innerHTML = btn.icon; // btn.icon = '<strong>B</strong>'
+
+// If icon contains special characters or malformed HTML:
+// - Icons may not render correctly
+// - Event listeners might be lost during re-render
+</code></pre>
+
+        <h3>Potential Issue 3: Event Delegation Failure</h3>
+        <pre><code>// If toolbar container is replaced via innerHTML:
+this.container.innerHTML = '';
+this.container.appendChild(toolbar);
+
+// All previously attached event listeners are LOST!
+// Need to re-attach or use event delegation on stable parent
+</code></pre>
+
+        <h2>✅ Minimal Reproduction Code</h2>
+        <pre><code>// Save this as repro-test.js and import in index.html
+
+function reproduceToolbarIssue() {
+    console.log('=== TOOLBAR ISSUE REPRODUCTION ===');
+    
+    // Step 1: Check if toolbar container exists
+    const toolbarContainer = document.querySelector('.premium-toolbar');
+    if (!toolbarContainer) {
+        console.error('❌ Toolbar container not found!');
+        return;
+    }
+    console.log('✓ Toolbar container found');
+    
+    // Step 2: Check if buttons exist
+    const buttons = toolbarContainer.querySelectorAll('.tb-btn, .toolbar-btn');
+    console.log(`Found ${buttons.length} toolbar buttons`);
+    
+    if (buttons.length === 0) {
+        console.error('❌ No toolbar buttons found! Toolbar not rendered?');
+        return;
+    }
+    
+    // Step 3: Test click handlers
+    let clickWorking = false;
+    const testBtn = buttons[0];
+    
+    const testHandler = () => {
+        clickWorking = true;
+        console.log('✓ Click handler fired!');
+    };
+    
+    testBtn.addEventListener('click', testHandler);
+    testBtn.click();
+    
+    if (!clickWorking) {
+        console.error('❌ Click handler not working on toolbar button!');
+    }
+    
+    // Step 4: Check for editor reference
+    const editor = window.editor || null;
+    if (!editor) {
+        console.error('❌ Editor not available on window.editor!');
+        console.error('   Toolbar actions need editor reference');
+    } else {
+        console.log('✓ Editor reference found');
+    }
+    
+    // Step 5: Check icon rendering
+    const iconHTML = testBtn.innerHTML;
+    console.log(`Button icon HTML: ${iconHTML}`);
+    
+    if (iconHTML.includes('undefined') || iconHTML.includes('null')) {
+        console.error('❌ Icon contains undefined/null!');
+    }
+    
+    console.log('=== REPRODUCTION COMPLETE ===');
+}
+
+// Run on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(reproduceToolbarIssue, 2000); // Wait 2s for init
+});
+</code></pre>
+
+        <h2>🛠️ Suggested Fix Approach</h2>
+        <div class="fix-card">
+            <strong>Fix Strategy:</strong>
+            <ol>
+                <li>Ensure editor is initialized BEFORE toolbar</li>
+                <li>Use event delegation on stable container</li>
+                <li>Validate icon HTML before rendering</li>
+                <li>Add error boundaries around click handlers</li>
+            </ol>
+        </div>
+
+        <pre><code>// SUGGESTED FIX (in src/main.js initialization order):
+
+// 1. First: Initialize core systems
+await createEditor(); // Editor must be ready
+await initMarkdown();
+
+// 2. Second: Initialize features that depend on editor
+initToolbar(); // Now editor is available
+
+// 3. In toolbar/index.js, add safety checks:
+function resolveEditor() {
+    // Try multiple sources
+    return editorService.getEditor() 
+        || window.editor 
+        || null;
+}
+
+// 4. Wrap actions in try-catch:
+action: () => {
+    try {
+        const editor = resolveEditor();
+        if (!editor) {
+            console.error('Editor not ready for toolbar action');
+            return;
+        }
+        wrapSelection('**', '**');
+    } catch (err) {
+        console.error('Toolbar action failed:', err);
+    }
+}
+</code></pre>
+
+        <h2>📝 How to Use This Repro</h2>
+        <ol>
+            <li>Copy the <code>reproduceToolbarIssue()</code> function above</li>
+            <li>Paste it into browser console on <code>index.html</code></li>
+            <li>Run it and check console output</li>
+            <li>Or add it to a test file in <code>src/__tests__/</code></li>
+        </ol>
+    </div>
+
+    <script>
+        // Logging utility
+        const logOutput = document.getElementById('log-output');
+        const statusDiv = document.getElementById('test-status');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✓' : 'ℹ';
+            logOutput.innerHTML += `[${timestamp}] ${prefix} ${message}\n`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+        
+        function setStatus(message, isPass) {
+            statusDiv.innerHTML = `<div class="status ${isPass ? 'pass' : 'fail'}">${message}</div>`;
+        }
+        
+        function clearLog() {
+            logOutput.innerHTML = '';
+            statusDiv.innerHTML = '';
+        }
+        
+        // Test functions
+        function testToolbarInit() {
+            log('Starting toolbar initialization test...');
+            
+            // Simulate checking for toolbar container
+            const container = document.querySelector('.toolbar-demo');
+            if (container) {
+                log('Toolbar container found', 'success');
+                
+                // Check buttons
+                const buttons = container.querySelectorAll('.toolbar-btn-demo');
+                log(`Found ${buttons.length} toolbar buttons`);
+                
+                if (buttons.length > 0) {
+                    log('Toolbar initialization: PASSED', 'success');
+                    setStatus('✓ Toolbar Initialization Test PASSED', true);
+                } else {
+                    log('No buttons found in toolbar', 'error');
+                    setStatus('❌ Toolbar Initialization Test FAILED', false);
+                }
+            } else {
+                log('Toolbar container not found', 'error');
+                setStatus('❌ Toolbar Initialization Test FAILED', false);
+            }
+        }
+        
+        function testEventListeners() {
+            log('Testing event listener attachment...');
+            
+            const demoBold = document.getElementById('demo-bold');
+            const demoBroken = document.getElementById('demo-broken');
+            
+            if (demoBold) {
+                // Attach test listener
+                demoBold.addEventListener('click', () => {
+                    log('Bold button click handler fired!', 'success');
+                });
+                
+                // Simulate click
+                log('Simulating click on Bold button...');
+                demoBold.click();
+                
+                // Test broken button (no handler)
+                log('Testing broken button (should not fire)...');
+                demoBroken.click();
+                
+                setTimeout(() => {
+                    log('Event listener test complete', 'success');
+                    setStatus('✓ Event Listener Test PASSED', true);
+                }, 100);
+            }
+        }
+        
+        function testIconRendering() {
+            log('Testing icon rendering...');
+            
+            const buttons = document.querySelectorAll('.toolbar-btn-demo');
+            let allGood = true;
+            
+            buttons.forEach((btn, idx) => {
+                const html = btn.innerHTML;
+                log(`Button ${idx + 1} HTML: ${html}`);
+                
+                if (html.includes('undefined') || html === '') {
+                    log(`Button ${idx + 1} has rendering issue!`, 'error');
+                    allGood = false;
+                }
+            });
+            
+            if (allGood) {
+                log('All icons rendered correctly', 'success');
+                setStatus('✓ Icon Rendering Test PASSED', true);
+            } else {
+                log('Some icons failed to render', 'error');
+                setStatus('❌ Icon Rendering Test FAILED', false);
+            }
+        }
+        
+        // Initialize demo button handlers
+        document.getElementById('demo-bold').addEventListener('click', () => {
+            log('Demo: Bold action triggered', 'success');
+        });
+        
+        document.getElementById('demo-italic').addEventListener('click', () => {
+            log('Demo: Italic action triggered', 'success');
+        });
+        
+        document.getElementById('demo-underline').addEventListener('click', () => {
+            log('Demo: Underline action triggered', 'success');
+        });
+        
+        log('Reproduction case loaded. Click test buttons to start.', 'success');
+    </script>
+</body>
+</html>

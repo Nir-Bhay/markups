@@ -9,6 +9,7 @@ import { modal } from '../../ui/modal/index.js';
 import { toast } from '../../ui/toast/index.js';
 import { aiService, PROVIDERS } from './service.js';
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { createFocusTrap } from '../../utils/dom.js';
 
 /**
  * AIWriterUI class
@@ -25,6 +26,7 @@ class AIWriterUI {
         this.visible = false;
         this.lastResult = '';
         this.initialized = false;
+        this._focusTrap = null;
     }
 
     /**
@@ -43,6 +45,9 @@ class AIWriterUI {
     renderPanel(container) {
         if (!container) return;
         this.panelEl = container;
+        container.setAttribute('role', 'dialog');
+        container.setAttribute('aria-modal', 'true');
+        container.setAttribute('aria-label', 'AI Writing Assistant');
 
         container.innerHTML = `
             <div class="ai-panel-inner">
@@ -119,7 +124,7 @@ class AIWriterUI {
                 <div class="ai-panel-output" id="ai-output" style="display:none;">
                     <div class="ai-output-header">
                         <span class="ai-output-label">AI Output</span>
-                        <button class="ai-panel-btn-icon ai-copy-btn" id="ai-copy-btn" title="Copy to clipboard">
+                        <button class="ai-panel-btn-icon ai-copy-btn" id="ai-copy-btn" title="Copy to clipboard" aria-label="Copy to clipboard">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -172,6 +177,13 @@ class AIWriterUI {
         if (this.panelEl) {
             this.panelEl.style.display = '';
             this.visible = true;
+            this._focusTrap?.deactivate();
+            this._focusTrap = createFocusTrap(this.panelEl, {
+                onEscape: () => {
+                    eventBus.emit(EVENTS.AI_PANEL_TOGGLED, { visible: false });
+                }
+            });
+            this._focusTrap.activate();
             if (this.inputEl) this.inputEl.focus();
         }
     }
@@ -181,6 +193,8 @@ class AIWriterUI {
      */
     hide() {
         if (this.panelEl) {
+            this._focusTrap?.deactivate();
+            this._focusTrap = null;
             this.panelEl.style.display = 'none';
             this.visible = false;
         }
