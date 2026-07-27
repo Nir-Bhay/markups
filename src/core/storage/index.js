@@ -221,6 +221,9 @@ class StorageService {
 // Singleton instance
 export const storage = new StorageService();
 
+// Backward-compatible alias used by modular feature services.
+export const storageService = storage;
+
 // Re-export keys for convenience
 export { STORAGE_KEYS, NAMESPACE };
 

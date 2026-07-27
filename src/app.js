@@ -42,6 +42,8 @@ import { imageUploadManager } from './features/image-upload/index.js';
 import { dividerManager } from './features/divider/index.js';
 import { mobileUIManager } from './features/mobile/index.js';
 import { importManager } from './features/import/index.js';
+import { initLivePreviewEdit } from './features/live-preview-edit/index.js';
+import { initVideoControls } from './features/video-controls/index.js';
 
 // AI Writer — lazy-loaded on first use (P3-T1)
 let _aiWriterManager = null;
@@ -74,6 +76,9 @@ class App {
 
         this.initialized = false;
         this.containers = {};
+        this.isApplyingPreviewEdit = false;
+        this.livePreviewEditController = null;
+        this.videoControlsController = null;
 
         App.instance = this;
     }
@@ -131,7 +136,7 @@ class App {
     _resolveContainers(containers) {
         const defaults = {
             editor: '#editor',
-            preview: '#preview',
+            preview: '#output',
             main: '.main-container',
             toolbar: '#toolbar',           // Updated to match index.html ID
             tabs: '#tabs-list',            // Updated to match index.html ID
@@ -286,6 +291,10 @@ class App {
             container: '#container'
         });
 
+        // Preview media/layout controls and live editing POC
+        this._initVideoControls();
+        this._initLivePreviewEdit();
+
         // Mobile UI
         mobileUIManager.initialize();
 
@@ -298,6 +307,61 @@ class App {
                 .then((ai) => ai.initialize())
                 .catch((err) => console.warn('AI Writer load error:', err));
         }
+    }
+
+    /**
+     * Initialize video preview controls
+     * @private
+     */
+    _initVideoControls() {
+        this.videoControlsController = initVideoControls({
+            output: this.containers.preview || '#output',
+            getMarkdown: () => editorService.getValue(),
+            onMarkdownChange: (markdown) => {
+                if (editorService.getValue() === markdown) return;
+                this.isApplyingPreviewEdit = true;
+                try {
+                    editorService.setValue(markdown);
+                } finally {
+                    this.isApplyingPreviewEdit = false;
+                }
+                // The video control updates the current DOM immediately. Persist
+                // Markdown without forcing a re-render that would close the popover.
+                storageService.set(STORAGE_KEYS.CONTENT, markdown);
+            },
+            showToast: (message, type = 'info', duration = 1600) => {
+                toast.show(message, { type, duration });
+            }
+        });
+    }
+
+    /**
+     * Initialize live preview edit POC
+     * @private
+     */
+    _initLivePreviewEdit() {
+        this.livePreviewEditController = initLivePreviewEdit({
+            output: this.containers.preview || '#output',
+            toggle: '#live-preview-edit-toggle',
+            markdownToggle: '#markdown-mode-toggle',
+            getSourceMarkdown: () => editorService.getValue(),
+            onMarkdownChange: (markdown) => {
+                if (editorService.getValue() === markdown) return;
+
+                this.isApplyingPreviewEdit = true;
+                try {
+                    editorService.setValue(markdown);
+                } finally {
+                    this.isApplyingPreviewEdit = false;
+                }
+
+                storageService.set(STORAGE_KEYS.CONTENT, markdown);
+            },
+            onExit: () => this._updatePreview(editorService.getValue()),
+            showToast: (message, type = 'info', duration = 2200) => {
+                toast.show(message, { type, duration });
+            }
+        });
     }
 
     /**
@@ -360,6 +424,7 @@ class App {
         }, APP_CONFIG.DEBOUNCE_DELAY);
 
         eventBus.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
+            if (this.isApplyingPreviewEdit) return;
             debouncedPreviewUpdate(content);
         });
 
@@ -432,6 +497,8 @@ class App {
         if (!this.containers.preview) return;
 
         await markdownService.render(content, this.containers.preview);
+        this.videoControlsController?.refresh(this.containers.preview);
+        this.livePreviewEditController?.refresh(this.containers.preview);
     }
 
     /**
@@ -516,6 +583,14 @@ class App {
             content: shortcutsManager.renderHelp(),
             size: 'lg'
         });
+    }
+
+    /**
+     * Get Monaco editor instance for diagnostics and E2E smoke tests.
+     * @returns {Object|null} Monaco editor instance
+     */
+    getEditor() {
+        return editorService.getEditor();
     }
 
     /**
