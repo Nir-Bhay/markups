@@ -31,7 +31,7 @@ onReady(async () => {
         await app.initialize({
             containers: {
                 editor: '#editor',
-                preview: '#preview',
+                preview: '#output',
                 main: '.main-container',
                 toolbar: '.toolbar-container',
                 tabs: '.tabs-container',

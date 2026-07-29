@@ -30,6 +30,7 @@ yarn-error.log*
 .cache/
 .parcel-cache/
 .vite/
+.tmp/
 
 # Testing
 coverage/
@@ -40,6 +41,8 @@ coverage/
 
 # Playwright
 .playwright-mcp/
+playwright-report/
+test-results/
 
 # Misc
 *.local
@@ -51,4 +54,6 @@ coverage/
 plot/
 
 # Configurations
-.github/
+.github/*
+!.github/workflows/
+!.github/workflows/*.yml

@@ -8,11 +8,13 @@ import { marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 import { gfmHeadingId } from 'marked-gfm-heading-id';
 import markedAlert from 'marked-alert';
-import { markedFootnote } from 'marked-footnote';
+import markedFootnote from 'marked-footnote';
 import Prism from 'prismjs';
 import DOMPurify from 'dompurify';
 import mermaid from 'mermaid';
 import katex from 'katex';
+import { sanitizePreviewHtml } from '../../utils/sanitize.js';
+import { processPreviewVideos, stripVideoAttributeBlocks } from '../../utils/video-embed.js';
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
 
 // Import Prism language components
@@ -248,7 +250,7 @@ class MarkdownService {
         if (!markdown) return '';
 
         try {
-            let html = marked.parse(markdown);
+            let html = marked.parse(stripVideoAttributeBlocks(markdown));
 
             // Sanitize HTML
             if (options.sanitize !== false) {
@@ -268,16 +270,7 @@ class MarkdownService {
      * @returns {string} Sanitized HTML
      */
     sanitize(html) {
-        return DOMPurify.sanitize(html, {
-            USE_PROFILES: { html: true },
-            // Allow math + HTML5 video (players are usually injected via DOM post-process)
-            ADD_TAGS: ['math', 'mrow', 'mo', 'mi', 'mn', 'msup', 'mfrac', 'semantics', 'annotation', 'video', 'source'],
-            ADD_ATTR: ['target', 'class', 'id', 'aria-*', 'controls', 'preload', 'playsinline', 'controlslist'],
-            FORBID_TAGS: ['iframe', 'script', 'object', 'embed', 'form'],
-            // Event handlers stripped by default; "on*" is not a FORBID_ATTR wildcard
-            FORBID_ATTR: ['style', 'srcdoc'],
-            ALLOW_DATA_ATTR: false
-        });
+        return sanitizePreviewHtml(html);
     }
 
     /**
@@ -294,6 +287,9 @@ class MarkdownService {
 
         // Post-process: handle broken images (Issue #24) — must run before any async work
         this._processImages(container);
+
+        // Issue #40: turn bare video links / GitHub attachments into playable preview embeds
+        processPreviewVideos(container);
 
         // Post-process: render mermaid diagrams
         if (this.mermaidEnabled && options.renderMermaid !== false) {

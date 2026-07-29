@@ -352,7 +352,7 @@ class ModesManager {
 // Export singleton instance
 export const modesManager = new ModesManager();
 
-// Export class and constants
-export { ModesManager, VIEW_MODES, SPLIT_ORIENTATION };
+// Export class. Constants are exported at declaration above.
+export { ModesManager };
 
 export default modesManager;

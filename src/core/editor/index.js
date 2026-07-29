@@ -4,7 +4,8 @@
  * @module core/editor
  */
 
-import * as monaco from 'monaco-editor';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
 import { setupMonacoWorkers } from './workers.js';
 import { defineCustomThemes, THEMES } from './themes.js';
 import { eventBus, EVENTS } from '../../utils/eventBus.js';

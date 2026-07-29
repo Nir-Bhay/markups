@@ -12,16 +12,31 @@ const YOUTUBE_RE =
 const VIMEO_RE = /(?:vimeo\.com\/)(\d+)/i;
 
 /**
+ * Normalize URLs pasted from issue comments or prose where punctuation is often
+ * attached to the link text (for example a trailing comma after a GitHub asset).
+ * @param {string} url
+ * @returns {string}
+ */
+export function normalizeVideoUrl(url) {
+    if (!url) return '';
+    return String(url)
+        .trim()
+        .replace(/^</, '')
+        .replace(/[>),.;:!?]+$/, '');
+}
+
+/**
  * @param {string} url
  * @returns {boolean}
  */
 export function isDirectVideoUrl(url) {
-    if (!url) return false;
+    const normalizedUrl = normalizeVideoUrl(url);
+    if (!normalizedUrl) return false;
     try {
-        const path = new URL(url, window.location.href).pathname;
+        const path = new URL(normalizedUrl, window.location.href).pathname;
         return VIDEO_EXT_RE.test(path);
     } catch {
-        return VIDEO_EXT_RE.test(url);
+        return VIDEO_EXT_RE.test(normalizedUrl);
     }
 }
 
@@ -31,7 +46,8 @@ export function isDirectVideoUrl(url) {
  * @returns {boolean}
  */
 export function isGitHubVideoAttachment(url) {
-    return typeof url === 'string' && GITHUB_ASSET_RE.test(url.trim());
+    const normalizedUrl = normalizeVideoUrl(url);
+    return !!normalizedUrl && GITHUB_ASSET_RE.test(normalizedUrl);
 }
 
 /**
@@ -39,10 +55,11 @@ export function isGitHubVideoAttachment(url) {
  * @returns {{ type: 'youtube'|'vimeo', id: string }|null}
  */
 export function parseHostedVideo(url) {
-    if (!url) return null;
-    const yt = url.match(YOUTUBE_RE);
+    const normalizedUrl = normalizeVideoUrl(url);
+    if (!normalizedUrl) return null;
+    const yt = normalizedUrl.match(YOUTUBE_RE);
     if (yt) return { type: 'youtube', id: yt[1] };
-    const vim = url.match(VIMEO_RE);
+    const vim = normalizedUrl.match(VIMEO_RE);
     if (vim) return { type: 'vimeo', id: vim[1] };
     return null;
 }
@@ -59,6 +76,26 @@ export function isEmbeddableVideoUrl(url) {
     );
 }
 
+function isVideoAttributeText(text = '') {
+    return /(?:^|\s)(?:video\s+)?(?:width|align)\s*=/i.test(String(text || ''));
+}
+
+/**
+ * Remove Markups video layout metadata before Markdown parsing so attributes
+ * don't leak as visible text in preview.
+ * @param {string} markdown
+ * @returns {string}
+ */
+export function stripVideoAttributeBlocks(markdown = '') {
+    return String(markdown || '')
+        .replace(/(!?\[[^\]]*\]\(([^)\s]+)\))\s*\{([^}\n]*)\}/g, (full, linkPart, url, attrs) => {
+            return isEmbeddableVideoUrl(url) && isVideoAttributeText(attrs) ? linkPart : full;
+        })
+        .replace(/(https?:\/\/[^\s<>()]+)\s*\{([^}\n]*)\}/g, (full, url, attrs) => {
+            return isEmbeddableVideoUrl(url) && isVideoAttributeText(attrs) ? url : full;
+        });
+}
+
 /**
  * Build an HTML5 <video> element for direct / GitHub asset URLs
  * @param {string} url
@@ -67,13 +104,15 @@ export function isEmbeddableVideoUrl(url) {
 function createHtml5Video(url) {
     const wrap = document.createElement('div');
     wrap.className = 'preview-video';
+    wrap.dataset.videoUrl = url;
+    wrap.dataset.videoType = 'html5';
 
     const video = document.createElement('video');
     video.controls = true;
     video.preload = 'metadata';
     video.playsInline = true;
     video.setAttribute('controlsList', 'nodownload');
-    video.src = url;
+    video.setAttribute('src', url);
 
     // If playback fails (e.g. wrong content-type), fall back to a link
     video.addEventListener('error', () => {
@@ -99,12 +138,14 @@ function createHtml5Video(url) {
  * @param {{ type: string, id: string }} hosted
  * @returns {HTMLElement}
  */
-function createHostedEmbed(hosted) {
+function createHostedEmbed(hosted, sourceUrl = '') {
     const wrap = document.createElement('div');
     wrap.className = 'preview-video preview-video--embed';
+    wrap.dataset.videoUrl = normalizeVideoUrl(sourceUrl);
+    wrap.dataset.videoType = hosted.type;
 
     const iframe = document.createElement('iframe');
-    iframe.loading = 'lazy';
+    iframe.setAttribute('loading', 'lazy');
     iframe.allowFullscreen = true;
     iframe.setAttribute(
         'allow',
@@ -128,16 +169,17 @@ function createHostedEmbed(hosted) {
  * @returns {boolean} whether replacement happened
  */
 function tryReplaceWithVideo(el) {
-    const url =
+    const rawUrl =
         el.tagName === 'IMG'
             ? el.getAttribute('src')
             : el.getAttribute('href');
+    const url = normalizeVideoUrl(rawUrl);
     if (!url || !isEmbeddableVideoUrl(url)) return false;
 
     // Only replace "standalone" links (link text is empty, URL, or same as href)
     if (el.tagName === 'A') {
         const text = (el.textContent || '').trim();
-        const href = el.getAttribute('href') || '';
+        const href = normalizeVideoUrl(el.getAttribute('href') || '');
         const isBare =
             !text ||
             text === href ||
@@ -151,8 +193,24 @@ function tryReplaceWithVideo(el) {
     }
 
     const hosted = parseHostedVideo(url);
-    const player = hosted ? createHostedEmbed(hosted) : createHtml5Video(url);
-    el.replaceWith(player);
+    const player = hosted ? createHostedEmbed(hosted, url) : createHtml5Video(url);
+
+    const parent = el.parentElement;
+    const normalizeLabel = (value) => String(value || '').trim().replace(/[>),.;:!?]+$/, '');
+    const parentLabel = normalizeLabel(parent?.textContent);
+    const elementLabel = normalizeLabel(el.textContent || el.getAttribute('alt'));
+    const isStandaloneParagraph =
+        parent?.tagName === 'P' &&
+        parent.children.length === 1 &&
+        (!parentLabel || parentLabel === elementLabel);
+    const replaceTarget = isStandaloneParagraph ? parent : el;
+
+    const sourceLine = replaceTarget.getAttribute?.('data-source-line') || el.getAttribute?.('data-source-line');
+    if (sourceLine) {
+        player.setAttribute('data-source-line', sourceLine);
+    }
+
+    replaceTarget.replaceWith(player);
     return true;
 }
 
@@ -178,6 +236,8 @@ export function processPreviewVideos(container) {
 }
 
 export default {
+    normalizeVideoUrl,
+    stripVideoAttributeBlocks,
     isDirectVideoUrl,
     isGitHubVideoAttachment,
     parseHostedVideo,

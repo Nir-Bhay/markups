@@ -1021,6 +1021,44 @@
         <!-- Preview Pane -->
         <section class="preview-pane" id="preview">
             <div class="preview-wrapper" id="preview-wrapper">
+                <div class="preview-edit-toolbar" id="preview-edit-toolbar" aria-label="Preview editing controls">
+                    <div class="preview-edit-summary">
+                        <span class="preview-edit-kicker">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                <path
+                                    d="M2 2.75A.75.75 0 0 1 2.75 2h10.5a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75H2.75A.75.75 0 0 1 2 13.25V2.75Zm1.5.75v9h9v-9h-9Zm1.25 2h6.5v1h-6.5v-1Zm0 2h6.5v1h-6.5v-1Zm0 2h4.5v1h-4.5v-1Z" />
+                            </svg>
+                            Preview editor
+                        </span>
+                        <strong>Choose how you want to write</strong>
+                        <span>Use Markdown for precision or Document Mode for quick visual edits.</span>
+                    </div>
+                    <div class="preview-mode-switch" role="group" aria-label="Editing mode">
+                        <button class="preview-mode-btn active" id="markdown-mode-toggle" type="button"
+                            aria-pressed="true" title="Use the Markdown source editor as the primary editing surface">
+                            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                <path
+                                    d="M2.5 3A1.5 1.5 0 0 0 1 4.5v7A1.5 1.5 0 0 0 2.5 13h11a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 13.5 3h-11ZM2 4.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-7Zm2 1.25 2 2-2 2 .75.75L7.5 7.75 4.75 5 4 5.75Zm4 4.25h4V9H8v1Z" />
+                            </svg>
+                            <span class="preview-mode-copy">
+                                <span>Markdown Mode</span>
+                                <small>Raw source</small>
+                            </span>
+                        </button>
+                        <button class="preview-mode-btn" id="live-preview-edit-toggle" type="button"
+                            aria-pressed="false" title="Edit rendered preview and sync changes back to Markdown">
+                            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                <path
+                                    d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zM13.5 6.207 9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5z" />
+                            </svg>
+                            <span class="preview-mode-copy">
+                                <span>Document Mode</span>
+                                <small>Visual edits</small>
+                            </span>
+                        </button>
+                    </div>
+                    <span class="preview-edit-beta" title="Document Mode is a safe preview-editing proof of concept">Beta</span>
+                </div>
                 <article class="preview-content markdown-body" id="output">
                     <!-- Rendered Markdown -->
                 </article>

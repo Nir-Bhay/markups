@@ -1,8 +1,9 @@
 import Storehouse from 'storehouse-js';
-import * as monaco from 'monaco-editor';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
 import { marked } from 'marked';
-import DOMPurify from 'dompurify';
 import 'github-markdown-css/github-markdown-light.css';
+import { sanitizePreviewHtml } from './utils/sanitize.js';
 
 // html2pdf / html2canvas — lazy-loaded on first export (P3-T1)
 let _html2pdf = null;
@@ -23,18 +24,12 @@ async function getHtml2Canvas() {
 }
 
 // Monaco Editor Worker Setup
+// The app only creates a Markdown editor, so route every Monaco worker request
+// to the lightweight editor worker instead of bundling JSON/CSS/HTML/TS workers.
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
-import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
-import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
-import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
-import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
 
 self.MonacoEnvironment = {
-    getWorker(_, label) {
-        if (label === 'json') return new jsonWorker();
-        if (label === 'css' || label === 'scss' || label === 'less') return new cssWorker();
-        if (label === 'html' || label === 'handlebars' || label === 'razor') return new htmlWorker();
-        if (label === 'typescript' || label === 'javascript') return new tsWorker();
+    getWorker() {
         return new editorWorker();
     }
 };
@@ -90,7 +85,9 @@ import { debounce } from './utils/debounce.js';
 import { showToast } from './ui/toast/index.js';
 import { copyToClipboard } from './utils/clipboard.js';
 import { scrollSync } from './utils/scroll-sync.js';
-import { processPreviewVideos } from './utils/video-embed.js';
+import { processPreviewVideos, stripVideoAttributeBlocks } from './utils/video-embed.js';
+import { initLivePreviewEdit } from './features/live-preview-edit/index.js';
+import { initVideoControls } from './features/video-controls/index.js';
 import { createFocusTrap } from './utils/dom.js';
 import { validateImageSignature, sanitizeSvgToDataUrl } from './utils/file.js';
 import { initVersionHistory, setHasEdited } from './features/version-history/index.js';
@@ -111,6 +108,9 @@ const APP_CONFIG = {
 // Global state and constants
 let editor;
 let hasEdited = false;
+let isApplyingPreviewEdit = false;
+let livePreviewEditController = null;
+let videoControlsController = null;
 let scrollBarSync = true;
 let cursorSync = false;
 let darkMode = false;
@@ -768,7 +768,7 @@ let setupEditor = () => {
 
     editor.onDidChangeModelContent((e) => {
         // Auto-clear welcome content on first real user keystroke
-        if (isShowingWelcome && !isProgrammaticChange && e.changes && e.changes.length > 0) {
+        if (!isApplyingPreviewEdit && isShowingWelcome && !isProgrammaticChange && e.changes && e.changes.length > 0) {
             const change = e.changes[0];
             // User typed or pasted something — clear welcome content, keep only what they entered
             if (change.text.length > 0) {
@@ -794,7 +794,9 @@ let setupEditor = () => {
             setHasEdited(true);
         }
         let value = editor.getValue();
-        debouncedConvert(value);  // Use debounced version for performance
+        if (!isApplyingPreviewEdit) {
+            debouncedConvert(value);  // Use debounced version for performance
+        }
         saveCurrentDoc();
         updateStats(value);
     });
@@ -1834,17 +1836,10 @@ let convert = (markdown) => {
 
     // Strip persisted image attributes before rendering to prevent raw metadata from showing in preview
     let renderableMarkdown = resolvedMarkdown.replace(/(!\[[^\]]*\]\([^)]+\))\s*\{[^}]*\}/g, '$1');
+    renderableMarkdown = stripVideoAttributeBlocks(renderableMarkdown);
 
     let html = marked.parse(renderableMarkdown);
-    // Event handlers are stripped by DOMPurify by default ("on*" is not a FORBID_ATTR wildcard)
-    let sanitized = DOMPurify.sanitize(html, {
-        USE_PROFILES: { html: true },
-        ADD_TAGS: ['video', 'source'],
-        ADD_ATTR: ['id', 'controls', 'preload', 'playsinline', 'controlslist'],
-        FORBID_TAGS: ['iframe', 'script', 'object', 'embed', 'form'],
-        FORBID_ATTR: ['style', 'srcdoc'],
-        ALLOW_DATA_ATTR: false
-    });
+    let sanitized = sanitizePreviewHtml(html);
 
     const token = ++_convertToken;
 
@@ -1866,6 +1861,10 @@ let convert = (markdown) => {
 
         // Issue #40: Embed video URLs / GitHub video attachments / YouTube-Vimeo
         processPreviewVideos(outputElement);
+
+        // Re-apply media/layout controls and contenteditable state after every preview render.
+        videoControlsController?.refresh(outputElement);
+        livePreviewEditController?.refresh(outputElement);
 
         // Defer Mermaid / TOC / highlights so first paint isn't blocked
         requestAnimationFrame(() => {
@@ -1916,6 +1915,59 @@ let convert = (markdown) => {
 const debouncedConvert = debounce((markdown) => {
     convert(markdown);
 }, 300);
+
+let applyMarkdownFromPreviewEdit = (markdown) => {
+    if (!editor || typeof markdown !== 'string' || markdown === editor.getValue()) return;
+
+    const model = editor.getModel?.();
+    isApplyingPreviewEdit = true;
+
+    try {
+        if (model && typeof model.getFullModelRange === 'function') {
+            editor.pushUndoStop?.();
+            editor.executeEdits('live-preview-edit', [{
+                range: model.getFullModelRange(),
+                text: markdown,
+                forceMoveMarkers: true
+            }]);
+            editor.pushUndoStop?.();
+        } else {
+            editor.setValue(markdown);
+        }
+    } finally {
+        isApplyingPreviewEdit = false;
+    }
+
+    hasEdited = true;
+    setHasEdited(true);
+    saveCurrentDoc();
+    updateStats(markdown);
+};
+
+let setupLivePreviewEdit = () => {
+    livePreviewEditController = initLivePreviewEdit({
+        output: '#output',
+        toggle: '#live-preview-edit-toggle',
+        markdownToggle: '#markdown-mode-toggle',
+        getSourceMarkdown: () => editor?.getValue() || '',
+        onMarkdownChange: applyMarkdownFromPreviewEdit,
+        onExit: () => convert(editor.getValue()),
+        showToast
+    });
+};
+
+let setupVideoControls = () => {
+    videoControlsController = initVideoControls({
+        output: '#output',
+        getMarkdown: () => editor?.getValue() || '',
+        onMarkdownChange: (markdown) => {
+            // The video control already updates the current DOM immediately. Persist
+            // the Markdown without forcing a re-render that would close the popover.
+            applyMarkdownFromPreviewEdit(markdown);
+        },
+        showToast
+    });
+};
 
 // Add GitHub-style language badge + copy button to code blocks (Issue #42 polish)
 let addCodeCopyButtons = () => {
@@ -5842,11 +5894,41 @@ let processPreviewImages = (container) => {
 
 // ----- Find & Replace Button -----
 
+let monacoFindControllerPromise = null;
+
+let ensureMonacoFindController = () => {
+    if (!monacoFindControllerPromise) {
+        monacoFindControllerPromise = import('monaco-editor/esm/vs/editor/contrib/find/browser/findController.js');
+    }
+    return monacoFindControllerPromise;
+};
+
+let openFindReplace = async () => {
+    if (!editor) return;
+
+    try {
+        // Monaco's find/replace contribution is useful but heavy. Load it only when
+        // the user explicitly asks for find/replace instead of putting it in the
+        // initial editor bundle.
+        await ensureMonacoFindController();
+        editor.trigger('keyboard', 'editor.action.startFindReplaceAction', null);
+    } catch (error) {
+        console.warn('Find/replace controller failed to load; falling back to search overlay.', error);
+        const searchOverlay = document.getElementById('search-overlay');
+        const searchInput = document.getElementById('search-input');
+        if (searchOverlay && searchInput) {
+            searchOverlay.classList.remove('hidden');
+            searchInput.focus();
+            searchInput.select();
+        }
+    }
+};
+
 let setupFindReplaceButton = () => {
     const btn = document.getElementById('find-replace-btn');
     if (btn) {
         btn.addEventListener('click', () => {
-            editor.trigger('keyboard', 'editor.action.startFindReplaceAction', null);
+            openFindReplace();
         });
     }
 
@@ -5854,7 +5936,7 @@ let setupFindReplaceButton = () => {
     document.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'H') {
             e.preventDefault();
-            editor.trigger('keyboard', 'editor.action.startFindReplaceAction', null);
+            openFindReplace();
         }
     });
 };
@@ -6366,6 +6448,8 @@ const initializeApp = async () => {
     setupTypewriterButton();
     setupFullscreenButton();
     setupViewButtons();
+    setupLivePreviewEdit();
+    setupVideoControls();
     await initTabs();
     pruneUnreferencedImages();
     window.addEventListener('pagehide', () => {
