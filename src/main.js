@@ -60,12 +60,13 @@ import 'prismjs/components/prism-yaml';
 import 'prismjs/components/prism-markdown';
 import 'prismjs/components/prism-docker';
 import 'prismjs/components/prism-markup'; // HTML, XML, SVG, MathML (Issue #42)
-import 'prismjs/components/prism-xml-doc'; // XML documentation (Issue #42)
 import 'prismjs/themes/prism-tomorrow.css';
 
-// Register XML aliases so ```xml and ```XML both work
+// Issue #42: prism-markup already covers XML; keep explicit aliases for fences.
 Prism.languages.xml = Prism.languages.markup;
 Prism.languages.XML = Prism.languages.markup;
+Prism.languages.svg = Prism.languages.svg || Prism.languages.markup;
+Prism.languages.html = Prism.languages.html || Prism.languages.markup;
 
 // Mermaid for diagrams
 import mermaid from 'mermaid';
@@ -2065,6 +2066,7 @@ let convert = (markdown) => {
         if (!outputElement) return;
 
         outputElement.innerHTML = sanitized;
+        normalizeCodeLanguageClasses(outputElement);
 
         // Issue #39: Annotate preview elements with data-source-line
         // so scroll-sync can map editor lines to preview elements accurately
@@ -2207,6 +2209,17 @@ let setupImageControls = () => {
 };
 
 // Add GitHub-style language badge + copy button to code blocks (Issue #42 polish)
+// Lowercase language-* classes so ```XML matches Prism + CSS like ```xml
+let normalizeCodeLanguageClasses = (root) => {
+    if (!root?.querySelectorAll) return;
+    root.querySelectorAll('code[class*="language-"]').forEach((codeEl) => {
+        codeEl.className = codeEl.className.replace(
+            /language-([\w#+-]+)/gi,
+            (_, lang) => `language-${String(lang).toLowerCase()}`
+        );
+    });
+};
+
 let addCodeCopyButtons = () => {
     const codeBlocks = document.querySelectorAll('#output pre');
     codeBlocks.forEach((pre) => {
@@ -5212,6 +5225,104 @@ let setupHelpButton = () => {
     });
 };
 
+/**
+ * Subtle header tip: hard-refresh after updates (Ctrl/Cmd+Shift+R).
+ * Shows an unread dot until the user opens/dismisses once for this notice version.
+ * Bump NOTICE_KEY (e.g. v2) when you want the badge to reappear for a new tip.
+ */
+let setupUpdateNotice = () => {
+    const NOTICE_KEY = 'com.markdownlivepreview.update_notice_v2';
+    const root = document.getElementById('header-notice');
+    const btn = document.getElementById('update-notice-btn');
+    const popover = document.getElementById('update-notice-popover');
+    const closeBtn = document.getElementById('update-notice-close');
+    const dismissBtn = document.getElementById('update-notice-dismiss');
+    const shortcutEl = document.getElementById('update-notice-shortcut');
+    const footnoteEl = document.querySelector('.header-notice-footnote');
+
+    if (!root || !btn || !popover) return;
+
+    const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
+    if (shortcutEl) {
+        shortcutEl.innerHTML = isMac
+            ? '<kbd>Cmd</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>R</kbd>'
+            : '<kbd>Ctrl</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>R</kbd>';
+    }
+    if (footnoteEl) {
+        if (isMac) {
+            footnoteEl.hidden = true;
+        } else {
+            footnoteEl.innerHTML = 'Mac: use <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>';
+        }
+    }
+
+    const isSeen = () => {
+        try {
+            return localStorage.getItem(NOTICE_KEY) === '1';
+        } catch {
+            return false;
+        }
+    };
+
+    const markSeen = () => {
+        try {
+            localStorage.setItem(NOTICE_KEY, '1');
+        } catch {
+            // ignore quota / private mode
+        }
+        root.classList.remove('has-unread');
+    };
+
+    const syncUnread = () => {
+        root.classList.toggle('has-unread', !isSeen());
+    };
+
+    const close = () => {
+        popover.classList.add('hidden');
+        popover.hidden = true;
+        btn.setAttribute('aria-expanded', 'false');
+    };
+
+    const open = () => {
+        popover.classList.remove('hidden');
+        popover.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        markSeen();
+    };
+
+    const toggle = () => {
+        if (popover.hidden || popover.classList.contains('hidden')) open();
+        else close();
+    };
+
+    syncUnread();
+
+    btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggle();
+    });
+
+    closeBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        close();
+    });
+
+    dismissBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        markSeen();
+        close();
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!root.contains(event.target)) close();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') close();
+    });
+};
+
 const saveTocSidebarVisibility = (isVisible) => {
     const expiredAt = new Date(2099, 1, 1);
     Storehouse.setItem(localStorageNamespace, localStorageTocVisibilityKey, isVisible, expiredAt);
@@ -6702,6 +6813,7 @@ const initializeApp = async () => {
     setupImportButton();
     setupImageUpload();
     setupHelpButton();
+    setupUpdateNotice();
     setupStatsButton();
     setupTemplatesButton();
     setupSnippetsButton();

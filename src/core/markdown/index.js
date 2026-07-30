@@ -35,6 +35,11 @@ import 'prismjs/components/prism-rust';
 import 'prismjs/components/prism-go';
 import 'prismjs/components/prism-sql';
 
+// Issue #42: ensure XML fences resolve even if Prism alias order differs
+Prism.languages.xml = Prism.languages.markup;
+Prism.languages.svg = Prism.languages.svg || Prism.languages.markup;
+Prism.languages.html = Prism.languages.html || Prism.languages.markup;
+
 /**
  * KaTeX renderer extension
  */

@@ -43,6 +43,15 @@
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
+  /* Issue #42: XML/HTML preview highlighting (override to customize)
+     Tag + entities = blue; attribute names = purple (matches reporter request). */
+  --syntax-tag: #0550ae;
+  --syntax-attr-name: #8250df;
+  --syntax-attr-value: #0a3069;
+  --syntax-entity: #0550ae;
+  --syntax-punctuation: #1f2328;
+  --syntax-comment: #6e7781;
+
   /* Sizing */
   --header-height: 52px;
   --toolbar-height: 44px;
@@ -88,6 +97,14 @@ body.dark-mode {
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+
+  /* Issue #42 dark: blue tags/entities, purple attributes */
+  --syntax-tag: #79c0ff;
+  --syntax-attr-name: #d2a8ff;
+  --syntax-attr-value: #a5d6ff;
+  --syntax-entity: #79c0ff;
+  --syntax-punctuation: #c9d1d9;
+  --syntax-comment: #8b949e;
 }
 
 /* ==================== BASE RESET ==================== */
@@ -520,6 +537,173 @@ body.dark-mode .header-tab .tab-name:hover {
     padding: 6px 10px;
     font-size: 0.75rem;
   }
+}
+
+/* Header update notice */
+.header-notice {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.header-notice-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-notice-dot {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 2px var(--bg-elevated, var(--bg-primary, #fff));
+  display: none;
+}
+
+.header-notice.has-unread .header-notice-dot {
+  display: block;
+}
+
+.header-notice-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(340px, calc(100vw - 24px));
+  padding: 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+  z-index: calc(var(--z-dropdown, 1000) + 20);
+}
+
+.header-notice-popover.hidden,
+.header-notice-popover[hidden] {
+  display: none !important;
+}
+
+.header-notice-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.header-notice-popover-head strong {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.header-notice-close {
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.header-notice-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.header-notice-features {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header-notice-features li {
+  position: relative;
+  padding-left: 14px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.header-notice-features li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-primary, #5b6cff);
+}
+
+.header-notice-refresh {
+  margin-bottom: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+}
+
+.header-notice-copy {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+}
+
+.header-notice-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.header-notice-shortcut kbd,
+.header-notice-footnote kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  box-shadow: 0 1px 0 var(--border-light);
+}
+
+.header-notice-footnote {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.header-notice-got-it {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--accent-primary);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.header-notice-got-it:hover {
+  background: var(--accent-primary-hover, #4f5bd5);
 }
 
 /* User Avatar */
@@ -5751,6 +5935,7 @@ body.focus-mode .editor-pane {
   padding: 0;
   font-size: 0.8125rem;
   line-height: 1.6;
+  color: inherit;
 }
 
 /* Issue #42: marked-highlight puts language-* on <code>, NOT <pre>.
@@ -5827,16 +6012,17 @@ body.focus-mode .editor-pane {
   background: #dafbe1;
 }
 
-/* GitHub Prettylights-inspired token colors (light) */
+/* Issue #42: GitHub-like XML/HTML token colors (light)
+   Tag + entity refs = blue; attribute names = purple. */
 .markdown-body pre code[class*="language-"] .token.comment,
 .markdown-body pre code[class*="language-"] .token.prolog,
 .markdown-body pre code[class*="language-"] .token.doctype,
 .markdown-body pre code[class*="language-"] .token.cdata {
-  color: #6e7781 !important;
+  color: var(--syntax-comment) !important;
 }
 
 .markdown-body pre code[class*="language-"] .token.punctuation {
-  color: #1f2328 !important;
+  color: var(--syntax-punctuation) !important;
 }
 
 .markdown-body pre code[class*="language-"] .token.namespace {
@@ -5845,30 +6031,34 @@ body.focus-mode .editor-pane {
 
 .markdown-body pre code[class*="language-"] .token.tag,
 .markdown-body pre code[class*="language-"] .token.tag .token.punctuation {
-  color: #0550ae !important;
+  color: var(--syntax-tag) !important;
 }
 
 .markdown-body pre code[class*="language-"] .token.tag .token.tag {
-  color: #0550ae !important;
+  color: var(--syntax-tag) !important;
 }
 
 .markdown-body pre code[class*="language-"] .token.attr-name {
-  color: #953800 !important;
+  color: var(--syntax-attr-name) !important;
 }
 
 .markdown-body pre code[class*="language-"] .token.attr-value,
 .markdown-body pre code[class*="language-"] .token.string,
 .markdown-body pre code[class*="language-"] .token.char {
-  color: #0a3069 !important;
+  color: var(--syntax-attr-value) !important;
 }
 
 .markdown-body pre code[class*="language-"] .token.attr-value .token.punctuation {
-  color: #0a3069 !important;
+  color: var(--syntax-attr-value) !important;
 }
 
+/* Character entity references: &lt; &gt; &amp; &quot; &#...; */
 .markdown-body pre code[class*="language-"] .token.entity,
+.markdown-body pre code[class*="language-"] .token.named-entity,
+.markdown-body pre code[class*="language-"] .token.attr-value .token.entity,
+.markdown-body pre code[class*="language-"] .token.attr-value .token.named-entity,
 .markdown-body pre code[class*="language-"] .token.operator {
-  color: #0550ae !important;
+  color: var(--syntax-entity) !important;
 }
 
 .markdown-body pre code[class*="language-"] .token.boolean,
@@ -5946,18 +6136,25 @@ body.dark-mode .markdown-body pre code[class*="language-"] .token.punctuation {
 body.dark-mode .markdown-body pre code[class*="language-"] .token.tag,
 body.dark-mode .markdown-body pre code[class*="language-"] .token.tag .token.tag,
 body.dark-mode .markdown-body pre code[class*="language-"] .token.tag .token.punctuation {
-  color: #7ee787 !important;
+  color: var(--syntax-tag) !important;
 }
 
 body.dark-mode .markdown-body pre code[class*="language-"] .token.attr-name {
-  color: #79c0ff !important;
+  color: var(--syntax-attr-name) !important;
 }
 
 body.dark-mode .markdown-body pre code[class*="language-"] .token.attr-value,
 body.dark-mode .markdown-body pre code[class*="language-"] .token.string,
 body.dark-mode .markdown-body pre code[class*="language-"] .token.char,
 body.dark-mode .markdown-body pre code[class*="language-"] .token.attr-value .token.punctuation {
-  color: #a5d6ff !important;
+  color: var(--syntax-attr-value) !important;
+}
+
+body.dark-mode .markdown-body pre code[class*="language-"] .token.entity,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.named-entity,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.attr-value .token.entity,
+body.dark-mode .markdown-body pre code[class*="language-"] .token.attr-value .token.named-entity {
+  color: var(--syntax-entity) !important;
 }
 
 body.dark-mode .markdown-body pre code[class*="language-"] .token.keyword {

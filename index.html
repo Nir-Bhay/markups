@@ -574,6 +574,47 @@
                 <span class="btn-label">Help</span>
             </button>
 
+            <!-- Update notice (hard-refresh tip) -->
+            <div class="header-notice" id="header-notice">
+                <button class="header-btn icon-with-label header-notice-btn" id="update-notice-btn"
+                    type="button" title="Updates &amp; tip" aria-label="Updates and tip"
+                    aria-haspopup="dialog" aria-expanded="false" aria-controls="update-notice-popover">
+                    <span class="header-notice-icon-wrap" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        <span class="header-notice-dot" id="update-notice-dot"></span>
+                    </span>
+                    <span class="btn-label">Tips</span>
+                </button>
+                <div class="header-notice-popover hidden" id="update-notice-popover" role="dialog"
+                    aria-labelledby="update-notice-title" hidden>
+                    <div class="header-notice-popover-head">
+                        <strong id="update-notice-title">What’s new</strong>
+                        <button type="button" class="header-notice-close" id="update-notice-close"
+                            aria-label="Close tip">×</button>
+                    </div>
+                    <ul class="header-notice-features" aria-label="New features">
+                        <li>Video preview — paste MP4 / GitHub video links and play them inline</li>
+                        <li>Video edits — click a video to set width and alignment</li>
+                        <li>Document Mode — edit the live preview, not only Markdown source</li>
+                        <li>Docs &amp; tips — Help covers shortcuts, export, and new preview tools</li>
+                    </ul>
+                    <div class="header-notice-refresh">
+                        <p class="header-notice-copy">
+                            After an update, hard-refresh so you get the latest build:
+                        </p>
+                        <div class="header-notice-shortcut" id="update-notice-shortcut">
+                            <kbd>Ctrl</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>R</kbd>
+                        </div>
+                        <p class="header-notice-footnote">Mac: use <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd></p>
+                    </div>
+                    <button type="button" class="header-notice-got-it" id="update-notice-dismiss">Got it</button>
+                </div>
+            </div>
+
             <!-- View Mode Toggle -->
             <div class="view-mode-toggle" role="group" aria-label="View mode">
                 <button class="view-mode-btn" id="view-code" data-view="editor" title="Editor only"

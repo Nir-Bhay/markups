@@ -41,4 +41,22 @@ describe('MarkdownService', () => {
         expect(MarkdownService.resolvePrismLanguage('Xml')).toBe('xml');
         expect(MarkdownService.resolvePrismLanguage('unknown-language')).toBe('plaintext');
     });
+
+    it('highlights XML tags, attributes, and character entity references (Issue #42)', () => {
+        const lower = markdownService.parse(
+            '```xml\n<Sid Name="test" Timing="4" Flag="1" Condition="a &gt; 0 &amp; b" />\n```'
+        );
+        const upper = markdownService.parse(
+            '```XML\n<Sid Name="test" Timing="4" Flag="1" Condition="a &gt; 0 &amp; b" />\n```'
+        );
+
+        for (const html of [lower, upper]) {
+            expect(html).toMatch(/class="language-xml"/i);
+            expect(html).toContain('token tag');
+            expect(html).toContain('token attr-name');
+            expect(html).toContain('token entity');
+            expect(html).toContain('Sid');
+            expect(html).toContain('Name');
+        }
+    });
 });
