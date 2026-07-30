@@ -1,0 +1,30 @@
+/**
+ * Video layout extras.
+ * Shared compact bar chrome lives in premium-ui.css (.video-layout-bar).
+ */
+
+.preview-video-caption,
+.preview-video-date {
+  margin-top: 0;
+  padding: 0.55rem 0.75rem;
+  color: var(--text-secondary, #656d76);
+  background: var(--bg-secondary, #f6f8fa);
+  border-top: 1px solid var(--border-light, #d0d7de);
+  font-size: 0.85rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.preview-video-caption {
+  font-weight: 600;
+  color: var(--text-primary, #1f2328);
+}
+
+.preview-video-date {
+  font-size: 0.75rem;
+}
+
+.preview-video .preview-video-frame,
+.preview-video > video {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-radius 0.2s ease;
+}

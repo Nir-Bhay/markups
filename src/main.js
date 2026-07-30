@@ -3,7 +3,7 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
 import { marked } from 'marked';
 import 'github-markdown-css/github-markdown-light.css';
-import { sanitizePreviewHtml } from './utils/sanitize.js';
+import { sanitizePreviewHtml, ensurePreviewLinksOpenInNewTab } from './utils/sanitize.js';
 
 // html2pdf / html2canvas — lazy-loaded on first export (P3-T1)
 let _html2pdf = null;
@@ -59,8 +59,13 @@ import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-yaml';
 import 'prismjs/components/prism-markdown';
 import 'prismjs/components/prism-docker';
-import 'prismjs/components/prism-markup'; // HTML, XML, SVG (Issue #42)
+import 'prismjs/components/prism-markup'; // HTML, XML, SVG, MathML (Issue #42)
+import 'prismjs/components/prism-xml-doc'; // XML documentation (Issue #42)
 import 'prismjs/themes/prism-tomorrow.css';
+
+// Register XML aliases so ```xml and ```XML both work
+Prism.languages.xml = Prism.languages.markup;
+Prism.languages.XML = Prism.languages.markup;
 
 // Mermaid for diagrams
 import mermaid from 'mermaid';
@@ -87,7 +92,9 @@ import { copyToClipboard } from './utils/clipboard.js';
 import { scrollSync } from './utils/scroll-sync.js';
 import { processPreviewVideos, stripVideoAttributeBlocks } from './utils/video-embed.js';
 import { initLivePreviewEdit } from './features/live-preview-edit/index.js';
-import { initVideoControls } from './features/video-controls/index.js';
+import { initVideoControls, parseVideoAttributesFromMarkdown } from './features/video-controls/index.js';
+import { initImageControls } from './features/image-controls/index.js';
+import { appContextMenuManager } from './features/app-context-menu/index.js';
 import { createFocusTrap } from './utils/dom.js';
 import { validateImageSignature, sanitizeSvgToDataUrl } from './utils/file.js';
 import { initVersionHistory, setHasEdited } from './features/version-history/index.js';
@@ -111,6 +118,7 @@ let hasEdited = false;
 let isApplyingPreviewEdit = false;
 let livePreviewEditController = null;
 let videoControlsController = null;
+let imageControlsController = null;
 let scrollBarSync = true;
 let cursorSync = false;
 let darkMode = false;
@@ -529,7 +537,15 @@ let addNewTab = async (parentFolderId) => {
 let switchTab = (id) => {
     if (id === activeDocId) return;
 
-    // Save current before switching? Done by onDidChangeModelContent
+    // Sync preview edits back to Markdown before switching tabs,
+    // otherwise Document Mode changes can be lost and image URLs can break.
+    try {
+        livePreviewEditController?.syncFromPreview();
+        saveCurrentDoc();
+    } catch {
+        // ignore sync/save failures during tab switch
+    }
+
     activeDocId = id;
     window.__markups_activeDocId = activeDocId;
     renderTabs();
@@ -545,6 +561,18 @@ let closeTab = (id) => {
     if (confirm('Are you sure you want to close this tab?')) {
         const index = documents.findIndex(d => d.id === id);
         const closingDoc = documents[index];
+
+        // Sync Document Mode edits before capturing content / switching tabs,
+        // otherwise image refs can still be stale when we prune the store.
+        if (id === activeDocId) {
+            try {
+                livePreviewEditController?.syncFromPreview();
+                saveCurrentDoc();
+            } catch {
+                // ignore sync/save failures during tab close
+            }
+        }
+
         // Capture content before removal (use live editor value if closing active tab)
         let closedContent = closingDoc?.content || '';
         if (id === activeDocId && editor) {
@@ -735,7 +763,28 @@ let loadActiveDocument = () => {
 
 let saveDocsToStorage = () => {
     const expiredAt = new Date(2099, 1, 1);
-    Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
+    try {
+        Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
+    } catch (error) {
+        if (error?.name === 'QuotaExceededError' || String(error).includes('QuotaExceededError')) {
+            const before = documents.length;
+            const reduced = documents.slice(-5);
+            documents = reduced;
+            if (before !== reduced.length) {
+                renderTabs();
+                syncTreeFromDocuments();
+                loadActiveDocument();
+            }
+            try {
+                Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
+                showToast('Storage quota exceeded. Kept the most recent documents only.', 'warning');
+            } catch {
+                showToast('Could not save documents. Browser storage is full.', 'error');
+            }
+            return;
+        }
+        showToast('Document save failed. Please try again.', 'error');
+    }
 };
 
 let setupEditor = () => {
@@ -1731,17 +1780,149 @@ let highlightText = () => {
 let _convertToken = 0;
 
 /**
+ * Walk markdown and return start line (1-based) + type for each top-level block.
+ * Used to assign accurate data-source-line values (not just heading interpolation).
+ * @param {string} markdown
+ * @returns {{ line: number, type: string }[]}
+ */
+function extractMarkdownBlockStarts(markdown) {
+    const lines = String(markdown || '').split('\n');
+    const blocks = [];
+    let i = 0;
+
+    const isBlank = (line) => !String(line || '').trim();
+    const isHeading = (line) => /^#{1,6}\s+/.test(line);
+    const isFence = (line) => /^```/.test(line);
+    const isTable = (line) => /^\s*\|/.test(line);
+    const isHr = (line) => /^(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line);
+    const isList = (line) => /^\s*(?:[-*+]|\d+\.)\s+/.test(line);
+    const isQuote = (line) => /^>\s?/.test(line);
+    const isDetailsOpen = (line) => /^<details\b/i.test(line.trim());
+
+    while (i < lines.length) {
+        const line = lines[i];
+        if (isBlank(line)) {
+            i++;
+            continue;
+        }
+
+        if (isHeading(line)) {
+            blocks.push({ line: i + 1, type: 'heading' });
+            i++;
+            continue;
+        }
+
+        if (isFence(line)) {
+            blocks.push({ line: i + 1, type: 'code' });
+            i++;
+            while (i < lines.length && !isFence(lines[i])) i++;
+            if (i < lines.length) i++;
+            continue;
+        }
+
+        if (isHr(line)) {
+            blocks.push({ line: i + 1, type: 'hr' });
+            i++;
+            continue;
+        }
+
+        if (isTable(line)) {
+            blocks.push({ line: i + 1, type: 'table' });
+            while (i < lines.length && (isTable(lines[i]) || isBlank(lines[i]))) {
+                if (isBlank(lines[i])) {
+                    let j = i + 1;
+                    while (j < lines.length && isBlank(lines[j])) j++;
+                    if (j >= lines.length || !isTable(lines[j])) break;
+                }
+                i++;
+            }
+            continue;
+        }
+
+        if (isList(line)) {
+            blocks.push({ line: i + 1, type: 'list' });
+            while (i < lines.length) {
+                if (isBlank(lines[i])) {
+                    let j = i + 1;
+                    while (j < lines.length && isBlank(lines[j])) j++;
+                    if (j >= lines.length || (!isList(lines[j]) && !/^\s{2,}\S/.test(lines[j]))) break;
+                    i = j;
+                    continue;
+                }
+                if (isList(lines[i]) || /^\s{2,}\S/.test(lines[i])) {
+                    i++;
+                    continue;
+                }
+                break;
+            }
+            continue;
+        }
+
+        if (isQuote(line)) {
+            blocks.push({ line: i + 1, type: 'quote' });
+            while (i < lines.length && (isQuote(lines[i]) || isBlank(lines[i]))) {
+                if (isBlank(lines[i])) {
+                    let j = i + 1;
+                    while (j < lines.length && isBlank(lines[j])) j++;
+                    if (j >= lines.length || !isQuote(lines[j])) break;
+                }
+                i++;
+            }
+            continue;
+        }
+
+        if (isDetailsOpen(line)) {
+            blocks.push({ line: i + 1, type: 'details' });
+            while (i < lines.length && !/<\/details>/i.test(lines[i])) i++;
+            if (i < lines.length) i++;
+            continue;
+        }
+
+        blocks.push({ line: i + 1, type: 'paragraph' });
+        i++;
+        while (i < lines.length && !isBlank(lines[i])) {
+            if (
+                isHeading(lines[i]) ||
+                isFence(lines[i]) ||
+                isHr(lines[i]) ||
+                isTable(lines[i]) ||
+                isList(lines[i]) ||
+                isQuote(lines[i]) ||
+                isDetailsOpen(lines[i])
+            ) {
+                break;
+            }
+            i++;
+        }
+    }
+
+    return blocks;
+}
+
+function blockTypeFromElement(el) {
+    const tag = el.tagName.toLowerCase();
+    if (/^h[1-6]$/.test(tag)) return 'heading';
+    if (tag === 'pre' || el.classList?.contains('mermaid')) return 'code';
+    if (tag === 'table') return 'table';
+    if (tag === 'ul' || tag === 'ol') return 'list';
+    if (tag === 'blockquote') return 'quote';
+    if (tag === 'hr') return 'hr';
+    if (tag === 'details') return 'details';
+    return 'paragraph';
+}
+
+/**
  * Annotate preview block elements with data-source-line attributes.
- * Uses heading IDs (already rendered) as anchor points, then interpolates
- * line numbers for other block elements based on DOM position.
- * (Fixes scroll sync drift on long docs — Issue #39)
+ * Prefer exact heading IDs, then sequential markdown-block matching so
+ * tables/paragraphs get real start lines (fixes section misalignment).
+ * (Issue #39)
  */
 function annotateSourceLines(outputElement, markdown) {
     if (!outputElement || !markdown) return;
 
     const lines = markdown.split('\n');
+    const mdBlocks = extractMarkdownBlockStarts(markdown);
 
-    // Build heading line map from markdown (slug → line number)
     const headingLineMap = new Map();
     for (let i = 0; i < lines.length; i++) {
         const match = /^(#{1,6})\s+(.+)$/.exec(lines[i]);
@@ -1754,74 +1935,103 @@ function annotateSourceLines(outputElement, markdown) {
             .replace(/[^\w\s-]/g, '')
             .replace(/[\s_-]+/g, '-')
             .replace(/^-+|-+$/g, '');
-        if (slug) {
+        if (slug && !headingLineMap.has(slug)) {
             headingLineMap.set(slug, i + 1);
         }
     }
 
-    // Assign exact lines to heading elements (they already have IDs)
-    const allBlocks = outputElement.querySelectorAll(
-        'h1, h2, h3, h4, h5, h6, pre, p, table, ul, ol, blockquote, hr, div.mermaid, details, li'
-    );
+    const allBlocks = Array.from(outputElement.querySelectorAll(
+        'h1, h2, h3, h4, h5, h6, pre, p, table, ul, ol, blockquote, hr, div.mermaid, details, .preview-video'
+    )).filter((el) => {
+        if ((el.tagName === 'UL' || el.tagName === 'OL') && el.parentElement?.closest('li')) {
+            return false;
+        }
+        return true;
+    });
 
-    // First: mark headings with exact line numbers
-    allBlocks.forEach(el => {
+    outputElement.querySelectorAll('[data-source-line]').forEach((el) => {
+        el.removeAttribute('data-source-line');
+    });
+
+    allBlocks.forEach((el) => {
         const tag = el.tagName.toLowerCase();
-        if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'h4' || tag === 'h5' || tag === 'h6') {
-            const id = el.id;
-            if (id && headingLineMap.has(id)) {
-                el.setAttribute('data-source-line', String(headingLineMap.get(id)));
-            }
+        if (/^h[1-6]$/.test(tag) && el.id && headingLineMap.has(el.id)) {
+            el.setAttribute('data-source-line', String(headingLineMap.get(el.id)));
         }
     });
 
-    // Build sorted anchor list (elements with known source lines)
-    const anchors = [];
-    allBlocks.forEach(el => {
+    let mdIndex = 0;
+    for (const el of allBlocks) {
         if (el.hasAttribute('data-source-line')) {
-            anchors.push({
+            const line = parseInt(el.getAttribute('data-source-line'), 10);
+            while (mdIndex < mdBlocks.length && mdBlocks[mdIndex].line < line) mdIndex++;
+            if (mdIndex < mdBlocks.length && mdBlocks[mdIndex].line === line) mdIndex++;
+            continue;
+        }
+
+        const want = blockTypeFromElement(el);
+        let found = -1;
+        for (let j = mdIndex; j < mdBlocks.length; j++) {
+            const t = mdBlocks[j].type;
+            if (t === want) {
+                found = j;
+                break;
+            }
+            if (t === 'heading' && want !== 'heading') break;
+        }
+
+        if (found === -1 && mdIndex < mdBlocks.length) {
+            const t = mdBlocks[mdIndex].type;
+            if (want === 'paragraph' && t === 'paragraph') found = mdIndex;
+        }
+
+        if (found !== -1) {
+            el.setAttribute('data-source-line', String(mdBlocks[found].line));
+            mdIndex = found + 1;
+        }
+    }
+
+    const known = [];
+    allBlocks.forEach((el) => {
+        if (el.hasAttribute('data-source-line')) {
+            known.push({
                 el,
                 line: parseInt(el.getAttribute('data-source-line'), 10)
             });
         }
     });
-    anchors.sort((a, b) => a.line - b.line);
+    known.sort((a, b) => a.line - b.line);
 
-    // Second: estimate lines for non-heading blocks
-    // Use DOM position relative to anchored elements
-    allBlocks.forEach(el => {
+    allBlocks.forEach((el) => {
         if (el.hasAttribute('data-source-line')) return;
 
         const elTop = el.getBoundingClientRect().top;
         let beforeAnchor = null;
         let afterAnchor = null;
-
-        for (const anchor of anchors) {
+        for (const anchor of known) {
             const anchorTop = anchor.el.getBoundingClientRect().top;
-            if (anchorTop <= elTop + 1) {
-                beforeAnchor = anchor;
-            } else {
+            if (anchorTop <= elTop + 1) beforeAnchor = anchor;
+            else {
                 afterAnchor = anchor;
                 break;
             }
         }
 
-        let estimatedLine;
+        let estimatedLine = 1;
         if (beforeAnchor && afterAnchor) {
-            // Interpolate between two anchors
             const beforeTop = beforeAnchor.el.getBoundingClientRect().top;
             const afterTop = afterAnchor.el.getBoundingClientRect().top;
             const ratio = afterTop > beforeTop
                 ? (elTop - beforeTop) / (afterTop - beforeTop)
                 : 0.5;
-            estimatedLine = Math.round(beforeAnchor.line + ratio * (afterAnchor.line - beforeAnchor.line));
+            estimatedLine = Math.round(
+                beforeAnchor.line + ratio * (afterAnchor.line - beforeAnchor.line)
+            );
         } else if (beforeAnchor) {
             estimatedLine = beforeAnchor.line + 1;
-        } else {
-            estimatedLine = 1;
         }
 
-        el.setAttribute('data-source-line', String(estimatedLine));
+        el.setAttribute('data-source-line', String(Math.max(1, estimatedLine)));
     });
 }
 
@@ -1832,11 +2042,15 @@ let convert = (markdown) => {
     tocItems = [];
 
     // Resolve image store references to actual data URLs before rendering
-    let resolvedMarkdown = resolveImageReferences(markdown);
+    let resolvedMarkdown = resolveImageReferences(markdown, true);
 
     // Strip persisted image attributes before rendering to prevent raw metadata from showing in preview
     let renderableMarkdown = resolvedMarkdown.replace(/(!\[[^\]]*\]\([^)]+\))\s*\{[^}]*\}/g, '$1');
     renderableMarkdown = stripVideoAttributeBlocks(renderableMarkdown);
+
+    // Document Mode needs the original markdown (with attrs) for serialization.
+    // Preview Mode uses renderableMarkdown (attrs stripped) for clean rendering.
+    const documentModeMarkdown = resolvedMarkdown;
 
     let html = marked.parse(renderableMarkdown);
     let sanitized = sanitizePreviewHtml(html);
@@ -1860,11 +2074,20 @@ let convert = (markdown) => {
         processPreviewImages(outputElement);
 
         // Issue #40: Embed video URLs / GitHub video attachments / YouTube-Vimeo
-        processPreviewVideos(outputElement);
+        // Parse attrs from the original markdown (renderableMarkdown has blocks stripped).
+        processPreviewVideos(
+            outputElement,
+            currentSettings?.preview?.videoMode || 'smart',
+            parseVideoAttributesFromMarkdown(documentModeMarkdown || markdown || '')
+        );
 
         // Re-apply media/layout controls and contenteditable state after every preview render.
         videoControlsController?.refresh(outputElement);
+        imageControlsController?.refresh(outputElement);
         livePreviewEditController?.refresh(outputElement);
+
+        // External links / media URLs open in a new tab (keep #anchors in-page).
+        ensurePreviewLinksOpenInNewTab(outputElement);
 
         // Defer Mermaid / TOC / highlights so first paint isn't blocked
         requestAnimationFrame(() => {
@@ -1916,6 +2139,11 @@ const debouncedConvert = debounce((markdown) => {
     convert(markdown);
 }, 300);
 
+let updatePreview = () => {
+    if (!editor) return;
+    convert(editor.getValue());
+};
+
 let applyMarkdownFromPreviewEdit = (markdown) => {
     if (!editor || typeof markdown !== 'string' || markdown === editor.getValue()) return;
 
@@ -1961,8 +2189,17 @@ let setupVideoControls = () => {
         output: '#output',
         getMarkdown: () => editor?.getValue() || '',
         onMarkdownChange: (markdown) => {
-            // The video control already updates the current DOM immediately. Persist
-            // the Markdown without forcing a re-render that would close the popover.
+            applyMarkdownFromPreviewEdit(markdown);
+        },
+        showToast
+    });
+};
+
+let setupImageControls = () => {
+    imageControlsController = initImageControls({
+        output: '#output',
+        getMarkdown: () => editor?.getValue() || '',
+        onMarkdownChange: (markdown) => {
             applyMarkdownFromPreviewEdit(markdown);
         },
         showToast
@@ -2586,7 +2823,7 @@ let setupCalloutDropdown = () => {
 // ----- download utils -----
 
 let downloadMarkdown = () => {
-    const content = resolveImageReferences(editor.getValue());
+    const content = resolveImageReferences(editor.getValue(), false);
     const filename = getExportFilename('md');
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -3861,7 +4098,7 @@ let printDocumentWithOptions = () => {
 // Download Markdown with options
 let downloadMarkdownWithOptions = () => {
     showExportLoading('Preparing Markdown file...', 50);
-    const content = resolveImageReferences(editor.getValue());
+    const content = resolveImageReferences(editor.getValue(), false);
     const filename = getExportFilename('md');
     try {
         updateExportProgress(80, 'Downloading...');
@@ -4291,7 +4528,16 @@ const SETTINGS_STORAGE_KEY = 'markdown_editor_settings';
 let loadSettings = () => {
     try {
         const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
-        return saved ? JSON.parse(saved) : getDefaultSettings();
+        if (!saved) return getDefaultSettings();
+        const parsed = JSON.parse(saved);
+        const defaults = getDefaultSettings();
+        return {
+            ...defaults,
+            ...parsed,
+            general: { ...defaults.general, ...(parsed.general || {}) },
+            editor: { ...defaults.editor, ...(parsed.editor || {}) },
+            preview: { ...defaults.preview, ...(parsed.preview || {}) }
+        };
     } catch {
         return getDefaultSettings();
     }
@@ -4317,7 +4563,9 @@ let getDefaultSettings = () => ({
         livePreview: true,
         syntaxHighlight: true,
         mathRendering: true,
-        mermaid: true
+        mermaid: true,
+        videoMode: 'smart',
+        imageMode: 'smart'
     },
     theme: 'vs-dark'
 });
@@ -4445,6 +4693,7 @@ let setupSettingsModal = () => {
         setCheckbox('syntax-highlight-checkbox', currentSettings.preview.syntaxHighlight);
         setCheckbox('math-rendering-checkbox', currentSettings.preview.mathRendering);
         setCheckbox('mermaid-checkbox', currentSettings.preview.mermaid);
+        setDropdown('video-mode-dropdown', currentSettings.preview.videoMode || 'smart');
 
         // Theme
         const themeRadios = document.querySelectorAll('input[name="editor-theme"]');
@@ -4646,6 +4895,17 @@ let setupPreviewSettings = () => {
             currentSettings.preview.mermaid = e.target.checked;
             updatePreview();
             showToast(e.target.checked ? 'Mermaid diagrams enabled' : 'Mermaid diagrams disabled', 'info', 1500);
+        });
+    }
+
+    // Default video embed behavior
+    const videoModeDropdown = document.getElementById('video-mode-dropdown');
+    if (videoModeDropdown) {
+        videoModeDropdown.addEventListener('change', (e) => {
+            currentSettings.preview.videoMode = e.target.value || 'smart';
+            saveSettings(currentSettings);
+            updatePreview();
+            showToast(`Video embeds: ${currentSettings.preview.videoMode}`, 'info', 1500);
         });
     }
 };
@@ -4960,7 +5220,7 @@ const saveTocSidebarVisibility = (isVisible) => {
 const loadTocSidebarVisibility = () => {
     const stored = Storehouse.getItem(localStorageNamespace, localStorageTocVisibilityKey);
     if (typeof stored === 'boolean') return stored;
-    return true;
+    return false;
 };
 
 const applyTocVisibility = (tocSidebar, tocBtn, mobileOverlay, isVisible) => {
@@ -5678,10 +5938,10 @@ let saveImageStore = () => {
     Storehouse.setItem(localStorageNamespace, localStorageImagesKey, obj, expiredAt);
 };
 
-let resolveImageReferences = (text) => {
+let resolveImageReferences = (text, forPreview = true) => {
     return text.replace(
         /markups-img:(img_\w+)/g,
-        (match, imgId) => imageStoreGet(imgId) || match
+        (match, imgId) => forPreview ? (imageStoreGet(imgId) || match) : match
     );
 };
 
@@ -5726,7 +5986,8 @@ let parseImageAttributes = (content) => {
     let match;
 
     while ((match = pattern.exec(content)) !== null) {
-        const attrs = { src: match[2], alt: match[1] };
+        const markdownSrc = match[2];
+        const attrs = { src: markdownSrc, alt: match[1], markdownSrc };
 
         if (match[4]) {
             const rawAttrs = parseImageAttributeBlock(match[4]);
@@ -5772,6 +6033,9 @@ let parseImageAttributes = (content) => {
             }
         }
 
+        // Never let decoded resize metadata overwrite the Markdown source URL.
+        // Document Mode serialization depends on markups-img: staying intact.
+        attrs.markdownSrc = markdownSrc;
         result.push(attrs);
     }
 
@@ -5841,17 +6105,26 @@ let processPreviewImages = (container) => {
     // Get markdown source to parse saved image state
     const editorContent = editor ? editor.getValue() : '';
     const imageAttrsMap = parseImageAttributes(editorContent);
+    const markdownImageSrcs = Array.from(editorContent.matchAll(/!\[([^\]]*)\]\(([^)\s]+)\)/g)).map((m) => m[2]);
 
     images.forEach((img, index) => {
         const markdownAttrs = imageAttrsMap[index] || null;
         const domState = decodeImageState(img.getAttribute('data-ir'));
         const imageState = domState || markdownAttrs;
+        const markdownSrc = markdownAttrs?.markdownSrc || markdownAttrs?.src || markdownImageSrcs[index] || '';
 
-        if (markdownAttrs && markdownAttrs.src) {
-            img.dataset.originalSrc = markdownAttrs.src;
-            img.dataset.irIndex = index;
-        } else {
-            img.dataset.originalSrc = img.getAttribute('src') || '';
+        // Always prefer stable Markdown refs (especially markups-img:) over the
+        // resolved preview src. Document Mode serialization depends on this.
+        if (markdownSrc) {
+            img.dataset.originalSrc = markdownSrc;
+            img.setAttribute('data-original-src', markdownSrc);
+            img.dataset.irIndex = String(index);
+        } else if (!img.dataset.originalSrc) {
+            const currentSrc = img.getAttribute('src') || '';
+            if (!currentSrc.startsWith('data:') && !currentSrc.startsWith('blob:')) {
+                img.dataset.originalSrc = currentSrc;
+                img.setAttribute('data-original-src', currentSrc);
+            }
         }
 
         // Images start hidden via CSS (:not([data-loaded="true"]))
@@ -6450,6 +6723,7 @@ const initializeApp = async () => {
     setupViewButtons();
     setupLivePreviewEdit();
     setupVideoControls();
+    setupImageControls();
     await initTabs();
     pruneUnreferencedImages();
     window.addEventListener('pagehide', () => {
@@ -6501,6 +6775,9 @@ const initializeApp = async () => {
     // Initialize stats with current content
     updateStats(editor.getValue());
 
+    // Custom context menu
+    appContextMenuManager.initialize();
+
     // Initialize image resize feature (lazy — keep off critical boot path)
     import('./features/image-resize/index.js')
         .then(({ initImageResize }) => initImageResize({ editor }))
@@ -6546,6 +6823,15 @@ if ('serviceWorker' in navigator) {
 window.addEventListener("load", () => {
     initializeApp().catch((error) => {
         console.error('Failed to initialize app:', error);
+    });
+
+    // Cleanup custom context menu on unload/reload to avoid duplicate listeners.
+    window.addEventListener('pagehide', () => {
+        try {
+            appContextMenuManager.dispose();
+        } catch {
+            // ignore cleanup errors
+        }
     });
 });
 

@@ -44,6 +44,8 @@ import { mobileUIManager } from './features/mobile/index.js';
 import { importManager } from './features/import/index.js';
 import { initLivePreviewEdit } from './features/live-preview-edit/index.js';
 import { initVideoControls } from './features/video-controls/index.js';
+import { appContextMenuManager } from './features/app-context-menu/index.js';
+import { editorService } from './core/editor/index.js';
 
 // AI Writer — lazy-loaded on first use (P3-T1)
 let _aiWriterManager = null;
@@ -219,6 +221,9 @@ class App {
      * @private
      */
     _initFeatures() {
+        // App context menu
+        appContextMenuManager.initialize();
+
         // Toolbar
         if (this.containers.toolbar && FEATURE_FLAGS.TOOLBAR) {
             toolbarManager.initialize(this.containers.toolbar);
@@ -629,6 +634,7 @@ class App {
         toolbarManager.dispose();
         modesManager.dispose();
         shortcutsManager.dispose();
+        appContextMenuManager.dispose();
         if (_aiWriterManager) {
             _aiWriterManager.dispose();
             _aiWriterManager = null;

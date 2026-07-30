@@ -73,14 +73,32 @@ describe('video embed helpers', () => {
         expect(container.querySelector('video')?.getAttribute('src')).toBe('https://example.com/demo.webm');
     });
 
-    it('keeps intentionally labeled video links as links', () => {
+    it('keeps labeled direct video links as links in smart mode, but embeds labeled hosted videos', () => {
         const container = document.createElement('div');
-        container.innerHTML = '<p><a href="https://example.com/demo.mp4">watch product demo</a></p>';
+        container.innerHTML = `
+            <p><a href="https://example.com/demo.mp4">watch product demo</a></p>
+            <p><a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">youtube.com</a></p>
+        `;
 
-        processPreviewVideos(container);
+        processPreviewVideos(container, 'smart');
 
         expect(container.querySelector('video')).toBeNull();
         expect(container.querySelector('a')?.textContent).toBe('watch product demo');
+
+        expect(container.querySelector('iframe')?.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+    });
+
+    it('forces embed/link with explicit behavior', () => {
+        const embedContainer = document.createElement('div');
+        embedContainer.innerHTML = '<p><a href="https://example.com/demo.mp4">watch product demo</a></p>';
+        processPreviewVideos(embedContainer, 'always-embed');
+        expect(embedContainer.querySelector('video')?.getAttribute('src')).toBe('https://example.com/demo.mp4');
+
+        const linkContainer = document.createElement('div');
+        linkContainer.innerHTML = '<p><a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">youtube.com</a></p>';
+        processPreviewVideos(linkContainer, 'always-link');
+        expect(linkContainer.querySelector('iframe')).toBeNull();
+        expect(linkContainer.querySelector('a')?.textContent).toBe('youtube.com');
     });
 
     it('embeds hosted video links with privacy-friendly iframes', () => {
@@ -93,5 +111,22 @@ describe('video embed helpers', () => {
         expect(iframe).toBeTruthy();
         expect(iframe.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
         expect(iframe.getAttribute('loading')).toBe('lazy');
+        expect(container.querySelector('.preview-video-hitbox')).toBeTruthy();
+    });
+
+    it('embeds labeled YouTube/Vimeo links even when link text is not the URL', () => {
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <p><a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">youtube.com</a></p>
+            <p><a href="https://vimeo.com/123456">vimeo.com</a></p>
+        `;
+
+        processPreviewVideos(container);
+
+        const youtubeIframe = container.querySelector('iframe[src*="youtube-nocookie.com/embed/dQw4w9WgXcQ"]');
+        expect(youtubeIframe).toBeTruthy();
+
+        const vimeoIframe = container.querySelector('iframe[src*="player.vimeo.com/video/123456"]');
+        expect(vimeoIframe).toBeTruthy();
     });
 });

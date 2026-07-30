@@ -4,7 +4,7 @@
  * @module utils/video-embed
  */
 
-const VIDEO_EXT_RE = /\.(mp4|webm|ogg|ogv|mov|m4v)(?:[?#].*)?$/i;
+const VIDEO_EXT_RE = /\.(mp4|webm|ogg|ogv|mov|m4v|mpg|mpeg|avi|wmv|flv|3gp)(?:[?#].*)?$/i;
 const GITHUB_ASSET_RE =
     /^https?:\/\/(?:github\.com\/user-attachments\/assets\/|objects\.githubusercontent\.com\/)[^\s]+/i;
 const YOUTUBE_RE =
@@ -114,6 +114,11 @@ function createHtml5Video(url) {
     video.setAttribute('controlsList', 'nodownload');
     video.setAttribute('src', url);
 
+    // GitHub video attachments (no file extension) need a type hint
+    if (isGitHubVideoAttachment(url)) {
+        video.setAttribute('type', 'video/mp4');
+    }
+
     // If playback fails (e.g. wrong content-type), fall back to a link
     video.addEventListener('error', () => {
         if (wrap.dataset.fallback === '1') return;
@@ -144,6 +149,9 @@ function createHostedEmbed(hosted, sourceUrl = '') {
     wrap.dataset.videoUrl = normalizeVideoUrl(sourceUrl);
     wrap.dataset.videoType = hosted.type;
 
+    const frame = document.createElement('div');
+    frame.className = 'preview-video-frame';
+
     const iframe = document.createElement('iframe');
     iframe.setAttribute('loading', 'lazy');
     iframe.allowFullscreen = true;
@@ -159,16 +167,59 @@ function createHostedEmbed(hosted, sourceUrl = '') {
         iframe.src = `https://player.vimeo.com/video/${encodeURIComponent(hosted.id)}`;
     }
 
-    wrap.appendChild(iframe);
+    // Iframes swallow clicks, so a transparent hitbox lets users select the
+    // video for layout editing. Play mode (in video-controls) disables it.
+    const hitbox = document.createElement('button');
+    hitbox.type = 'button';
+    hitbox.className = 'preview-video-hitbox';
+    hitbox.setAttribute('aria-label', 'Select video to edit layout');
+    hitbox.title = 'Click to edit video layout';
+
+    frame.appendChild(iframe);
+    frame.appendChild(hitbox);
+    wrap.appendChild(frame);
     return wrap;
+}
+
+/**
+ * Determine whether a video element/link should be embedded or kept as a link.
+ * @param {HTMLAnchorElement|HTMLImageElement} el
+ * @param {string} [behavior] - 'smart' | 'always-embed' | 'always-link'
+ * @returns {boolean}
+ */
+export function shouldEmbedVideo(el, behavior = 'smart') {
+    if (behavior === 'always-embed') return true;
+    if (behavior === 'always-link') return false;
+
+    const rawUrl = el.tagName === 'IMG' ? el.getAttribute('src') : el.getAttribute('href');
+    const url = normalizeVideoUrl(rawUrl);
+    if (!url || !isEmbeddableVideoUrl(url)) return false;
+
+    if (el.tagName === 'IMG') return true;
+
+    const text = (el.textContent || '').trim();
+    const href = normalizeVideoUrl(el.getAttribute('href') || '');
+    const isBare =
+        !text ||
+        text === href ||
+        text === href.replace(/^https?:\/\//, '') ||
+        /^https?:\/\//i.test(text);
+
+    const isHostedVideo = !!parseHostedVideo(href);
+
+    if (isBare || isHostedVideo) return true;
+
+    return false;
 }
 
 /**
  * Replace a single anchor (or img) with an embedded player when the URL is a video.
  * @param {HTMLAnchorElement|HTMLImageElement} el
+ * @param {string} [behavior] - 'smart' | 'always-embed' | 'always-link'
+ * @param {Map<string, {mode?: string}>|null} [attrsByUrl]
  * @returns {boolean} whether replacement happened
  */
-function tryReplaceWithVideo(el) {
+function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null) {
     const rawUrl =
         el.tagName === 'IMG'
             ? el.getAttribute('src')
@@ -176,21 +227,12 @@ function tryReplaceWithVideo(el) {
     const url = normalizeVideoUrl(rawUrl);
     if (!url || !isEmbeddableVideoUrl(url)) return false;
 
-    // Only replace "standalone" links (link text is empty, URL, or same as href)
-    if (el.tagName === 'A') {
-        const text = (el.textContent || '').trim();
-        const href = normalizeVideoUrl(el.getAttribute('href') || '');
-        const isBare =
-            !text ||
-            text === href ||
-            text === href.replace(/^https?:\/\//, '') ||
-            /^https?:\/\//i.test(text);
-        // Keep intentional labeled links like [watch docs](video.mp4) as links
-        // unless the label looks like a URL / is empty
-        if (!isBare && text.length > 0 && !isDirectVideoUrl(text) && !isGitHubVideoAttachment(text)) {
-            return false;
-        }
-    }
+    const perMode = String(attrsByUrl?.get?.(url)?.mode || '').toLowerCase();
+    let effectiveBehavior = behavior;
+    if (perMode === 'link') return false;
+    if (perMode === 'embed') effectiveBehavior = 'always-embed';
+
+    if (!shouldEmbedVideo(el, effectiveBehavior)) return false;
 
     const hosted = parseHostedVideo(url);
     const player = hosted ? createHostedEmbed(hosted, url) : createHtml5Video(url);
@@ -217,21 +259,23 @@ function tryReplaceWithVideo(el) {
 /**
  * Scan rendered preview and embed playable videos (Issue #40).
  * @param {HTMLElement} container - Usually #output
+ * @param {string} [behavior] - 'smart' | 'always-embed' | 'always-link'
+ * @param {Map<string, {mode?: string}>|null} [attrsByUrl]
  */
-export function processPreviewVideos(container) {
+export function processPreviewVideos(container, behavior = 'smart', attrsByUrl = null) {
     if (!container) return;
 
     // Image markdown pointing at video files: ![](clip.mp4)
     container.querySelectorAll('img[src]').forEach((img) => {
         const src = img.getAttribute('src') || '';
         if (isDirectVideoUrl(src) || isGitHubVideoAttachment(src)) {
-            tryReplaceWithVideo(img);
+            tryReplaceWithVideo(img, behavior, attrsByUrl);
         }
     });
 
     // Autolinks / markdown links to videos
     container.querySelectorAll('a[href]').forEach((a) => {
-        tryReplaceWithVideo(a);
+        tryReplaceWithVideo(a, behavior, attrsByUrl);
     });
 }
 

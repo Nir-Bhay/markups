@@ -233,9 +233,17 @@ class MarkdownService {
 
         // Allow data attributes
         DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-            // Allow target="_blank" but add security
-            if (node.tagName === 'A' && node.hasAttribute('target')) {
-                node.setAttribute('rel', 'noopener noreferrer');
+            // External links open in a new tab; keep in-page #anchors local.
+            if (node.tagName === 'A') {
+                const href = node.getAttribute('href') || '';
+                if (href.startsWith('#')) {
+                    node.removeAttribute('target');
+                } else if (href) {
+                    node.setAttribute('target', '_blank');
+                    node.setAttribute('rel', 'noopener noreferrer');
+                } else if (node.hasAttribute('target')) {
+                    node.setAttribute('rel', 'noopener noreferrer');
+                }
             }
         });
     }

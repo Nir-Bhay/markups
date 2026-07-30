@@ -436,17 +436,17 @@
       ]
     }
     </script>
-  <script type="module" crossorigin src="/assets/main-Bcq9sSrZ.js"></script>
+  <script type="module" crossorigin src="/assets/main-DblrqRWx.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/assets/monaco-editor-CQAeJCAh.js">
-  <link rel="modulepreload" crossorigin href="/assets/katex-vendor-XbL3y5x-.js">
-  <link rel="modulepreload" crossorigin href="/assets/markdown-vendor-BwGGoUHN.js">
-  <link rel="modulepreload" crossorigin href="/assets/mermaid-vendor-BQt0iVeL.js">
-  <link rel="modulepreload" crossorigin href="/assets/dom-utils-v6mb5njJ.js">
-  <link rel="modulepreload" crossorigin href="/assets/storage-vendor-c-6JbTCQ.js">
-  <link rel="stylesheet" crossorigin href="/assets/monaco-editor-DIPB3Vbg.css">
-  <link rel="stylesheet" crossorigin href="/assets/dom-utils-ZztAOc5B.css">
-  <link rel="stylesheet" crossorigin href="/assets/main-kil-nodf.css">
+  <link rel="modulepreload" crossorigin href="/assets/monaco-editor-BNx18KVd.js">
+  <link rel="modulepreload" crossorigin href="/assets/katex-vendor-BcocKhHJ.js">
+  <link rel="modulepreload" crossorigin href="/assets/markdown-vendor-CdE-Mwro.js">
+  <link rel="modulepreload" crossorigin href="/assets/highlight-vendor-Bi7oemg5.js">
+  <link rel="modulepreload" crossorigin href="/assets/sanitize-vendor-2FREwzWT.js">
+  <link rel="modulepreload" crossorigin href="/assets/storage-vendor-ou1V6OGm.js">
+  <link rel="stylesheet" crossorigin href="/assets/monaco-editor-CP2cXDiA.css">
+  <link rel="stylesheet" crossorigin href="/assets/katex-vendor-DvXFAOB1.css">
+  <link rel="stylesheet" crossorigin href="/assets/highlight-vendor-Dz1pgzwE.css">
 </head>
 
 <body class="view-split">
@@ -1031,6 +1031,45 @@
         <!-- Preview Pane -->
         <section class="preview-pane" id="preview">
             <div class="preview-wrapper" id="preview-wrapper">
+                <div class="preview-edit-toolbar" id="preview-edit-toolbar" aria-label="Preview editing controls">
+                    <div class="preview-edit-summary">
+                        <span class="preview-edit-kicker">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                            Preview editor
+                        </span>
+                        <strong>Choose how you want to write</strong>
+                        <span>Use Markdown for precision or Document Mode for quick visual edits.</span>
+                    </div>
+                    <div class="preview-mode-switch" role="group" aria-label="Editing mode">
+                        <button class="preview-mode-btn active" id="markdown-mode-toggle" type="button"
+                            aria-pressed="true" title="Use the Markdown source editor as the primary editing surface">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="16 18 22 12 16 6" />
+                                <polyline points="8 6 2 12 8 18" />
+                                <line x1="14" y1="4" x2="10" y2="20" />
+                            </svg>
+                            <span class="preview-mode-copy">
+                                <span>Markdown Mode</span>
+                                <small>Raw source</small>
+                            </span>
+                        </button>
+                        <button class="preview-mode-btn" id="live-preview-edit-toggle" type="button"
+                            aria-pressed="false" title="Edit rendered preview and sync changes back to Markdown">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                            <span class="preview-mode-copy">
+                                <span>Document Mode</span>
+                                <small>Visual edits</small>
+                            </span>
+                        </button>
+                    </div>
+                    <span class="preview-edit-beta" title="Document Mode is a safe preview-editing proof of concept">Beta</span>
+                </div>
                 <article class="preview-content markdown-body" id="output">
                     <!-- Rendered Markdown -->
                 </article>

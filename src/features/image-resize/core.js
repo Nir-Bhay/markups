@@ -87,10 +87,11 @@ export class ImageResizeManager {
 
     /** @private */
     _injectStyles() {
-        if (document.getElementById('image-resize-styles-v2')) return;
+        document.getElementById('image-resize-styles-v2')?.remove();
+        if (document.getElementById('image-resize-styles-v3')) return;
 
         const s = document.createElement('style');
-        s.id = 'image-resize-styles-v2';
+        s.id = 'image-resize-styles-v3';
         s.textContent = `
       /* ── Base Image Behaviour ── */
       .markdown-body img[data-loaded="true"] {
@@ -188,26 +189,26 @@ export class ImageResizeManager {
         bottom: -32px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(15, 23, 42, 0.92);
+        background: #ffffff;
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
-        color: #e2e8f0;
+        color: #334155;
         padding: 4px 10px;
         border-radius: 6px;
         font-size: 11px;
         font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
         white-space: nowrap;
         pointer-events: none;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
         z-index: 10002;
         display: flex;
         align-items: center;
         gap: 6px;
-        border: 1px solid rgba(99,102,241,0.25);
+        border: 1px solid rgba(15, 23, 42, 0.1);
       }
 
       .ir-size-badge .ir-zoom-pct {
-        color: #818cf8;
+        color: #5865f2;
         font-weight: 600;
       }
 
@@ -220,12 +221,12 @@ export class ImageResizeManager {
         justify-content: center;
         align-items: center;
         gap: 2px;
-        background: rgba(15, 23, 42, 0.88);
+        background: #ffffff;
         backdrop-filter: blur(14px) saturate(180%);
         -webkit-backdrop-filter: blur(14px) saturate(180%);
         padding: 5px 7px;
         border-radius: 10px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06);
+        box-shadow: 0 8px 28px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 23, 42, 0.08);
         pointer-events: auto;
         z-index: 10003;
         width: max-content;
@@ -236,7 +237,7 @@ export class ImageResizeManager {
       .ir-toolbar button {
         background: transparent;
         border: none;
-        color: #e2e8f0;
+        color: #475569;
         padding: 5px 8px;
         border-radius: 6px;
         cursor: pointer;
@@ -248,8 +249,8 @@ export class ImageResizeManager {
       }
 
       .ir-toolbar button:hover {
-        background: rgba(99,102,241,0.2);
-        color: #a5b4fc;
+        background: rgba(88, 101, 242, 0.1);
+        color: #4338ca;
       }
 
       .ir-toolbar button:active {
@@ -257,7 +258,7 @@ export class ImageResizeManager {
       }
 
       .ir-toolbar button.active {
-        background: #6366f1;
+        background: #5865f2;
         color: #fff;
       }
 
@@ -269,7 +270,7 @@ export class ImageResizeManager {
       .ir-toolbar .ir-sep {
         width: 1px;
         height: 18px;
-        background: rgba(255,255,255,0.12);
+        background: rgba(15, 23, 42, 0.12);
         margin: 0 3px;
         flex-shrink: 0;
       }
@@ -299,12 +300,12 @@ export class ImageResizeManager {
         top: calc(100% + 6px);
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(15, 23, 42, 0.95);
+        background: #ffffff;
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
         border-radius: 10px;
         padding: 6px;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(15, 23, 42, 0.08);
         z-index: 10010;
         min-width: 150px;
         pointer-events: auto;
@@ -328,7 +329,7 @@ export class ImageResizeManager {
         padding: 7px 12px;
         border-radius: 6px;
         cursor: pointer;
-        color: #e2e8f0;
+        color: #334155;
         font-size: 12px;
         transition: background 0.12s;
         border: none;
@@ -338,7 +339,7 @@ export class ImageResizeManager {
       }
 
       .ir-dropdown-item:hover {
-        background: rgba(99,102,241,0.18);
+        background: rgba(88, 101, 242, 0.1);
       }
 
       .ir-dropdown-item .ir-dd-icon {
@@ -351,12 +352,12 @@ export class ImageResizeManager {
       /* ── Context Menu ── */
       .ir-context-menu {
         position: fixed;
-        background: rgba(15, 23, 42, 0.95);
+        background: #ffffff;
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
         border-radius: 10px;
         padding: 6px;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06);
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(15, 23, 42, 0.08);
         z-index: 10020;
         min-width: 180px;
         animation: ir-dropdown-in 0.15s ease;
@@ -369,7 +370,7 @@ export class ImageResizeManager {
         padding: 8px 14px;
         border-radius: 6px;
         cursor: pointer;
-        color: #e2e8f0;
+        color: #334155;
         font-size: 12px;
         transition: background 0.12s;
         border: none;
@@ -379,7 +380,7 @@ export class ImageResizeManager {
       }
 
       .ir-context-menu .ir-ctx-item:hover {
-        background: rgba(99,102,241,0.18);
+        background: rgba(88, 101, 242, 0.1);
       }
 
       .ir-context-menu .ir-ctx-item .ir-ctx-icon {
@@ -405,7 +406,7 @@ export class ImageResizeManager {
       .ir-dialog-backdrop {
         position: fixed;
         inset: 0;
-        background: rgba(0,0,0,0.5);
+        background: rgba(15, 23, 42, 0.35);
         z-index: 20000;
         display: flex;
         align-items: center;
@@ -419,12 +420,12 @@ export class ImageResizeManager {
       }
 
       .ir-dialog {
-        background: rgba(15, 23, 42, 0.97);
+        background: #ffffff;
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border-radius: 14px;
         padding: 24px;
-        box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.08);
         width: 320px;
         max-width: 90vw;
         animation: ir-dialog-in 0.25s ease;
@@ -437,14 +438,14 @@ export class ImageResizeManager {
 
       .ir-dialog h3 {
         margin: 0 0 16px;
-        color: #f1f5f9;
+        color: #0f172a;
         font-size: 15px;
         font-weight: 600;
       }
 
       .ir-dialog label {
         display: block;
-        color: #94a3b8;
+        color: #64748b;
         font-size: 11px;
         margin-bottom: 4px;
         text-transform: uppercase;
@@ -454,10 +455,10 @@ export class ImageResizeManager {
       .ir-dialog input[type="number"] {
         width: 100%;
         padding: 8px 12px;
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid rgba(15, 23, 42, 0.12);
         border-radius: 8px;
-        background: rgba(255,255,255,0.05);
-        color: #f1f5f9;
+        background: #f8fafc;
+        color: #0f172a;
         font-size: 14px;
         font-family: monospace;
         outline: none;
@@ -466,7 +467,8 @@ export class ImageResizeManager {
       }
 
       .ir-dialog input[type="number"]:focus {
-        border-color: #6366f1;
+        border-color: #5865f2;
+        background: #ffffff;
       }
 
       .ir-dialog .ir-dialog-row {
@@ -480,10 +482,10 @@ export class ImageResizeManager {
 
       .ir-dialog .ir-lock-btn {
         padding: 8px;
-        background: rgba(99,102,241,0.15);
-        border: 1px solid rgba(99,102,241,0.3);
+        background: rgba(88, 101, 242, 0.08);
+        border: 1px solid rgba(88, 101, 242, 0.25);
         border-radius: 8px;
-        color: #818cf8;
+        color: #5865f2;
         cursor: pointer;
         font-size: 16px;
         line-height: 1;
@@ -493,13 +495,13 @@ export class ImageResizeManager {
       }
 
       .ir-dialog .ir-lock-btn:hover {
-        background: rgba(99,102,241,0.25);
+        background: rgba(88, 101, 242, 0.14);
       }
 
       .ir-dialog .ir-lock-btn.locked {
-        color: #a5b4fc;
-        background: rgba(99,102,241,0.25);
-        border-color: #6366f1;
+        color: #4338ca;
+        background: rgba(88, 101, 242, 0.16);
+        border-color: #5865f2;
       }
 
       .ir-dialog .ir-dialog-actions {
@@ -522,21 +524,21 @@ export class ImageResizeManager {
       .ir-dialog .ir-dialog-actions button:active { transform: scale(0.95); }
 
       .ir-dialog .ir-btn-cancel {
-        background: rgba(255,255,255,0.06);
-        color: #94a3b8;
+        background: #f1f5f9;
+        color: #475569;
       }
 
       .ir-dialog .ir-btn-cancel:hover {
-        background: rgba(255,255,255,0.1);
+        background: #e2e8f0;
       }
 
       .ir-dialog .ir-btn-apply {
-        background: #6366f1;
+        background: #5865f2;
         color: #fff;
       }
 
       .ir-dialog .ir-btn-apply:hover {
-        background: #4f46e5;
+        background: #4752c4;
       }
 
       /* ── Info Panel ── */
@@ -545,12 +547,12 @@ export class ImageResizeManager {
         top: calc(100% + 8px);
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(15, 23, 42, 0.95);
+        background: #ffffff;
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
         border-radius: 10px;
         padding: 14px 18px;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 23, 42, 0.08);
         z-index: 10003;
         min-width: 200px;
         pointer-events: auto;
@@ -565,19 +567,19 @@ export class ImageResizeManager {
       .ir-info-panel td {
         padding: 3px 0;
         font-size: 11px;
-        color: #94a3b8;
+        color: #64748b;
         vertical-align: top;
       }
 
       .ir-info-panel td:first-child {
         font-weight: 600;
-        color: #cbd5e1;
+        color: #475569;
         padding-right: 14px;
         white-space: nowrap;
       }
 
       .ir-info-panel td:last-child {
-        color: #e2e8f0;
+        color: #0f172a;
         font-family: monospace;
         font-size: 11px;
       }
@@ -592,7 +594,7 @@ export class ImageResizeManager {
 
       .ir-slider-container label {
         font-size: 11px;
-        color: #94a3b8;
+        color: #64748b;
         min-width: 50px;
       }
 
@@ -601,7 +603,7 @@ export class ImageResizeManager {
         appearance: none;
         flex: 1;
         height: 4px;
-        background: rgba(255,255,255,0.12);
+        background: rgba(15, 23, 42, 0.12);
         border-radius: 4px;
         outline: none;
       }
@@ -620,7 +622,7 @@ export class ImageResizeManager {
 
       .ir-slider-container .ir-slider-val {
         font-size: 11px;
-        color: #a5b4fc;
+        color: #5865f2;
         font-family: monospace;
         min-width: 32px;
         text-align: right;
@@ -676,14 +678,14 @@ export class ImageResizeManager {
               position: fixed;
               left: ${x + 14}px;
               top: ${y + 14}px;
-              background: rgba(15,23,42,0.93);
+              background: #ffffff;
               backdrop-filter: blur(12px);
-              color: #e2e8f0;
+              color: #334155;
               padding: 8px 12px;
               border-radius: 8px;
               font-size: 11px;
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              box-shadow: 0 8px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06);
+              box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 23, 42, 0.08);
               pointer-events: none;
               z-index: 10030;
               line-height: 1.6;
@@ -691,9 +693,9 @@ export class ImageResizeManager {
               max-width: 220px;
             `;
             tip.innerHTML = [
-                `<span style="color:#94a3b8;font-size:10px;letter-spacing:.04em;text-transform:uppercase">${fileType}</span>`,
-                `<div style="margin-top:4px"><span style="color:#818cf8;font-weight:600">${curW} × ${curH}</span><span style="color:#64748b"> px (display)</span></div>`,
-                natW !== '?' ? `<div style="color:#64748b">${natW} × ${natH} natural</div>` : '',
+                `<span style="color:#64748b;font-size:10px;letter-spacing:.04em;text-transform:uppercase">${fileType}</span>`,
+                `<div style="margin-top:4px"><span style="color:#5865f2;font-weight:600">${curW} × ${curH}</span><span style="color:#94a3b8"> px (display)</span></div>`,
+                natW !== '?' ? `<div style="color:#94a3b8">${natW} × ${natH} natural</div>` : '',
             ].join('');
 
             document.body.appendChild(tip);
@@ -988,6 +990,7 @@ export class ImageResizeManager {
 
         document.body.appendChild(overlay);
         this.resizeOverlay = overlay;
+        this._positionImageToolbar();
     }
 
     /** @private */
@@ -995,6 +998,45 @@ export class ImageResizeManager {
         if (this.resizeOverlay) {
             this.resizeOverlay.remove();
             this.resizeOverlay = null;
+        }
+    }
+
+    /**
+     * Keep the floating image toolbar below the app header/formatting bar.
+     * Prefer above the image; flip below when there isn't enough room.
+     * @private
+     */
+    _getChromeBottom() {
+        let bottom = 8;
+        const header = document.querySelector('.premium-header');
+        const formatBar = document.querySelector('.premium-toolbar');
+        if (header) bottom = Math.max(bottom, header.getBoundingClientRect().bottom);
+        if (formatBar) {
+            const rect = formatBar.getBoundingClientRect();
+            if (rect.height > 0) bottom = Math.max(bottom, rect.bottom);
+        }
+        return bottom + 8;
+    }
+
+    /** @private */
+    _positionImageToolbar() {
+        const toolbar = this.resizeOverlay?.querySelector('.ir-toolbar');
+        if (!toolbar || !this.resizeOverlay) return;
+
+        const chromeBottom = this._getChromeBottom();
+        const overlayRect = this.resizeOverlay.getBoundingClientRect();
+        const gap = 12;
+        const toolbarHeight = toolbar.offsetHeight || 40;
+        const spaceAbove = overlayRect.top - chromeBottom;
+
+        if (spaceAbove >= toolbarHeight + gap) {
+            toolbar.style.top = 'auto';
+            toolbar.style.bottom = `calc(100% + ${gap}px)`;
+            toolbar.dataset.placement = 'above';
+        } else {
+            toolbar.style.bottom = 'auto';
+            toolbar.style.top = `calc(100% + ${gap}px)`;
+            toolbar.dataset.placement = 'below';
         }
     }
 
@@ -1007,6 +1049,7 @@ export class ImageResizeManager {
         this.resizeOverlay.style.width = `${rect.width}px`;
         this.resizeOverlay.style.height = `${rect.height}px`;
         this._updateSizeBadge(rect.width, rect.height);
+        this._positionImageToolbar();
     }
 
     /* ─────────────────────────────────────────────────────────────────
@@ -1503,20 +1546,22 @@ export class ImageResizeManager {
             chip.style.cssText = `
         padding: 4px 10px;
         border-radius: 6px;
-        border: 1px solid rgba(99,102,241,0.3);
-        background: rgba(99,102,241,0.1);
-        color: #a5b4fc;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        background: #f8fafc;
+        color: #475569;
         font-size: 11px;
         cursor: pointer;
-        transition: background 0.12s, border-color 0.12s;
+        transition: background 0.12s, border-color 0.12s, color 0.12s;
       `;
             chip.addEventListener('mouseenter', () => {
-                chip.style.background = 'rgba(99,102,241,0.25)';
-                chip.style.borderColor = '#6366f1';
+                chip.style.background = 'rgba(88, 101, 242, 0.1)';
+                chip.style.borderColor = '#5865f2';
+                chip.style.color = '#4338ca';
             });
             chip.addEventListener('mouseleave', () => {
-                chip.style.background = 'rgba(99,102,241,0.1)';
-                chip.style.borderColor = 'rgba(99,102,241,0.3)';
+                chip.style.background = '#f8fafc';
+                chip.style.borderColor = 'rgba(15, 23, 42, 0.12)';
+                chip.style.color = '#475569';
             });
         });
 
@@ -2406,8 +2451,8 @@ export class ImageResizeManager {
         }
 
         // Remove injected styles
-        const styles = document.getElementById('image-resize-styles-v2');
-        if (styles) styles.remove();
+        document.getElementById('image-resize-styles-v2')?.remove();
+        document.getElementById('image-resize-styles-v3')?.remove();
 
         // Remove toast container
         const toastContainer = document.getElementById('image-resize-toast-container');

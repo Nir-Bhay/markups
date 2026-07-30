@@ -61,6 +61,21 @@ describe('live preview edit serializer', () => {
         expect(markdown).toContain('https://example.com/demo.mp4');
         expect(markdown).toContain('https://youtu.be/dQw4w9WgXcQ');
     });
+
+    it('preserves markups-img refs instead of resolved data/blob URLs', () => {
+        const root = document.createElement('article');
+        root.innerHTML = `
+            <p>
+              <img
+                alt="Diagram"
+                src="data:image/png;base64,AAAA"
+                data-original-src="markups-img:img_abc123"
+              />
+            </p>
+        `;
+
+        expect(serializePreviewToMarkdown(root)).toBe('![Diagram](markups-img:img_abc123)\n');
+    });
 });
 
 describe('block-level Markdown replacement', () => {
@@ -168,10 +183,48 @@ describe('LivePreviewEditController', () => {
 
         controller.toggleEditing(true);
         output.innerHTML = '<h2>Done</h2>';
+        output.dispatchEvent(new Event('input', { bubbles: true }));
         controller.toggleEditing(false);
 
         expect(onMarkdownChange).toHaveBeenLastCalledWith('## Done\n');
         expect(onExit).toHaveBeenCalledOnce();
         expect(output.getAttribute('contenteditable')).toBe('false');
+    });
+
+    it('does not rewrite Markdown when Document Mode is toggled without edits', () => {
+        const { controller, onMarkdownChange, onExit } = setupController();
+
+        controller.toggleEditing(true);
+        controller.toggleEditing(false);
+
+        expect(onMarkdownChange).not.toHaveBeenCalled();
+        expect(onExit).toHaveBeenCalledOnce();
+    });
+
+    it('protects images from contenteditable mutation and keeps markups-img refs', () => {
+        const { controller, output } = setupController();
+        output.innerHTML = `
+            <p data-source-line="1">
+              <img alt="Shot" src="data:image/png;base64,AAAA" data-original-src="markups-img:img_keep123" />
+            </p>
+        `;
+
+        controller.toggleEditing(true);
+        expect(output.querySelector('img')?.getAttribute('contenteditable')).toBe('false');
+        expect(serializePreviewToMarkdown(output)).toContain('markups-img:img_keep123');
+        expect(serializePreviewToMarkdown(output)).not.toContain('data:image/png');
+    });
+
+    it('flushes pending debounced edits on syncFromPreview', () => {
+        const { controller, output, onMarkdownChange } = setupController();
+
+        controller.toggleEditing(true);
+        output.innerHTML = '<h1>Pending title</h1>';
+        output.dispatchEvent(new Event('input', { bubbles: true }));
+
+        // Before debounce fires, force flush via public sync API
+        controller.syncFromPreview();
+
+        expect(onMarkdownChange).toHaveBeenCalledWith('# Pending title\n');
     });
 });

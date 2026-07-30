@@ -7,13 +7,33 @@
  */
 
 import { debounce } from '../../utils/debounce.js';
+import { serializeVideoMarkdown } from '../video-controls/index.js';
+import { formatImageAttributeBlock } from '../image-controls/index.js';
 
 const NON_EDITABLE_SELECTOR = [
     'button',
     'iframe',
     'video',
     'audio',
+    'img',
+    '.preview-image',
     '.preview-video',
+    '.preview-video-hitbox',
+    '.preview-video-edit-btn',
+    '.preview-video-date',
+    '.preview-video-caption',
+    '.preview-video-frame',
+    '.code-block-header',
+    '.code-copy-btn',
+    '[data-live-edit-ignore]'
+].join(',');
+
+// UI chrome stripped before HTML→Markdown. Keep img / .preview-image /
+// .preview-video so Document Mode round-trips media instead of deleting it.
+const SERIALIZE_STRIP_SELECTOR = [
+    'button',
+    '.preview-video-hitbox',
+    '.preview-video-edit-btn',
     '.code-block-header',
     '.code-copy-btn',
     '[data-live-edit-ignore]'
@@ -44,6 +64,32 @@ function trimBlankLines(value) {
 
 function textContent(node) {
     return collapseWhitespace(node.textContent || '').trim();
+}
+
+/**
+ * Resolve the Markdown image URL that should be written back to source.
+ * Preview rendering may replace markups-img: refs with data:/blob: URLs;
+ * processPreviewImages stores the original markdown src on data-original-src.
+ * @param {HTMLElement} node
+ * @returns {string}
+ */
+function resolveMarkdownImageSrc(node) {
+    const original = node.getAttribute('data-original-src') || node.dataset?.originalSrc || '';
+    const imageUrl = node.getAttribute('data-image-url') || node.dataset?.imageUrl || '';
+    const src = node.getAttribute('src') || '';
+
+    const candidates = [original, imageUrl, src];
+    for (const candidate of candidates) {
+        if (!candidate) continue;
+        if (candidate.startsWith('markups-img:')) return candidate;
+        if (!candidate.startsWith('data:') && !candidate.startsWith('blob:')) {
+            return candidate;
+        }
+    }
+
+    // Never write data:/blob: back into Markdown — that breaks Document Mode
+    // switches and can exceed storage quota.
+    return '';
 }
 
 function serializeChildren(node, context = {}) {
@@ -93,20 +139,7 @@ function serializeTable(table) {
 }
 
 function serializePreviewVideo(node) {
-    const video = node.querySelector('video[src]');
-    if (video) return `${video.getAttribute('src')}\n\n`;
-
-    const iframe = node.querySelector('iframe[src]');
-    if (!iframe) return '';
-
-    const src = iframe.getAttribute('src') || '';
-    const youtube = src.match(/youtube(?:-nocookie)?\.com\/embed\/([^/?#]+)/i);
-    if (youtube) return `https://youtu.be/${decodeURIComponent(youtube[1])}\n\n`;
-
-    const vimeo = src.match(/player\.vimeo\.com\/video\/([^/?#]+)/i);
-    if (vimeo) return `https://vimeo.com/${decodeURIComponent(vimeo[1])}\n\n`;
-
-    return `${src}\n\n`;
+    return serializeVideoMarkdown(node);
 }
 
 function serializeNode(node, context = {}) {
@@ -146,9 +179,19 @@ function serializeNode(node, context = {}) {
             return `[${label}](${href})`;
         }
         case 'IMG': {
-            const src = node.getAttribute('src') || '';
+            // Prefer the markdown source URL (often markups-img:…) over the
+            // resolved data:/blob: preview src so Document Mode never rewrites
+            // stable image refs into huge duplicated URLs.
+            const src = resolveMarkdownImageSrc(node);
             const alt = node.getAttribute('alt') || '';
-            return src ? `![${alt}](${src})` : '';
+            if (!src) return '';
+            const attrs = {
+                mode: node.dataset?.imageMode,
+                width: node.dataset?.imageWidth,
+                align: node.dataset?.imageAlign
+            };
+            const block = formatImageAttributeBlock(attrs);
+            return block ? `![${alt}](${src}) ${block}` : `![${alt}](${src})`;
         }
         case 'H1':
         case 'H2':
@@ -206,7 +249,9 @@ export function serializePreviewToMarkdown(root) {
     if (!root) return '';
 
     const clone = root.cloneNode(true);
-    clone.querySelectorAll(NON_EDITABLE_SELECTOR).forEach((node) => {
+    clone.querySelectorAll(SERIALIZE_STRIP_SELECTOR).forEach((node) => {
+        // Video chrome lives inside .preview-video; serializePreviewVideo
+        // reads attrs from the wrapper, so leave the whole widget intact.
         if (node.closest('.preview-video')) return;
         node.remove();
     });
@@ -299,6 +344,24 @@ export function replaceMarkdownBlockAtLine(sourceMarkdown, sourceLine, blockMark
     return trimBlankLines(nextLines.join('\n')) + '\n';
 }
 
+/**
+ * Guard against Document Mode sync poisoning Markdown with inline data:/blob:
+ * media that used to be stable markups-img / remote URLs.
+ */
+function looksLikeBrokenMediaMarkdown(nextMarkdown, sourceMarkdown) {
+    const next = String(nextMarkdown || '');
+    const source = String(sourceMarkdown || '');
+    const sourceRefs = (source.match(/markups-img:img_\w+/g) || []).length;
+    const nextRefs = (next.match(/markups-img:img_\w+/g) || []).length;
+    if (sourceRefs > 0 && nextRefs < sourceRefs) return true;
+
+    const nextDataImages = (next.match(/!\[[^\]]*\]\(data:/g) || []).length;
+    const sourceDataImages = (source.match(/!\[[^\]]*\]\(data:/g) || []).length;
+    if (nextDataImages > sourceDataImages) return true;
+
+    return false;
+}
+
 export class LivePreviewEditController {
     constructor({
         output,
@@ -318,22 +381,31 @@ export class LivePreviewEditController {
         this.onExit = onExit;
         this.showToast = showToast;
         this.enabled = false;
+        this.initialized = false;
+        this._dirty = false;
         this._lastEditedBlock = null;
         this._handleInput = debounce(() => this._syncFromPreview(), debounceMs);
+        this._markDirty = () => {
+            this._dirty = true;
+            this._rememberActiveBlock();
+            this._handleInput();
+        };
         this._rememberActiveBlock = () => {
             this._lastEditedBlock = this._getActiveBlock() || this._lastEditedBlock;
         };
         this._handleKeydown = (event) => {
             if ((event.ctrlKey || event.metaKey) && event.key === 's') {
                 event.preventDefault();
-                this._syncFromPreview();
+                this._dirty = true;
+                this.syncFromPreview();
                 this.showToast?.('Preview edits synced to Markdown', 'success', 1200);
             }
         };
     }
 
     initialize() {
-        if (!this.output || !this.toggle) return;
+        if (!this.output || !this.toggle || this.initialized) return;
+        this.initialized = true;
         this.toggle.addEventListener('click', () => this.toggleEditing(true));
         this.markdownToggle?.addEventListener('click', () => this.toggleEditing(false));
         this.refresh(this.output);
@@ -342,13 +414,14 @@ export class LivePreviewEditController {
     toggleEditing(force) {
         const next = typeof force === 'boolean' ? force : !this.enabled;
         if (next === this.enabled) return;
-        // When leaving edit mode, sync while `enabled` is still true so the
-        // final DOM edits are not dropped by _syncFromPreview's safety guard.
+        // When leaving edit mode, flush any pending debounce and sync while
+        // `enabled` is still true so final DOM edits are not dropped.
         if (!next) {
-            this._syncFromPreview();
+            this.syncFromPreview();
         }
 
         this.enabled = next;
+        this._dirty = false;
         this.refresh();
         this.showToast?.(
             this.enabled
@@ -375,14 +448,24 @@ export class LivePreviewEditController {
         this.output.setAttribute('contenteditable', this.enabled ? 'true' : 'false');
         this.output.setAttribute('spellcheck', 'true');
 
-        this.output.removeEventListener('input', this._handleInput);
+        if (this.enabled) {
+            this.output.setAttribute('role', 'textbox');
+            this.output.setAttribute('aria-multiline', 'true');
+            this.output.setAttribute('aria-label', 'Editable document preview');
+        } else {
+            this.output.removeAttribute('role');
+            this.output.removeAttribute('aria-multiline');
+            this.output.removeAttribute('aria-label');
+        }
+
+        this.output.removeEventListener('input', this._markDirty);
         this.output.removeEventListener('keydown', this._handleKeydown);
         this.output.removeEventListener('keyup', this._rememberActiveBlock);
         this.output.removeEventListener('pointerup', this._rememberActiveBlock);
         this.output.removeEventListener('focusin', this._rememberActiveBlock);
 
         if (this.enabled) {
-            this.output.addEventListener('input', this._handleInput);
+            this.output.addEventListener('input', this._markDirty);
             this.output.addEventListener('keydown', this._handleKeydown);
             this.output.addEventListener('keyup', this._rememberActiveBlock);
             this.output.addEventListener('pointerup', this._rememberActiveBlock);
@@ -414,13 +497,30 @@ export class LivePreviewEditController {
     }
 
     _syncFromPreview() {
-        if (!this.enabled || !this.output || !this.onMarkdownChange) return;
+        if (!this.enabled || !this.output || !this.onMarkdownChange || !this._dirty) return;
         const markdown = this._serializeEditedMarkdown();
+        if (!markdown || looksLikeBrokenMediaMarkdown(markdown, this.getSourceMarkdown?.() || '')) {
+            this.showToast?.('Skipped unsafe Document Mode sync to protect images/videos', 'warning', 2200);
+            this._dirty = false;
+            return;
+        }
         this.onMarkdownChange(markdown);
+        this._dirty = false;
+    }
+
+    /**
+     * Flush pending debounced edits and sync preview → Markdown immediately.
+     * Used by mode toggles and tab switches so Document Mode state is never
+     * saved half-written (which previously broke image URLs).
+     */
+    syncFromPreview() {
+        this._handleInput?.cancel?.();
+        this._syncFromPreview();
     }
 
     dispose() {
-        this.output?.removeEventListener('input', this._handleInput);
+        this._handleInput?.cancel?.();
+        this.output?.removeEventListener('input', this._markDirty);
         this.output?.removeEventListener('keydown', this._handleKeydown);
         this.output?.removeEventListener('keyup', this._rememberActiveBlock);
         this.output?.removeEventListener('pointerup', this._rememberActiveBlock);

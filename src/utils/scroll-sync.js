@@ -1,39 +1,50 @@
 /**
  * Scroll Sync Utilities
- * Pure anchor-based synchronization between Monaco editor and preview
- * Uses data-source-line attributes on preview elements for pixel-accurate sync
- * (Fixes delay, cuts, and drift on long docs — Issue #39)
+ * Bidirectional editor ↔ preview sync with direction-aware echo locking
+ * and block-aligned mapping for tighter section sync (Issue #39).
  * @module utils/scroll-sync
  */
 
 import { eventBus, EVENTS } from './eventBus.js';
 
+/** Ignore reverse-sync echoes while the driving pane is still settling. */
+const ECHO_LOCK_MS = 120;
+/** Coalesce expensive DOM rebuilds (MutationObserver / resize storms). */
+const REBUILD_DEBOUNCE_MS = 120;
+
 /**
  * ScrollSync class
- * Bidirectional sync using editor pixel positions ↔ preview data-source-line elements
+ * Maps Monaco pixel scroll ↔ preview [data-source-line] anchors.
+ * Within a block segment, progress is mapped by local height ratio so tall
+ * tables/images don't leave the paired pane stuck on the previous section.
  */
 class ScrollSync {
     constructor() {
         this.enabled = false;
-        this.isSyncing = false;
+        /** @type {'editor'|'preview'|null} */
+        this.syncSource = null;
         this.editor = null;
-        this.preview = null; // scrollable container (.preview-wrapper)
-        this.contentRoot = null; // #output (rendered markdown)
-        this.anchors = []; // [{ line, previewTop }] sorted by line
+        this.preview = null;
+        this.contentRoot = null;
+        /** @type {{ line: number, previewTop: number, editorTop: number, el?: Element|null }[]} */
+        this.anchors = [];
         this.cleanupFunctions = [];
-        this._syncTimeout = null;
+        this._echoUnlockTimer = null;
+        this._rebuildTimer = null;
         this._rebuildRaf = null;
         this._editorRaf = null;
         this._previewRaf = null;
-        this.onPreviewScrollExtra = null; // optional callback (outline UI)
+        this._userScrolling = false;
+        this._userScrollIdleTimer = null;
+        this.onPreviewScrollExtra = null;
     }
 
     /**
      * @param {Object} editor - Monaco editor instance
      * @param {HTMLElement} preview - Scrollable preview wrapper
      * @param {Object} [options]
-     * @param {HTMLElement} [options.contentRoot] - Rendered markdown root (#output)
-     * @param {Function} [options.onPreviewScroll] - Extra preview scroll hook
+     * @param {HTMLElement} [options.contentRoot]
+     * @param {Function} [options.onPreviewScroll]
      */
     initialize(editor, preview, options = {}) {
         this.destroy();
@@ -47,11 +58,13 @@ class ScrollSync {
 
     enable() {
         this.enabled = true;
+        this.scheduleRebuildAnchors();
         eventBus.emit(EVENTS.MODE_CHANGED, { scrollSync: true });
     }
 
     disable() {
         this.enabled = false;
+        this._clearEchoLock();
         eventBus.emit(EVENTS.MODE_CHANGED, { scrollSync: false });
     }
 
@@ -67,11 +80,15 @@ class ScrollSync {
 
     setEnabled(enabled) {
         this.enabled = !!enabled;
+        if (this.enabled) {
+            this.scheduleRebuildAnchors();
+        } else {
+            this._clearEchoLock();
+        }
     }
 
     /**
-     * Rebuild line ↔ preview offset map from [data-source-line] elements.
-     * Call after every preview render and when <details> open/close.
+     * Rebuild line ↔ preview/editor offset map from [data-source-line] elements.
      */
     rebuildAnchors() {
         if (!this.editor || !this.preview) {
@@ -90,56 +107,92 @@ class ScrollSync {
         const scrollTop = this.preview.scrollTop;
 
         const anchors = [];
-        elements.forEach(el => {
+        elements.forEach((el) => {
             const line = parseInt(el.getAttribute('data-source-line'), 10);
             if (isNaN(line) || line < 1) return;
 
+            if (el.tagName === 'LI' && el.parentElement?.closest('[data-source-line]')) {
+                const parentBlock = el.parentElement.closest('ul, ol');
+                if (parentBlock?.hasAttribute('data-source-line')) return;
+            }
+
             const top = el.getBoundingClientRect().top - previewRect.top + scrollTop;
-            anchors.push({ line, previewTop: Math.max(0, top) });
+            anchors.push({
+                line,
+                previewTop: Math.max(0, top),
+                editorTop: this._editorTopForLine(line),
+                el
+            });
         });
 
-        // Dedupe by line (keep first/lowest previewTop for each line)
         const seen = new Map();
-        anchors.forEach(a => {
-            if (!seen.has(a.line) || a.previewTop < seen.get(a.line)) {
-                seen.set(a.line, a.previewTop);
+        anchors.forEach((a) => {
+            const prev = seen.get(a.line);
+            if (!prev || a.previewTop < prev.previewTop) {
+                seen.set(a.line, a);
             }
         });
 
-        this.anchors = Array.from(seen.entries())
-            .map(([line, previewTop]) => ({ line, previewTop }))
-            .sort((a, b) => a.line - b.line);
+        this.anchors = Array.from(seen.values()).sort((a, b) => {
+            if (a.line !== b.line) return a.line - b.line;
+            return a.previewTop - b.previewTop;
+        });
 
-        // Add end anchor (last line ↔ bottom of content)
         if (this.anchors.length > 0) {
             const model = this.editor.getModel();
-            const lineCount = model ? model.getLineCount() : this.anchors[this.anchors.length - 1].line;
-            const contentHeight = Math.max(
-                this.preview.scrollHeight,
-                root.scrollHeight || 0
-            );
+            const lineCount = model
+                ? model.getLineCount()
+                : this.anchors[this.anchors.length - 1].line;
+
+            const previewMax = this._previewMaxScroll();
+            const editorMax = this._editorMaxScroll();
+
             this.anchors.push({
                 line: Math.max(1, lineCount),
-                previewTop: Math.max(0, contentHeight)
+                previewTop: Math.max(0, previewMax),
+                editorTop: Math.max(0, editorMax),
+                el: null
             });
         }
     }
 
-    /** Schedule rebuild on next frame (coalesce rapid updates) */
+    /** Schedule rebuild soon (coalesced). Skipped while user is actively scrolling. */
     scheduleRebuildAnchors() {
-        if (this._rebuildRaf) cancelAnimationFrame(this._rebuildRaf);
-        this._rebuildRaf = requestAnimationFrame(() => {
-            this._rebuildRaf = null;
-            this.rebuildAnchors();
-        });
+        if (this._userScrolling) return;
+
+        if (this._rebuildTimer) clearTimeout(this._rebuildTimer);
+        this._rebuildTimer = setTimeout(() => {
+            this._rebuildTimer = null;
+            if (this._rebuildRaf) cancelAnimationFrame(this._rebuildRaf);
+            this._rebuildRaf = requestAnimationFrame(() => {
+                this._rebuildRaf = null;
+                if (!this._userScrolling) {
+                    this.rebuildAnchors();
+                }
+            });
+        }, REBUILD_DEBOUNCE_MS);
     }
 
     setupEventListeners() {
         if (!this.editor || !this.preview) return;
 
-        // Editor scroll → preview sync (rAF-throttled)
-        const editorScrollHandler = this.editor.onDidScrollChange(() => {
-            if (!this.enabled || this.isSyncing) return;
+        const markUserScrolling = () => {
+            this._userScrolling = true;
+            if (this._userScrollIdleTimer) clearTimeout(this._userScrollIdleTimer);
+            this._userScrollIdleTimer = setTimeout(() => {
+                this._userScrolling = false;
+                this._userScrollIdleTimer = null;
+                this.rebuildAnchors();
+            }, ECHO_LOCK_MS + 40);
+        };
+
+        const editorScrollHandler = this.editor.onDidScrollChange((e) => {
+            if (e && e.scrollTopChanged === false) return;
+            markUserScrolling();
+
+            if (!this.enabled) return;
+            if (this.syncSource === 'preview') return;
+
             if (this._editorRaf) cancelAnimationFrame(this._editorRaf);
             this._editorRaf = requestAnimationFrame(() => {
                 this._editorRaf = null;
@@ -148,12 +201,16 @@ class ScrollSync {
         });
         this.cleanupFunctions.push(() => editorScrollHandler.dispose());
 
-        // Preview scroll → editor sync (rAF-throttled)
         const previewScrollHandler = () => {
+            markUserScrolling();
+
             if (typeof this.onPreviewScrollExtra === 'function') {
                 this.onPreviewScrollExtra();
             }
-            if (!this.enabled || this.isSyncing) return;
+
+            if (!this.enabled) return;
+            if (this.syncSource === 'editor') return;
+
             if (this._previewRaf) cancelAnimationFrame(this._previewRaf);
             this._previewRaf = requestAnimationFrame(() => {
                 this._previewRaf = null;
@@ -165,7 +222,17 @@ class ScrollSync {
             this.preview.removeEventListener('scroll', previewScrollHandler);
         });
 
-        // Issue #39: collapsed <details> change preview height → rebuild map
+        if ('onscrollend' in window) {
+            const onScrollEnd = () => {
+                if (!this.enabled || this.syncSource) return;
+                this.rebuildAnchors();
+            };
+            this.preview.addEventListener('scrollend', onScrollEnd, { passive: true });
+            this.cleanupFunctions.push(() => {
+                this.preview.removeEventListener('scrollend', onScrollEnd);
+            });
+        }
+
         const detailsToggleHandler = (e) => {
             if (e.target && e.target.tagName === 'DETAILS') {
                 this.scheduleRebuildAnchors();
@@ -176,60 +243,89 @@ class ScrollSync {
             this.preview.removeEventListener('toggle', detailsToggleHandler, true);
         });
 
-        // Rebuild when preview content size changes (images, mermaid, etc.)
         if (typeof ResizeObserver !== 'undefined') {
             const ro = new ResizeObserver(() => this.scheduleRebuildAnchors());
             const observeTarget = this.contentRoot || this.preview;
             ro.observe(observeTarget);
             this.cleanupFunctions.push(() => ro.disconnect());
         }
+
+        if (typeof this.editor.onDidLayoutChange === 'function') {
+            const layoutDisposable = this.editor.onDidLayoutChange(() => {
+                this.scheduleRebuildAnchors();
+            });
+            this.cleanupFunctions.push(() => layoutDisposable.dispose());
+        }
+        if (typeof this.editor.onDidContentSizeChange === 'function') {
+            const sizeDisposable = this.editor.onDidContentSizeChange(() => {
+                this.scheduleRebuildAnchors();
+            });
+            this.cleanupFunctions.push(() => sizeDisposable.dispose());
+        }
+
+        if (typeof document !== 'undefined' && document.fonts) {
+            document.fonts.ready.then(() => this.scheduleRebuildAnchors()).catch(() => {});
+        }
+
+        if (typeof MutationObserver !== 'undefined') {
+            const mo = new MutationObserver(() => this.scheduleRebuildAnchors());
+            const observeTarget = this.contentRoot || this.preview;
+            mo.observe(observeTarget, {
+                childList: true,
+                subtree: true,
+                attributes: false,
+                characterData: false
+            });
+            this.cleanupFunctions.push(() => mo.disconnect());
+        }
     }
 
-    /**
-     * Editor → preview using pure anchor-based sync.
-     * Maps editor pixel position to preview pixel position via anchor map.
-     */
     syncEditorToPreview() {
         if (!this.editor || !this.preview) return;
         if (this.anchors.length < 2) return;
 
-        this._beginSync();
+        this._beginSync('editor');
 
         const edScrollTop = this.editor.getScrollTop();
-        const topLine = this._getEditorTopLine();
-        const lineTop = this.editor.getTopForLineNumber(topLine);
-        const lineHeight = this._getLineHeight();
-        const subLineRatio = Math.max(0, Math.min(1, (edScrollTop - lineTop) / lineHeight));
+        const targetY = this._clamp(
+            this._previewTopForEditorScroll(edScrollTop),
+            0,
+            this._previewMaxScroll()
+        );
+        const topLine = this._lineForEditorScroll(edScrollTop);
 
-        const targetY = this._previewTopForEditorPosition(topLine, subLineRatio);
-
-        this.preview.scrollTop = targetY;
+        if (Math.abs(this.preview.scrollTop - targetY) > 0.5) {
+            this.preview.scrollTop = targetY;
+        }
 
         this._endSync();
         eventBus.emit(EVENTS.SCROLL_SYNC_PREVIEW, { line: topLine, y: targetY });
     }
 
-    /**
-     * Preview → editor using pure anchor-based sync.
-     */
     syncPreviewToEditor() {
         if (!this.editor || !this.preview) return;
         if (this.anchors.length < 2) return;
 
-        this._beginSync();
+        this._beginSync('preview');
 
         const pvScrollTop = this.preview.scrollTop;
+        const edTop = this._clamp(
+            this._editorTopForPreviewScroll(pvScrollTop),
+            0,
+            this._editorMaxScroll()
+        );
         const line = this._lineForPreviewTop(pvScrollTop);
-        const edTop = this._editorTopForLine(line);
 
-        this.editor.setScrollTop(edTop);
+        if (Math.abs(this.editor.getScrollTop() - edTop) > 0.5) {
+            this.editor.setScrollTop(edTop);
+        }
 
         this._endSync();
         eventBus.emit(EVENTS.SCROLL_SYNC_EDITOR, { line, y: edTop });
     }
 
     scrollToTop() {
-        this._beginSync();
+        this._beginSync('editor');
         this.editor?.setScrollTop(0);
         if (this.preview) this.preview.scrollTop = 0;
         this._endSync();
@@ -237,23 +333,23 @@ class ScrollSync {
 
     scrollToRatio(ratio) {
         const r = Math.min(1, Math.max(0, ratio));
-        this._beginSync();
+        this._beginSync('editor');
         if (this.editor) {
-            const max = Math.max(0, this.editor.getScrollHeight() - this.editor.getLayoutInfo().height);
-            this.editor.setScrollTop(max * r);
+            this.editor.setScrollTop(this._editorMaxScroll() * r);
         }
         if (this.preview) {
-            const max = Math.max(0, this.preview.scrollHeight - this.preview.clientHeight);
-            this.preview.scrollTop = max * r;
+            this.preview.scrollTop = this._previewMaxScroll() * r;
         }
         this._endSync();
     }
 
     destroy() {
-        if (this._syncTimeout) clearTimeout(this._syncTimeout);
+        this._clearEchoLock();
+        if (this._rebuildTimer) clearTimeout(this._rebuildTimer);
         if (this._rebuildRaf) cancelAnimationFrame(this._rebuildRaf);
         if (this._editorRaf) cancelAnimationFrame(this._editorRaf);
         if (this._previewRaf) cancelAnimationFrame(this._previewRaf);
+        if (this._userScrollIdleTimer) clearTimeout(this._userScrollIdleTimer);
         this.cleanupFunctions.forEach((cleanup) => cleanup());
         this.cleanupFunctions = [];
         this.editor = null;
@@ -261,46 +357,47 @@ class ScrollSync {
         this.contentRoot = null;
         this.anchors = [];
         this.onPreviewScrollExtra = null;
+        this.syncSource = null;
+        this._userScrolling = false;
     }
 
     // ─── Internals ───────────────────────────────────────────
 
-    _beginSync() {
-        this.isSyncing = true;
-        if (this._syncTimeout) clearTimeout(this._syncTimeout);
+    _beginSync(source) {
+        this.syncSource = source;
+        if (this._echoUnlockTimer) clearTimeout(this._echoUnlockTimer);
     }
 
     _endSync() {
-        this._syncTimeout = setTimeout(() => {
-            this.isSyncing = false;
-            this._syncTimeout = null;
-        }, 80);
+        if (this._echoUnlockTimer) clearTimeout(this._echoUnlockTimer);
+        this._echoUnlockTimer = setTimeout(() => {
+            this.syncSource = null;
+            this._echoUnlockTimer = null;
+        }, ECHO_LOCK_MS);
     }
 
-    /** Get the line number at the top of the editor viewport (binary search) */
-    _getEditorTopLine() {
-        const model = this.editor.getModel();
-        if (!model) return 1;
-
-        const scrollTop = this.editor.getScrollTop();
-        let lo = 1;
-        let hi = model.getLineCount();
-        while (lo < hi) {
-            const mid = Math.floor((lo + hi + 1) / 2);
-            const top = this.editor.getTopForLineNumber(mid);
-            if (top <= scrollTop + 1) lo = mid;
-            else hi = mid - 1;
-        }
-        return lo;
+    _clearEchoLock() {
+        if (this._echoUnlockTimer) clearTimeout(this._echoUnlockTimer);
+        this._echoUnlockTimer = null;
+        this.syncSource = null;
     }
 
-    _getLineHeight() {
+    _clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+    }
+
+    _previewMaxScroll() {
+        if (!this.preview) return 0;
+        return Math.max(0, this.preview.scrollHeight - this.preview.clientHeight);
+    }
+
+    _editorMaxScroll() {
+        if (!this.editor) return 0;
         try {
-            return this.editor.getOption?.(58) ?? // EditorOption.lineHeight
-                this.editor.getOption?.('lineHeight') ??
-                20;
+            const height = this.editor.getLayoutInfo?.()?.height ?? 0;
+            return Math.max(0, (this.editor.getScrollHeight?.() ?? 0) - height);
         } catch {
-            return 20;
+            return 0;
         }
     }
 
@@ -313,50 +410,83 @@ class ScrollSync {
     }
 
     /**
-     * Given an editor line + sub-line ratio, return the ideal preview scrollTop.
-     * Uses anchor map with pixel-accurate interpolation.
+     * Find segment by editorTop / previewTop, then map using local progress.
+     * Prefer snapping to exact block starts (headings) when near them.
      */
-    _previewTopForEditorPosition(line, subLineRatio) {
+    _findAnchorSegment(value, key) {
         const anchors = this.anchors;
-        if (anchors.length === 0) return 0;
+        if (anchors.length === 0) return null;
+        if (value <= anchors[0][key]) {
+            return { a: anchors[0], b: anchors[Math.min(1, anchors.length - 1)], t: 0 };
+        }
 
-        // Find the segment containing this line
-        let i = 0;
-        while (i < anchors.length - 1 && anchors[i + 1].line <= line) i++;
+        let lo = 0;
+        let hi = anchors.length - 1;
+        while (lo < hi) {
+            const mid = Math.floor((lo + hi + 1) / 2);
+            if (anchors[mid][key] <= value) lo = mid;
+            else hi = mid - 1;
+        }
 
-        const a = anchors[i];
-        const b = anchors[Math.min(i + 1, anchors.length - 1)];
-        if (a.line === b.line) return a.previewTop;
+        const a = anchors[lo];
+        const b = anchors[Math.min(lo + 1, anchors.length - 1)];
+        if (a[key] === b[key]) {
+            return { a, b, t: 0 };
+        }
 
-        // Interpolate: line position + sub-line pixel ratio
-        const lineFraction = (line - a.line) / (b.line - a.line);
-        const pixelFraction = lineFraction + (subLineRatio / (b.line - a.line));
-        const t = Math.max(0, Math.min(1, pixelFraction));
-        return a.previewTop + t * (b.previewTop - a.previewTop);
+        const t = (value - a[key]) / (b[key] - a[key]);
+        return { a, b, t: Math.max(0, Math.min(1, t)) };
     }
 
     /**
-     * Given a preview scrollTop, return the ideal editor line number.
+     * Editor → preview: map by segment, but when the editor top sits on/near a
+     * heading or block start, snap preview to that block's top so sections match.
      */
-    _lineForPreviewTop(previewTop) {
-        const anchors = this.anchors;
-        if (anchors.length === 0) return 1;
-        if (previewTop <= anchors[0].previewTop) return anchors[0].line;
+    _previewTopForEditorScroll(editorScrollTop) {
+        const seg = this._findAnchorSegment(editorScrollTop, 'editorTop');
+        if (!seg) return 0;
 
-        let i = 0;
-        while (
-            i < anchors.length - 1 &&
-            anchors[i + 1].previewTop <= previewTop
-        ) {
-            i++;
+        const { a, b, t } = seg;
+        const span = b.editorTop - a.editorTop;
+
+        // Near exact block start (within ~half a line / 12px): snap to block top
+        if (Math.abs(editorScrollTop - a.editorTop) <= 12) {
+            return a.previewTop;
         }
 
-        const a = anchors[i];
-        const b = anchors[Math.min(i + 1, anchors.length - 1)];
-        if (a.previewTop === b.previewTop) return a.line;
+        // Prefer element-height aware mapping when we know the DOM node height
+        if (a.el && span > 0) {
+            // Map progress across the full editor segment onto the full preview
+            // segment (important for tall tables → next heading).
+            return a.previewTop + t * (b.previewTop - a.previewTop);
+        }
 
-        const t = (previewTop - a.previewTop) / (b.previewTop - a.previewTop);
-        return a.line + t * (b.line - a.line);
+        return a.previewTop + t * (b.previewTop - a.previewTop);
+    }
+
+    _editorTopForPreviewScroll(previewTop) {
+        const seg = this._findAnchorSegment(previewTop, 'previewTop');
+        if (!seg) return 0;
+
+        const { a, b, t } = seg;
+
+        if (Math.abs(previewTop - a.previewTop) <= 12) {
+            return a.editorTop;
+        }
+
+        return a.editorTop + t * (b.editorTop - a.editorTop);
+    }
+
+    _lineForEditorScroll(editorScrollTop) {
+        const seg = this._findAnchorSegment(editorScrollTop, 'editorTop');
+        if (!seg) return 1;
+        return seg.a.line + seg.t * (seg.b.line - seg.a.line);
+    }
+
+    _lineForPreviewTop(previewTop) {
+        const seg = this._findAnchorSegment(previewTop, 'previewTop');
+        if (!seg) return 1;
+        return seg.a.line + seg.t * (seg.b.line - seg.a.line);
     }
 }
 

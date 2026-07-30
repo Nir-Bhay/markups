@@ -14,7 +14,7 @@ export const PREVIEW_SANITIZE_CONFIG = {
     // Markdown preview extensions. Mermaid iframes are created later through DOM,
     // not accepted from user-authored Markdown HTML.
     ADD_TAGS: ['math', 'mrow', 'mo', 'mi', 'mn', 'msup', 'mfrac', 'semantics', 'annotation', 'video', 'source'],
-    ADD_ATTR: ['target', 'class', 'id', 'aria-*', 'controls', 'preload', 'playsinline', 'controlslist'],
+    ADD_ATTR: ['target', 'class', 'id', 'aria-*', 'controls', 'preload', 'playsinline', 'controlslist', 'rel'],
     FORBID_TAGS: ['iframe', 'script', 'object', 'embed', 'form'],
     FORBID_ATTR: ['style', 'srcdoc'],
     ALLOW_DATA_ATTR: false
@@ -34,6 +34,49 @@ function buildConfig(overrides = {}) {
         FORBID_TAGS: [...new Set([...(PREVIEW_SANITIZE_CONFIG.FORBID_TAGS || []), ...(overrides.FORBID_TAGS || [])])],
         FORBID_ATTR: [...new Set([...(PREVIEW_SANITIZE_CONFIG.FORBID_ATTR || []), ...(overrides.FORBID_ATTR || [])])]
     };
+}
+
+/**
+ * In-page anchors (#heading) stay in the preview. Everything else (http/https,
+ * mailto, relative URLs, etc.) should open in a new tab so the editor is not left.
+ * @param {string} href
+ * @returns {boolean}
+ */
+export function shouldOpenPreviewLinkInNewTab(href) {
+    const value = String(href || '').trim();
+    if (!value) return false;
+    if (value.startsWith('#')) return false;
+    if (/^(javascript|vbscript|data):/i.test(value.replace(/[\u0000-\u001F\u007F\s]+/g, ''))) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Force safe new-tab behavior on external preview anchors.
+ * @param {Element} node
+ */
+export function applyPreviewLinkTarget(node) {
+    if (!node || node.tagName !== 'A') return;
+    const href = node.getAttribute('href') || '';
+    if (shouldOpenPreviewLinkInNewTab(href)) {
+        node.setAttribute('target', '_blank');
+        node.setAttribute('rel', 'noopener noreferrer');
+    } else if (href.startsWith('#')) {
+        // Keep TOC / heading permalinks on the same page
+        node.removeAttribute('target');
+    } else if (node.hasAttribute('target')) {
+        node.setAttribute('rel', 'noopener noreferrer');
+    }
+}
+
+/**
+ * Apply new-tab policy to all anchors under a preview root (post-render safety net).
+ * @param {ParentNode|null|undefined} root
+ */
+export function ensurePreviewLinksOpenInNewTab(root) {
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    root.querySelectorAll('a[href]').forEach((anchor) => applyPreviewLinkTarget(anchor));
 }
 
 /**
@@ -81,9 +124,7 @@ export function fallbackSanitizeHtml(html, config = PREVIEW_SANITIZE_CONFIG) {
             }
         });
 
-        if (node.tagName === 'A' && node.hasAttribute('target')) {
-            node.setAttribute('rel', 'noopener noreferrer');
-        }
+        applyPreviewLinkTarget(node);
     });
 
     return template.innerHTML;
@@ -106,6 +147,9 @@ export function sanitizePreviewHtml(html, overrides = {}) {
 
 export default {
     PREVIEW_SANITIZE_CONFIG,
+    shouldOpenPreviewLinkInNewTab,
+    applyPreviewLinkTarget,
+    ensurePreviewLinksOpenInNewTab,
     fallbackSanitizeHtml,
     sanitizePreviewHtml
 };
