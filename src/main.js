@@ -91,10 +91,14 @@ import { debounce } from './utils/debounce.js';
 import { showToast } from './ui/toast/index.js';
 import { copyToClipboard } from './utils/clipboard.js';
 import { scrollSync } from './utils/scroll-sync.js';
-import { processPreviewVideos, stripVideoAttributeBlocks } from './utils/video-embed.js';
+import { processPreviewVideos, stripVideoAttributeBlocks, isEmbeddableVideoUrl } from './utils/video-embed.js';
 import { initLivePreviewEdit } from './features/live-preview-edit/index.js';
 import { initVideoControls, parseVideoAttributesFromMarkdown } from './features/video-controls/index.js';
 import { initImageControls } from './features/image-controls/index.js';
+import {
+    enhanceLabeledVideoLinks,
+    normalizeInsertVideoUrl
+} from './features/video-discoverability/index.js';
 import { appContextMenuManager } from './features/app-context-menu/index.js';
 import { createFocusTrap } from './utils/dom.js';
 import { validateImageSignature, sanitizeSvgToDataUrl } from './utils/file.js';
@@ -2077,11 +2081,20 @@ let convert = (markdown) => {
 
         // Issue #40: Embed video URLs / GitHub video attachments / YouTube-Vimeo
         // Parse attrs from the original markdown (renderableMarkdown has blocks stripped).
+        const videoMode = currentSettings?.preview?.videoMode || 'smart';
         processPreviewVideos(
             outputElement,
-            currentSettings?.preview?.videoMode || 'smart',
+            videoMode,
             parseVideoAttributesFromMarkdown(documentModeMarkdown || markdown || '')
         );
+
+        // Issue #40 UX: labeled video links stay as links — offer one-click “Show as video”
+        enhanceLabeledVideoLinks(outputElement, {
+            videoMode,
+            getMarkdown: () => editor?.getValue() || '',
+            onMarkdownChange: applyMarkdownFromPreviewEdit,
+            showToast
+        });
 
         // Re-apply media/layout controls and contenteditable state after every preview render.
         videoControlsController?.refresh(outputElement);
@@ -5231,7 +5244,7 @@ let setupHelpButton = () => {
  * Bump NOTICE_KEY (e.g. v2) when you want the badge to reappear for a new tip.
  */
 let setupUpdateNotice = () => {
-    const NOTICE_KEY = 'com.markdownlivepreview.update_notice_v2';
+    const NOTICE_KEY = 'com.markdownlivepreview.update_notice_v3';
     const root = document.getElementById('header-notice');
     const btn = document.getElementById('update-notice-btn');
     const popover = document.getElementById('update-notice-popover');
@@ -5940,6 +5953,113 @@ let insertMarkdown = (type) => {
     }
 };
 
+let setupInsertVideoButton = () => {
+    const btn = document.getElementById('toolbar-video');
+    if (!btn) return;
+
+    let panel = null;
+
+    const close = () => {
+        if (!panel) return;
+        panel.remove();
+        panel = null;
+        btn.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('mousedown', onDocDown, true);
+        document.removeEventListener('keydown', onKeyDown, true);
+    };
+
+    const onDocDown = (event) => {
+        if (!panel) return;
+        if (panel.contains(event.target) || btn.contains(event.target)) return;
+        close();
+    };
+
+    const onKeyDown = (event) => {
+        if (event.key === 'Escape') close();
+    };
+
+    const insert = () => {
+        const input = panel?.querySelector('#video-insert-url');
+        const errorEl = panel?.querySelector('.video-insert-error');
+        const raw = String(input?.value || '').trim();
+        const url = normalizeInsertVideoUrl(raw);
+
+        if (!url || !isEmbeddableVideoUrl(url)) {
+            if (errorEl) {
+                errorEl.textContent = 'Paste an MP4, GitHub video, YouTube, or Vimeo URL.';
+            }
+            input?.focus();
+            return;
+        }
+
+        // Bare URL on its own lines → Smart mode embeds a player
+        insertText(`\n${url}\n`);
+        showToast('Video URL inserted — preview will embed it', 'success', 2000);
+        close();
+        editor?.focus();
+    };
+
+    const open = () => {
+        close();
+        panel = document.createElement('div');
+        panel.id = 'video-insert-popover';
+        panel.className = 'video-insert-popover';
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-label', 'Insert video');
+        panel.innerHTML = `
+            <div class="video-insert-title">Insert video</div>
+            <p class="video-insert-hint">
+                Bare URL = player in preview.<br>
+                <code>[text](url)</code> = clickable link (use <strong>Show as video</strong> to embed).
+            </p>
+            <label class="video-insert-field">
+                <span>Video URL</span>
+                <input type="url" id="video-insert-url" placeholder="https://…/video.mp4 or YouTube / GitHub" autocomplete="off" />
+            </label>
+            <div class="video-insert-error" aria-live="polite"></div>
+            <div class="video-insert-actions">
+                <button type="button" class="video-insert-cancel">Cancel</button>
+                <button type="button" class="video-insert-confirm">Insert</button>
+            </div>
+        `;
+        document.body.appendChild(panel);
+
+        const rect = btn.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        let left = rect.left;
+        let top = rect.bottom + 8;
+        if (left + panelRect.width > window.innerWidth - 8) {
+            left = window.innerWidth - panelRect.width - 8;
+        }
+        if (left < 8) left = 8;
+        if (top + panelRect.height > window.innerHeight - 8) {
+            top = Math.max(8, rect.top - panelRect.height - 8);
+        }
+        panel.style.left = `${left}px`;
+        panel.style.top = `${top}px`;
+
+        btn.setAttribute('aria-expanded', 'true');
+        panel.querySelector('.video-insert-cancel')?.addEventListener('click', close);
+        panel.querySelector('.video-insert-confirm')?.addEventListener('click', insert);
+        panel.querySelector('#video-insert-url')?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                insert();
+            }
+        });
+        document.addEventListener('mousedown', onDocDown, true);
+        document.addEventListener('keydown', onKeyDown, true);
+        panel.querySelector('#video-insert-url')?.focus();
+    };
+
+    btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (panel) close();
+        else open();
+    });
+};
+
 let setupToolbar = () => {
     document.getElementById('toolbar-undo').addEventListener('click', () => {
         editor?.trigger('toolbar', 'undo');
@@ -5965,6 +6085,7 @@ let setupToolbar = () => {
     document.getElementById('toolbar-h3').addEventListener('click', () => insertMarkdown('h3'));
     document.getElementById('toolbar-link').addEventListener('click', () => insertMarkdown('link'));
     // toolbar-image is handled in setupImageUpload for file upload functionality
+    setupInsertVideoButton();
     document.getElementById('toolbar-code').addEventListener('click', () => insertMarkdown('code'));
     document.getElementById('toolbar-inline-code').addEventListener('click', () => insertMarkdown('inline-code'));
     document.getElementById('toolbar-ul').addEventListener('click', () => insertMarkdown('ul'));
