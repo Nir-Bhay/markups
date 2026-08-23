@@ -13,6 +13,61 @@ const ECHO_LOCK_MS = 120;
 const REBUILD_DEBOUNCE_MS = 120;
 
 /**
+ * Enforce monotonic non-decreasing positions for an anchor coordinate, so
+ * segment interpolation can never produce a backwards jump ("halt then jump")
+ * when a few source-line annotations resolve out of order. (Issue #39)
+ * @param {{[key:string]:number}[]} anchors
+ * @param {string} key
+ */
+export function clampMonotonic(anchors, key) {
+    if (!anchors || !anchors.length) return anchors;
+    let prev = -Infinity;
+    for (const a of anchors) {
+        const v = Number(a[key]);
+        if (Number.isFinite(v)) {
+            if (v < prev) a[key] = prev;
+            else prev = v;
+        }
+    }
+    return anchors;
+}
+
+/**
+ * Locate the [a, b] segment bracketing `value` on `key` and the local progress.
+ * Pure + testable. (Issue #39)
+ * @param {number} value
+ * @param {string} key - 'editorTop' | 'previewTop'
+ * @param {{[key:string]:number}[]} anchors
+ * @returns {{ a: any, b: any, t: number }|null}
+ */
+export function findAnchorSegment(value, key, anchors = []) {
+    if (!anchors.length) return null;
+    if (value <= anchors[0][key]) {
+        return { a: anchors[0], b: anchors[Math.min(1, anchors.length - 1)], t: 0 };
+    }
+    let lo = 0;
+    let hi = anchors.length - 1;
+    while (lo < hi) {
+        const mid = Math.floor((lo + hi + 1) / 2);
+        if (anchors[mid][key] <= value) lo = mid;
+        else hi = mid - 1;
+    }
+    const a = anchors[lo];
+    const b = anchors[Math.min(lo + 1, anchors.length - 1)];
+
+    // Value is at or past the last anchor: full travel reached.
+    if (lo === anchors.length - 1 && value >= a[key]) {
+        return { a, b: a, t: 1 };
+    }
+
+    if (a[key] === b[key]) {
+        return { a, b, t: 0 };
+    }
+    const t = (value - a[key]) / (b[key] - a[key]);
+    return { a, b, t: Math.max(0, Math.min(1, t)) };
+}
+
+/**
  * ScrollSync class
  * Maps Monaco pixel scroll ↔ preview [data-source-line] anchors.
  * Within a block segment, progress is mapped by local height ratio so tall
@@ -147,12 +202,33 @@ class ScrollSync {
             const previewMax = this._previewMaxScroll();
             const editorMax = this._editorMaxScroll();
 
+            // Monaco's getTopForLineNumber() can report positions PAST the
+            // editor's real scroll range (the trailing blank area / viewport
+            // slack). Any anchor pinned that high is unreachable, so the sync
+            // mapping stalls short of the preview bottom and the final section
+            // (credit) never appears. (Issue #39)
+            //   → Clamp every real anchor's editorTop to the actual scroll max.
+            for (const a of this.anchors) {
+                if (a.editorTop > editorMax && editorMax > 0) {
+                    a.editorTop = editorMax;
+                }
+            }
+
+            // End control point = (editorMax, previewMax): parking the editor at
+            // the bottom of its scroll bar must land the preview at its bottom.
             this.anchors.push({
                 line: Math.max(1, lineCount),
                 previewTop: Math.max(0, previewMax),
                 editorTop: Math.max(0, editorMax),
                 el: null
             });
+
+            // Re-sort by editorTop so the binary-search in findAnchorSegment is
+            // valid, then guarantee monotonic non-decreasing positions in both
+            // coordinates so interpolation never jumps backwards. (Issue #39)
+            this.anchors.sort((a, b) => a.editorTop - b.editorTop || a.previewTop - b.previewTop);
+            clampMonotonic(this.anchors, 'editorTop');
+            clampMonotonic(this.anchors, 'previewTop');
         }
     }
 
@@ -410,55 +486,29 @@ class ScrollSync {
     }
 
     /**
-     * Find segment by editorTop / previewTop, then map using local progress.
-     * Prefer snapping to exact block starts (headings) when near them.
+     * Find segment by editorTop / previewTop. Delegates to the pure, testable
+     * `findAnchorSegment` against the live anchor map.
      */
     _findAnchorSegment(value, key) {
-        const anchors = this.anchors;
-        if (anchors.length === 0) return null;
-        if (value <= anchors[0][key]) {
-            return { a: anchors[0], b: anchors[Math.min(1, anchors.length - 1)], t: 0 };
-        }
-
-        let lo = 0;
-        let hi = anchors.length - 1;
-        while (lo < hi) {
-            const mid = Math.floor((lo + hi + 1) / 2);
-            if (anchors[mid][key] <= value) lo = mid;
-            else hi = mid - 1;
-        }
-
-        const a = anchors[lo];
-        const b = anchors[Math.min(lo + 1, anchors.length - 1)];
-        if (a[key] === b[key]) {
-            return { a, b, t: 0 };
-        }
-
-        const t = (value - a[key]) / (b[key] - a[key]);
-        return { a, b, t: Math.max(0, Math.min(1, t)) };
+        return findAnchorSegment(value, key, this.anchors);
     }
 
     /**
-     * Editor → preview: map by segment, but when the editor top sits on/near a
-     * heading or block start, snap preview to that block's top so sections match.
+     * Editor → preview: map by segment, but when the editor is parked within a
+     * small tolerance of a block start, snap the preview to that block's top.
+     * The tolerance is tiny so smooth tracking never "halts" mid-scroll.
      */
     _previewTopForEditorScroll(editorScrollTop) {
         const seg = this._findAnchorSegment(editorScrollTop, 'editorTop');
         if (!seg) return 0;
 
         const { a, b, t } = seg;
-        const span = b.editorTop - a.editorTop;
 
-        // Near exact block start (within ~half a line / 12px): snap to block top
-        if (Math.abs(editorScrollTop - a.editorTop) <= 12) {
+        // Soft snap only when effectively parked on the block start (Issue #39:
+        // a wider snap held the preview while the editor kept scrolling, then
+        // jumped once it passed the boundary).
+        if (Math.abs(editorScrollTop - a.editorTop) <= 4) {
             return a.previewTop;
-        }
-
-        // Prefer element-height aware mapping when we know the DOM node height
-        if (a.el && span > 0) {
-            // Map progress across the full editor segment onto the full preview
-            // segment (important for tall tables → next heading).
-            return a.previewTop + t * (b.previewTop - a.previewTop);
         }
 
         return a.previewTop + t * (b.previewTop - a.previewTop);
@@ -470,7 +520,7 @@ class ScrollSync {
 
         const { a, b, t } = seg;
 
-        if (Math.abs(previewTop - a.previewTop) <= 12) {
+        if (Math.abs(previewTop - a.previewTop) <= 4) {
             return a.editorTop;
         }
 
