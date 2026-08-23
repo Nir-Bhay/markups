@@ -119,11 +119,22 @@ function createHtml5Video(url) {
         video.setAttribute('type', 'video/mp4');
     }
 
-    // If playback fails (e.g. wrong content-type), fall back to a link
+    // If playback fails (e.g. wrong content-type), fall back to a link.
+    // For extension-less GitHub assets the fallback is the actual resource — a
+    // failed "video" is usually an image, so render an <img> instead of a dead
+    // "Open video" label (Issue #40).
     video.addEventListener('error', () => {
         if (wrap.dataset.fallback === '1') return;
         wrap.dataset.fallback = '1';
         wrap.replaceChildren();
+        if (isGitHubVideoAttachment(url)) {
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = 'Video preview unavailable';
+            img.loading = 'lazy';
+            wrap.appendChild(img);
+            return;
+        }
         const a = document.createElement('a');
         a.href = url;
         a.target = '_blank';
@@ -268,8 +279,18 @@ export function processPreviewVideos(container, behavior = 'smart', attrsByUrl =
     // Image markdown pointing at video files: ![](clip.mp4)
     container.querySelectorAll('img[src]').forEach((img) => {
         const src = img.getAttribute('src') || '';
-        if (isDirectVideoUrl(src) || isGitHubVideoAttachment(src)) {
+        if (isDirectVideoUrl(src)) {
             tryReplaceWithVideo(img, behavior, attrsByUrl);
+        } else if (isGitHubVideoAttachment(src)) {
+            // GitHub user-attachment assets have no file extension — the URL may
+            // serve an image OR a video. Only treat an image-syntax element as a
+            // video when the user explicitly tagged it {video mode=embed}; otherwise
+            // keep it as an image. (Issue #40: picture links were mislabeled "Open
+            // video" because every GitHub asset was assumed to be a video.)
+            const perMode = String(attrsByUrl?.get?.(normalizeVideoUrl(src))?.mode || '').toLowerCase();
+            if (perMode === 'embed') {
+                tryReplaceWithVideo(img, behavior, attrsByUrl);
+            }
         }
     });
 

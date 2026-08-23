@@ -114,6 +114,39 @@ describe('video embed helpers', () => {
         expect(container.querySelector('.preview-video-hitbox')).toBeTruthy();
     });
 
+    it('keeps GitHub picture-link images as images unless explicitly tagged mode=embed (Issue #40)', () => {
+        const githubImage =
+            'https://github.com/user-attachments/assets/bbbb-bbbb-bbbb-bbbb';
+
+        // Image markdown with no {video} hint → stays an <img>, never "Open video"
+        const plain = document.createElement('div');
+        plain.innerHTML = `<p><img src="${githubImage}" alt="picture"></p>`;
+        processPreviewVideos(plain);
+        expect(plain.querySelector('video')).toBeNull();
+        expect(plain.querySelector('img')?.getAttribute('src')).toBe(githubImage);
+
+        // Explicit {video mode=embed} → embedded as a player
+        const tagged = document.createElement('div');
+        tagged.innerHTML = `<p><img src="${githubImage}" alt="clip"></p>`;
+        const attrs = new Map([[githubImage, { mode: 'embed', width: '100%', align: 'center' }]]);
+        processPreviewVideos(tagged, 'smart', attrs);
+        expect(tagged.querySelector('img')).toBeNull();
+        expect(tagged.querySelector('video')?.getAttribute('src')).toBe(githubImage);
+    });
+
+    it('still embeds bare GitHub asset links (autolink path) as videos (Issue #40 regression)', () => {
+        const githubVideo =
+            'https://github.com/user-attachments/assets/80b44104-49c5-4b46-aa37-acf5c4957062';
+        const container = document.createElement('div');
+        container.innerHTML = `<p><a href="${githubVideo}">${githubVideo}</a></p>`;
+
+        processPreviewVideos(container, 'smart');
+
+        const video = container.querySelector('video');
+        expect(video).toBeTruthy();
+        expect(video.getAttribute('src')).toBe(githubVideo);
+    });
+
     it('embeds labeled YouTube/Vimeo links even when link text is not the URL', () => {
         const container = document.createElement('div');
         container.innerHTML = `
