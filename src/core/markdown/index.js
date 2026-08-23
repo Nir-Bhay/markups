@@ -9,6 +9,9 @@ import { markedHighlight } from 'marked-highlight';
 import { gfmHeadingId } from 'marked-gfm-heading-id';
 import markedAlert from 'marked-alert';
 import markedFootnote from 'marked-footnote';
+// Emoji shortcode syntax (:smile:) for the preview (Issue #45)
+import { markedEmoji } from 'marked-emoji';
+import { emojiMarkedOptions } from '../../utils/emoji-shortcodes.js';
 import Prism from 'prismjs';
 import DOMPurify from 'dompurify';
 import mermaid from 'mermaid';
@@ -181,7 +184,7 @@ class MarkdownService {
             markedAlert(),
             markedFootnote(),
             {
-                extensions: [katexExtension]
+                extensions: [katexExtension, markedEmoji(emojiMarkedOptions)]
             }
         );
 

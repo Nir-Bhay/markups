@@ -107,6 +107,9 @@ import { initVersionHistory, setHasEdited } from './features/version-history/ind
 // GFM Extensions
 import markedAlert from 'marked-alert';
 import markedFootnote from 'marked-footnote';
+// Emoji shortcode syntax (:smile:) for the preview (Issue #45)
+import { markedEmoji } from 'marked-emoji';
+import { emojiMarkedOptions } from './utils/emoji-shortcodes.js';
 // Note: markdownlint is Node.js only, using custom browser-based linting instead
 
 // Global configuration constants
@@ -966,6 +969,8 @@ marked.use(markedKatex({
 // Configure GFM Extensions
 marked.use(markedAlert());
 marked.use(markedFootnote());
+// Emoji shortcode syntax (:smile:) for the preview (Issue #45)
+marked.use(markedEmoji(emojiMarkedOptions));
 
 // Slugify function for heading IDs
 let slugify = (text) => {
