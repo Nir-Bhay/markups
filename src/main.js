@@ -60,6 +60,12 @@ import 'prismjs/components/prism-yaml';
 import 'prismjs/components/prism-markdown';
 import 'prismjs/components/prism-docker';
 import 'prismjs/components/prism-markup'; // HTML, XML, SVG, MathML (Issue #42)
+// prism-markup-templating defines tokenizePlaceholders / buildPlaceholders,
+// which prism-php and other template grammars require. Loading php without it
+// made markup/xml tokenize throw, so ALL code highlighting fell back to plain
+// text in the preview ("everything black"). (Issue #42)
+import 'prismjs/components/prism-markup-templating';
+import 'prismjs/components/prism-ini'; // INI / .gitconfig section highlighting (Issue #44)
 import 'prismjs/themes/prism-tomorrow.css';
 
 // Issue #42: prism-markup already covers XML; keep explicit aliases for fences.

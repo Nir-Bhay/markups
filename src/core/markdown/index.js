@@ -28,6 +28,8 @@ import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-markdown';
 import 'prismjs/components/prism-css';
 import 'prismjs/components/prism-markup'; // HTML, XML, SVG, MathML aliases
+import 'prismjs/components/prism-markup-templating'; // tokenizePlaceholders dep (Issue #42)
+import 'prismjs/components/prism-ini'; // INI section highlighting (Issue #44)
 import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-yaml';
 import 'prismjs/components/prism-java';
