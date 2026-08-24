@@ -498,14 +498,29 @@ export class LivePreviewEditController {
 
     _syncFromPreview() {
         if (!this.enabled || !this.output || !this.onMarkdownChange || !this._dirty) return;
+        const sourceMarkdown = this.getSourceMarkdown?.() || '';
         const markdown = this._serializeEditedMarkdown();
-        if (!markdown || looksLikeBrokenMediaMarkdown(markdown, this.getSourceMarkdown?.() || '')) {
+        if (!markdown || looksLikeBrokenMediaMarkdown(markdown, sourceMarkdown)) {
             this.showToast?.('Skipped unsafe Document Mode sync to protect images/videos', 'warning', 2200);
+            this._dirty = false;
+            return;
+        }
+        // Idempotency: if the serialize produced exactly the current source, the sync
+        // is a no-op. Dropping it prevents redundant full-document writes — and, when
+        // combined with a stale block reference, avoids doubling a paragraph on repeat
+        // toggles / saves / view switches.
+        if (markdown === sourceMarkdown) {
             this._dirty = false;
             return;
         }
         this.onMarkdownChange(markdown);
         this._dirty = false;
+        // Drop the stale edited-block reference. After the re-render triggered by the
+        // write above (or by a mode/tab switch), the old block may point at a detached
+        // node whose data-source-line no longer maps to the same region — reusing it
+        // later made replaceMarkdownBlockAtLine INSERT instead of replace, doubling the
+        // block. Re-resolve from the live selection next edit instead.
+        this._lastEditedBlock = null;
     }
 
     /**

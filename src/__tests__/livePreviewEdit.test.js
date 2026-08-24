@@ -178,6 +178,44 @@ describe('LivePreviewEditController', () => {
         expect(onMarkdownChange).toHaveBeenCalledWith('# Old title\n\nUpdated paragraph only\n');
     });
 
+    it('skips the sync when serialization is unchanged (no-op guard prevents doubling)', () => {
+        const { controller, output, onMarkdownChange } = setupController();
+
+        controller.toggleEditing(true);
+        const paragraph = output.querySelector('p');
+        // Leave the paragraph text unchanged ("Old paragraph") → block-level sync
+        // serializes back to exactly the current source → must be a no-op.
+        const range = document.createRange();
+        range.selectNodeContents(paragraph);
+        const selection = document.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        paragraph.dispatchEvent(new Event('input', { bubbles: true }));
+        vi.advanceTimersByTime(25);
+
+        expect(onMarkdownChange).not.toHaveBeenCalled();
+    });
+
+    it('drops the stale edited-block reference after a successful sync', () => {
+        const { controller, output, onMarkdownChange } = setupController();
+
+        controller.toggleEditing(true);
+        const paragraph = output.querySelector('p');
+        paragraph.textContent = 'Changed block';
+        const range = document.createRange();
+        range.selectNodeContents(paragraph);
+        const selection = document.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        paragraph.dispatchEvent(new Event('input', { bubbles: true }));
+        vi.advanceTimersByTime(25);
+
+        expect(onMarkdownChange).toHaveBeenCalled();
+        // After the write, the controller must not keep pointing at the (soon
+        // detached) old node; re-resolve from the live selection on the next edit.
+        expect(controller._lastEditedBlock).toBeNull();
+    });
+
     it('syncs and exits cleanly when disabled', () => {
         const { controller, output, onMarkdownChange, onExit } = setupController();
 
