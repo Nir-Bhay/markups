@@ -2080,15 +2080,22 @@ let convert = (markdown) => {
         const outputElement = document.querySelector('#output');
         if (!outputElement) return;
 
-        // Remember video URLs already in the preview so a re-render of the SAME
-        // video (user typing elsewhere) skips the network metadata re-fetch.
-        // Without this, every debounced keystroke rebuilt <video preload="metadata">
-        // and the browser reloaded it repeatedly ("video keeps loading while I type").
-        const seenVideoUrls = new Set(
-            Array.from(outputElement.querySelectorAll('.preview-video'))
-                .map((v) => v.dataset?.videoUrl)
-                .filter(Boolean)
-        );
+        // Capture the CURRENT live <video> nodes so a re-render of the SAME player
+        // (user typing elsewhere) reuses the already-loaded element instead of
+        // building a fresh one. Re-inserting the live node means NO network
+        // re-fetch and NO player flicker on every keystroke.
+        const reuseVideoElements = new Map();
+        outputElement.querySelectorAll('.preview-video video').forEach((v) => {
+            const line = v.parentElement?.dataset?.sourceLine || v.closest?.('.preview-video')?.dataset?.sourceLine;
+            const key = line || v.dataset?.videoUrl || v.getAttribute('src');
+            if (key && !reuseVideoElements.has(key)) {
+                reuseVideoElements.set(key, v);
+            }
+            const byUrl = v.dataset?.videoUrl || v.getAttribute('src');
+            if (byUrl && !reuseVideoElements.has(byUrl)) {
+                reuseVideoElements.set(byUrl, v);
+            }
+        });
 
         outputElement.innerHTML = sanitized;
         normalizeCodeLanguageClasses(outputElement);
@@ -2107,7 +2114,7 @@ let convert = (markdown) => {
             outputElement,
             videoMode,
             parseVideoAttributesFromMarkdown(documentModeMarkdown || markdown || ''),
-            seenVideoUrls
+            reuseVideoElements
         );
 
         // Issue #40 UX: labeled video links stay as links — offer one-click “Show as video”

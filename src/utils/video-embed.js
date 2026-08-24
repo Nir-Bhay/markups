@@ -97,12 +97,12 @@ export function stripVideoAttributeBlocks(markdown = '') {
 }
 
 /**
- * Build an HTML5 <video> element for direct / GitHub asset URLs
+ * Build an HTML5 <video> element for direct / GitHub asset URLs.
  * @param {string} url
- * @param {{ reuse?: boolean }} [opts] - reuse=true means a video for this exact
- *   URL already existed in the prior render (user is editing elsewhere). Set
- *   preload='none' so we do NOT re-fetch metadata from the network on every
- *   keystroke — this kills the "video keeps loading while I type" symptom.
+ * @param {{ reuseVideoEl?: HTMLVideoElement|null }} [opts] - when provided, re-insert
+ *   the SAME (already-loaded) video DOM node instead of building a fresh one. Moving a
+ *   live element back into the new wrapper preserves its loaded/preloaded state, so
+ *   typing elsewhere does NOT re-fetch metadata or re-create the player each render.
  * @returns {HTMLElement}
  */
 function createHtml5Video(url, opts = {}) {
@@ -111,42 +111,52 @@ function createHtml5Video(url, opts = {}) {
     wrap.dataset.videoUrl = url;
     wrap.dataset.videoType = 'html5';
 
-    const video = document.createElement('video');
+    // Reuse the existing, already-loaded <video> node if we have one for this player.
+    // Only the direct-video path reuses a node; GitHub-attachment ambiguity keeps its
+    // own error→img fallback path untouched.
+    const video = opts.reuseVideoEl || document.createElement('video');
     video.controls = true;
-    video.preload = opts.reuse ? 'none' : 'metadata';
     video.playsInline = true;
-    video.setAttribute('controlsList', 'nodownload');
-    video.setAttribute('src', url);
 
-    // GitHub video attachments (no file extension) need a type hint
-    if (isGitHubVideoAttachment(url)) {
-        video.setAttribute('type', 'video/mp4');
-    }
+    if (!opts.reuseVideoEl) {
+        video.preload = 'metadata';
+        video.setAttribute('controlsList', 'nodownload');
+        video.setAttribute('src', url);
 
-    // If playback fails (e.g. wrong content-type), fall back to a link.
-    // For extension-less GitHub assets the fallback is the actual resource — a
-    // failed "video" is usually an image, so render an <img> instead of a dead
-    // "Open video" label (Issue #40).
-    video.addEventListener('error', () => {
-        if (wrap.dataset.fallback === '1') return;
-        wrap.dataset.fallback = '1';
-        wrap.replaceChildren();
+        // GitHub video attachments (no file extension) need a type hint
         if (isGitHubVideoAttachment(url)) {
-            const img = document.createElement('img');
-            img.src = url;
-            img.alt = 'Video preview unavailable';
-            img.loading = 'lazy';
-            wrap.appendChild(img);
-            return;
+            video.setAttribute('type', 'video/mp4');
         }
-        const a = document.createElement('a');
-        a.href = url;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        a.className = 'preview-video-fallback';
-        a.textContent = 'Open video';
-        wrap.appendChild(a);
-    }, { once: true });
+
+        // If playback fails (e.g. wrong content-type), fall back to a link.
+        // For extension-less GitHub assets the fallback is the actual resource — a
+        // failed "video" is usually an image, so render an <img> instead of a dead
+        // "Open video" label (Issue #40).
+        video.addEventListener('error', () => {
+            if (wrap.dataset.fallback === '1') return;
+            wrap.dataset.fallback = '1';
+            wrap.replaceChildren();
+            if (isGitHubVideoAttachment(url)) {
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = 'Video preview unavailable';
+                img.loading = 'lazy';
+                wrap.appendChild(img);
+                return;
+            }
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.className = 'preview-video-fallback';
+            a.textContent = 'Open video';
+            wrap.appendChild(a);
+        }, { once: true });
+    } else if (video.getAttribute('src') !== url) {
+        // Reused element: refresh src only if it changed (same URL is a no-op and
+        // does NOT reload a loaded element).
+        video.setAttribute('src', url);
+    }
 
     wrap.appendChild(video);
     return wrap;
@@ -232,11 +242,12 @@ export function shouldEmbedVideo(el, behavior = 'smart') {
  * @param {HTMLAnchorElement|HTMLImageElement} el
  * @param {string} [behavior] - 'smart' | 'always-embed' | 'always-link'
  * @param {Map<string, {mode?: string}>|null} [attrsByUrl]
- * @param {Set<string>|null} [seenUrls] - video URLs already present in the prior
- *   render, so reused players skip the metadata re-fetch.
+ * @param {Map<string, HTMLVideoElement>|null} [reuseVideos] - already-loaded video
+ *   elements keyed by data-source-line (and URL as fallback), so re-renders reuse the
+ *   live node instead of re-creating+firing a network load. null = always build fresh.
  * @returns {boolean} whether replacement happened
  */
-function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null, seenUrls = null) {
+function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null, reuseVideos = null) {
     const rawUrl =
         el.tagName === 'IMG'
             ? el.getAttribute('src')
@@ -251,10 +262,6 @@ function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null, seenUrls
 
     if (!shouldEmbedVideo(el, effectiveBehavior)) return false;
 
-    const hosted = parseHostedVideo(url);
-    const reuse = !!seenUrls?.has?.(url);
-    const player = hosted ? createHostedEmbed(hosted, url) : createHtml5Video(url, { reuse });
-
     const parent = el.parentElement;
     const normalizeLabel = (value) => String(value || '').trim().replace(/[>),.;:!?]+$/, '');
     const parentLabel = normalizeLabel(parent?.textContent);
@@ -266,6 +273,18 @@ function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null, seenUrls
     const replaceTarget = isStandaloneParagraph ? parent : el;
 
     const sourceLine = replaceTarget.getAttribute?.('data-source-line') || el.getAttribute?.('data-source-line');
+
+    const hosted = parseHostedVideo(url);
+    let player;
+    if (hosted) {
+        player = createHostedEmbed(hosted, url);
+    } else {
+        // Reuse the live (already-loaded) video node for this source line (URL as
+        // fallback) so typing elsewhere never re-creates + reloads the player.
+        const reused = reuseVideos?.get?.(sourceLine) || reuseVideos?.get?.(url);
+        player = createHtml5Video(url, { reuseVideoEl: reused });
+    }
+
     if (sourceLine) {
         player.setAttribute('data-source-line', sourceLine);
     }
@@ -280,14 +299,14 @@ function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null, seenUrls
  * @param {string} [behavior] - 'smart' | 'always-embed' | 'always-link'
  * @param {Map<string, {mode?: string}>|null} [attrsByUrl]
  */
-export function processPreviewVideos(container, behavior = 'smart', attrsByUrl = null, seenUrls = null) {
+export function processPreviewVideos(container, behavior = 'smart', attrsByUrl = null, reuseVideos = null) {
     if (!container) return;
 
     // Image markdown pointing at video files: ![](clip.mp4)
     container.querySelectorAll('img[src]').forEach((img) => {
         const src = img.getAttribute('src') || '';
         if (isDirectVideoUrl(src)) {
-            tryReplaceWithVideo(img, behavior, attrsByUrl, seenUrls);
+            tryReplaceWithVideo(img, behavior, attrsByUrl, reuseVideos);
         } else if (isGitHubVideoAttachment(src)) {
             // GitHub user-attachment assets have no file extension — the URL may
             // serve an image OR a video. Only treat an image-syntax element as a
@@ -296,14 +315,14 @@ export function processPreviewVideos(container, behavior = 'smart', attrsByUrl =
             // video" because every GitHub asset was assumed to be a video.)
             const perMode = String(attrsByUrl?.get?.(normalizeVideoUrl(src))?.mode || '').toLowerCase();
             if (perMode === 'embed') {
-                tryReplaceWithVideo(img, behavior, attrsByUrl, seenUrls);
+                tryReplaceWithVideo(img, behavior, attrsByUrl, reuseVideos);
             }
         }
     });
 
     // Autolinks / markdown links to videos
     container.querySelectorAll('a[href]').forEach((a) => {
-        tryReplaceWithVideo(a, behavior, attrsByUrl, seenUrls);
+        tryReplaceWithVideo(a, behavior, attrsByUrl, reuseVideos);
     });
 }
 
