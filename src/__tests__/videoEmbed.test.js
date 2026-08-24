@@ -162,4 +162,24 @@ describe('video embed helpers', () => {
         const vimeoIframe = container.querySelector('iframe[src*="player.vimeo.com/video/123456"]');
         expect(vimeoIframe).toBeTruthy();
     });
+
+    it('reuses a seen video URL with preload=none so typing does not re-fetch metadata', () => {
+        const demo = 'https://example.com/demo.mp4';
+
+        // First render (URL not yet seen) → preload metadata so it can play.
+        const first = document.createElement('div');
+        first.innerHTML = `<p><a href="${demo}">${demo}</a></p>`;
+        processPreviewVideos(first, 'smart', null, new Set());
+        expect(first.querySelector('video')?.getAttribute('preload')).toBe('metadata');
+
+        // Re-render with the same URL in seenUrls (user typed elsewhere) →
+        // preload none: do not hit the network to reload metadata.
+        const again = document.createElement('div');
+        again.innerHTML = `<p><a href="${demo}">${demo}</a></p>`;
+        processPreviewVideos(again, 'smart', null, new Set([demo]));
+        const video = again.querySelector('video');
+        expect(video).toBeTruthy();
+        expect(video.getAttribute('preload')).toBe('none');
+        expect(video.getAttribute('src')).toBe(demo);
+    });
 });

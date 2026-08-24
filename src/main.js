@@ -2080,6 +2080,16 @@ let convert = (markdown) => {
         const outputElement = document.querySelector('#output');
         if (!outputElement) return;
 
+        // Remember video URLs already in the preview so a re-render of the SAME
+        // video (user typing elsewhere) skips the network metadata re-fetch.
+        // Without this, every debounced keystroke rebuilt <video preload="metadata">
+        // and the browser reloaded it repeatedly ("video keeps loading while I type").
+        const seenVideoUrls = new Set(
+            Array.from(outputElement.querySelectorAll('.preview-video'))
+                .map((v) => v.dataset?.videoUrl)
+                .filter(Boolean)
+        );
+
         outputElement.innerHTML = sanitized;
         normalizeCodeLanguageClasses(outputElement);
 
@@ -2096,7 +2106,8 @@ let convert = (markdown) => {
         processPreviewVideos(
             outputElement,
             videoMode,
-            parseVideoAttributesFromMarkdown(documentModeMarkdown || markdown || '')
+            parseVideoAttributesFromMarkdown(documentModeMarkdown || markdown || ''),
+            seenVideoUrls
         );
 
         // Issue #40 UX: labeled video links stay as links — offer one-click “Show as video”

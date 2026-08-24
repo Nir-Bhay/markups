@@ -99,9 +99,13 @@ export function stripVideoAttributeBlocks(markdown = '') {
 /**
  * Build an HTML5 <video> element for direct / GitHub asset URLs
  * @param {string} url
+ * @param {{ reuse?: boolean }} [opts] - reuse=true means a video for this exact
+ *   URL already existed in the prior render (user is editing elsewhere). Set
+ *   preload='none' so we do NOT re-fetch metadata from the network on every
+ *   keystroke — this kills the "video keeps loading while I type" symptom.
  * @returns {HTMLElement}
  */
-function createHtml5Video(url) {
+function createHtml5Video(url, opts = {}) {
     const wrap = document.createElement('div');
     wrap.className = 'preview-video';
     wrap.dataset.videoUrl = url;
@@ -109,7 +113,7 @@ function createHtml5Video(url) {
 
     const video = document.createElement('video');
     video.controls = true;
-    video.preload = 'metadata';
+    video.preload = opts.reuse ? 'none' : 'metadata';
     video.playsInline = true;
     video.setAttribute('controlsList', 'nodownload');
     video.setAttribute('src', url);
@@ -228,9 +232,11 @@ export function shouldEmbedVideo(el, behavior = 'smart') {
  * @param {HTMLAnchorElement|HTMLImageElement} el
  * @param {string} [behavior] - 'smart' | 'always-embed' | 'always-link'
  * @param {Map<string, {mode?: string}>|null} [attrsByUrl]
+ * @param {Set<string>|null} [seenUrls] - video URLs already present in the prior
+ *   render, so reused players skip the metadata re-fetch.
  * @returns {boolean} whether replacement happened
  */
-function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null) {
+function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null, seenUrls = null) {
     const rawUrl =
         el.tagName === 'IMG'
             ? el.getAttribute('src')
@@ -246,7 +252,8 @@ function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null) {
     if (!shouldEmbedVideo(el, effectiveBehavior)) return false;
 
     const hosted = parseHostedVideo(url);
-    const player = hosted ? createHostedEmbed(hosted, url) : createHtml5Video(url);
+    const reuse = !!seenUrls?.has?.(url);
+    const player = hosted ? createHostedEmbed(hosted, url) : createHtml5Video(url, { reuse });
 
     const parent = el.parentElement;
     const normalizeLabel = (value) => String(value || '').trim().replace(/[>),.;:!?]+$/, '');
@@ -273,14 +280,14 @@ function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null) {
  * @param {string} [behavior] - 'smart' | 'always-embed' | 'always-link'
  * @param {Map<string, {mode?: string}>|null} [attrsByUrl]
  */
-export function processPreviewVideos(container, behavior = 'smart', attrsByUrl = null) {
+export function processPreviewVideos(container, behavior = 'smart', attrsByUrl = null, seenUrls = null) {
     if (!container) return;
 
     // Image markdown pointing at video files: ![](clip.mp4)
     container.querySelectorAll('img[src]').forEach((img) => {
         const src = img.getAttribute('src') || '';
         if (isDirectVideoUrl(src)) {
-            tryReplaceWithVideo(img, behavior, attrsByUrl);
+            tryReplaceWithVideo(img, behavior, attrsByUrl, seenUrls);
         } else if (isGitHubVideoAttachment(src)) {
             // GitHub user-attachment assets have no file extension — the URL may
             // serve an image OR a video. Only treat an image-syntax element as a
@@ -289,14 +296,14 @@ export function processPreviewVideos(container, behavior = 'smart', attrsByUrl =
             // video" because every GitHub asset was assumed to be a video.)
             const perMode = String(attrsByUrl?.get?.(normalizeVideoUrl(src))?.mode || '').toLowerCase();
             if (perMode === 'embed') {
-                tryReplaceWithVideo(img, behavior, attrsByUrl);
+                tryReplaceWithVideo(img, behavior, attrsByUrl, seenUrls);
             }
         }
     });
 
     // Autolinks / markdown links to videos
     container.querySelectorAll('a[href]').forEach((a) => {
-        tryReplaceWithVideo(a, behavior, attrsByUrl);
+        tryReplaceWithVideo(a, behavior, attrsByUrl, seenUrls);
     });
 }
 

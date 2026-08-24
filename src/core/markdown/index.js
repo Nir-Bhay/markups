@@ -186,7 +186,10 @@ class MarkdownService {
             markedAlert(),
             markedFootnote(),
             {
-                extensions: [katexExtension, markedEmoji(emojiMarkedOptions)]
+                extensions: [
+                    katexExtension,
+                    ...markedEmoji(emojiMarkedOptions).extensions
+                ]
             }
         );
 
