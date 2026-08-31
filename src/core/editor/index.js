@@ -420,20 +420,41 @@ class EditorService {
     dispose() {
         this.disposables.forEach(d => d.dispose());
         this.disposables = [];
-        this.editor?.dispose();
+        if (this.editor) {
+            this.editor.dispose();
+        }
         this.editor = null;
         this.initialized = false;
         EditorService.instance = null;
     }
 }
 
-// Export singleton instance
-export const editorService = new EditorService();
-
-// Also export the class for testing
-export { EditorService };
+// Export a live singleton. We keep a module-level holder so that dispose() can
+// reset it and subsequent imports get a fresh instance (avoids a dead object
+// lingering after HMR or explicit teardown).
+let _editorServiceInstance = new EditorService();
 
 // Re-export themes and utils
 export { THEMES, defineCustomThemes } from './themes.js';
+
+// Live binding: returns the current instance (re-created after dispose).
+export const editorService = new Proxy({}, {
+    get: (_t, prop) => _editorServiceInstance[prop],
+    set: (_t, prop, val) => { _editorServiceInstance[prop] = val; return true; }
+});
+
+// Reset hook used by dispose() so the exported binding points at a new instance.
+function resetEditorService() {
+    _editorServiceInstance = new EditorService();
+}
+// Patch dispose to also reset the exported singleton.
+const _origDispose = EditorService.prototype.dispose;
+EditorService.prototype.dispose = function () {
+    _origDispose.call(this);
+    resetEditorService();
+};
+
+// Also export the class for testing
+export { EditorService };
 
 export default editorService;

@@ -147,7 +147,7 @@ class AIService {
             // Parse streaming response
             let fullText = '';
             if (config.format === 'anthropic') {
-                fullText = await this._parseAnthropicStream(response, options.onChunk);
+                fullText = await this._parseAnthropicStream(response, options.onChunk, options.onError);
             } else {
                 fullText = await this._parseOpenAIStream(response, options.onChunk);
             }
@@ -212,6 +212,17 @@ class AIService {
                 return data.choices?.[0]?.message?.content || '';
             }
 
+        } catch (error) {
+            // Convert transport/network failures (and any other thrown error)
+            // into a structured, user-friendly result instead of letting the
+            // promise reject as an unhandled rejection. Callers receive
+            // { error } and decide how to surface it.
+            const raw = error?.message || '';
+            const isNetwork = /fetch|network|Failed to fetch|load failed|AbortError|ECONN|ENOTFOUND/i.test(raw);
+            const message = isNetwork
+                ? 'Network error: unable to reach the AI service. Check your internet connection, endpoint URL, and API key.'
+                : (raw || 'The AI service returned an unexpected error.');
+            return { error: message };
         } finally {
             this.abortController = null;
         }
@@ -411,9 +422,10 @@ class AIService {
      * @private
      * @param {Response} response - Fetch response
      * @param {Function} [onChunk] - Callback per chunk
+     * @param {Function} [onError] - Callback to surface non-fatal stream errors
      * @returns {Promise<string>} Full text
      */
-    async _parseAnthropicStream(response, onChunk) {
+    async _parseAnthropicStream(response, onChunk, onError) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullText = '';
@@ -446,11 +458,21 @@ class AIService {
                         } else if (parsed.type === 'message_stop') {
                             break;
                         } else if (parsed.type === 'error') {
-                            throw new Error(parsed.error?.message || 'Anthropic streaming error');
+                            // Surface the stream error without aborting the stream:
+                            // log a warning, notify via onError (if provided), and
+                            // continue consuming remaining chunks. Previously this
+                            // re-threw and killed the whole stream.
+                            const msg = parsed.error?.message || 'Anthropic streaming error';
+                            console.warn('[ai-writer] Anthropic stream error event (continuing):', msg);
+                            if (onError) onError(new Error(msg));
+                            continue;
                         }
                     } catch (e) {
-                        if (e.message && !e.message.includes('JSON')) throw e;
-                        // Skip malformed JSON chunks
+                        // Skip malformed JSON chunks; never re-throw so the stream
+                        // is not aborted by a transient parse failure.
+                        if (e && e.message && !e.message.includes('JSON')) {
+                            console.warn('[ai-writer] Non-JSON stream line skipped (continuing):', e.message);
+                        }
                     }
                 }
             }

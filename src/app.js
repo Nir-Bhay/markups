@@ -45,7 +45,6 @@ import { importManager } from './features/import/index.js';
 import { initLivePreviewEdit } from './features/live-preview-edit/index.js';
 import { initVideoControls } from './features/video-controls/index.js';
 import { appContextMenuManager } from './features/app-context-menu/index.js';
-import { editorService } from './core/editor/index.js';
 
 // AI Writer — lazy-loaded on first use (P3-T1)
 let _aiWriterManager = null;

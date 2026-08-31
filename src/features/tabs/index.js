@@ -4,7 +4,7 @@
  * @module features/tabs
  */
 
-import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
 import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { editorService } from '../../core/editor/index.js';
@@ -101,7 +101,8 @@ class TabsManager {
      */
     _setupEventListeners() {
         // Listen for content changes to mark tab dirty
-        eventBus.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
+        this.subscriptions = this.subscriptions || new Subscriptions();
+        this.subscriptions.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
             this.updateActiveTabContent(content);
         });
     }
@@ -447,6 +448,7 @@ class TabsManager {
     dispose() {
         if (this._saveTimeout) {
             clearTimeout(this._saveTimeout);
+        if (this.subscriptions) this.subscriptions.dispose();
         }
         this._saveTabs();
         this.tabs = [];

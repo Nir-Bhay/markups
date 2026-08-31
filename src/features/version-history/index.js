@@ -16,6 +16,15 @@ let editor = null;
 let defaultInput = '';
 let hasEdited = false;
 let versionHistoryFocusTrap = null;
+let versionSnapshotIntervalId = null;
+
+export function stopVersionHistoryPolling() {
+    if (versionSnapshotIntervalId !== null) {
+        clearInterval(versionSnapshotIntervalId);
+        versionSnapshotIntervalId = null;
+    }
+}
+
 
 /**
  * Load version history from storage
@@ -175,8 +184,9 @@ export function initVersionHistory(options = {}) {
         }
     });
 
-    // Auto-save version snapshots periodically
-    setInterval(() => {
+    // Auto-save version snapshots periodically. Store the ID so the interval can
+    // be cleared on teardown (stopVersionHistoryPolling).
+    versionSnapshotIntervalId = setInterval(() => {
         if (hasEdited) {
             addVersionSnapshot();
         }

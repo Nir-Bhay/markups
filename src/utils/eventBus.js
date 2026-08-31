@@ -79,6 +79,66 @@ class EventBus {
 export const eventBus = new EventBus();
 
 /**
+ * Subscriptions - A disposable bucket for eventBus.on() handles.
+ *
+ *   const subs = new Subscriptions();
+ *   subs.on(EVENTS.X, handler);  // returns unsubscribe
+ *   subs.dispose();              // removes ALL handlers at once
+ *
+ * This eliminates the memory-leak class where feature dispose() methods
+ * never called the unsubscribe function returned by eventBus.on(). All
+ * features should now collect subscriptions into one of these and call
+ * dispose() in their teardown path.
+ */
+export class Subscriptions {
+    constructor() {
+        this._unsubs = new Set();
+    }
+
+    /**
+     * Subscribe to an event and remember the unsubscribe.
+     * @param {string} event - Event name
+     * @param {Function} handler - Handler function
+     * @returns {Function} Unsubscribe function (also stored for dispose)
+     */
+    on(event, handler) {
+        const off = eventBus.on(event, handler);
+        this._unsubs.add(off);
+        return () => {
+            off();
+            this._unsubs.delete(off);
+        };
+    }
+
+    /**
+     * Add an already-created unsubscribe handle (for eventBus.once() etc).
+     * @param {Function} off - Unsubscribe function
+     */
+    track(off) {
+        this._unsubs.add(off);
+        return () => {
+            off();
+            this._unsubs.delete(off);
+        };
+    }
+
+    /**
+     * Detach every tracked subscription. Idempotent — safe to call twice.
+     */
+    dispose() {
+        this._unsubs.forEach((off) => {
+            try { off(); } catch (_) { /* swallow — defensive */ }
+        });
+        this._unsubs.clear();
+    }
+
+    /** Number of live subscriptions — useful for leak checks in tests. */
+    get size() {
+        return this._unsubs.size;
+    }
+}
+
+/**
  * Event constants for type-safe event handling
  */
 export const EVENTS = {
@@ -106,8 +166,6 @@ export const EVENTS = {
     TAB_CREATED: 'doc:tab-created',
 
     // Autosave/persistence events
-    DOCUMENT_SAVING: 'doc:saving',
-    DOCUMENT_SAVED: 'doc:saved',
     AUTOSAVE_STATUS_CHANGED: 'autosave:status-changed',
 
     // Markdown events

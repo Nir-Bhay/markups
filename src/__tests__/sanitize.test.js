@@ -12,6 +12,8 @@ describe('shared preview sanitizer', () => {
             '<p><a href="https://example.com" target="_blank">safe</a></p>',
             '<script>alert(1)</script>',
             '<img src="x" onerror="alert(1)" data-secret="1" style="color:red">',
+            // Raw <video> from author markdown must be stripped — embeds are created
+            // exclusively via video-embed.js (URL-validated), never from raw HTML.
             '<video controls src="https://example.com/demo.mp4"></video>'
         ].join('');
 
@@ -20,7 +22,7 @@ describe('shared preview sanitizer', () => {
         expect(sanitized).toContain('href="https://example.com"');
         expect(sanitized).toContain('target="_blank"');
         expect(sanitized).toContain('rel="noopener noreferrer"');
-        expect(sanitized).toContain('<video');
+        expect(sanitized).not.toContain('<video');
         expect(sanitized).not.toContain('<script');
         expect(sanitized).not.toContain('onerror');
         expect(sanitized).not.toContain('data-secret');
@@ -48,6 +50,20 @@ describe('shared preview sanitizer', () => {
         expect(sanitized).not.toContain('<iframe');
     });
 
+    it('strips raw <video>/<source> tags (only validated embeds allowed)', () => {
+        // Security #5: raw video in markdown HTML must be stripped; embeds go via video-embed.js
+        const sanitized = sanitizePreviewHtml('<p><video src="https://evil.com/track.mp4" controls></video></p>');
+        expect(sanitized).not.toContain('<video');
+        expect(sanitized).not.toContain('src="https://evil.com');
+    });
+
+    it('blocks entity-encoded javascript: URLs', () => {
+        // B3 fix: entity-encoded schemes must still be blocked after decode
+        expect(shouldOpenPreviewLinkInNewTab('java&#x09;script:alert(1)')).toBe(false);
+        expect(shouldOpenPreviewLinkInNewTab('javascript&colon;alert(1)')).toBe(false);
+        expect(shouldOpenPreviewLinkInNewTab('&#106;avascript:alert(1)')).toBe(false);
+    });
+
     it('classifies which preview hrefs should open in a new tab', () => {
         expect(shouldOpenPreviewLinkInNewTab('https://example.com')).toBe(true);
         expect(shouldOpenPreviewLinkInNewTab('http://example.com/a')).toBe(true);
@@ -55,6 +71,7 @@ describe('shared preview sanitizer', () => {
         expect(shouldOpenPreviewLinkInNewTab('#heading')).toBe(false);
         expect(shouldOpenPreviewLinkInNewTab('javascript:alert(1)')).toBe(false);
     });
+
 
     it('applies new-tab targets on a rendered preview root', () => {
         const root = document.createElement('div');

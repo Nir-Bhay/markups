@@ -84,6 +84,14 @@ class ImportManager {
      * @param {File} file
      */
     importFile(file) {
+        const MAX_IMPORT_BYTES = 5 * 1024 * 1024; // 5 MB guard to avoid OOM on huge files
+        if (file.size > MAX_IMPORT_BYTES) {
+            eventBus.emit(EVENTS.TOAST_SHOW, {
+                message: `File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 5 MB.`,
+                type: 'error'
+            });
+            return;
+        }
         const reader = new FileReader();
 
         reader.onload = (e) => {

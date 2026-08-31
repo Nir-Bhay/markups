@@ -4,7 +4,7 @@
  * @module features/focus
  */
 
-import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
 import { storageService } from '../../core/storage/index.js';
 
 /**
@@ -51,8 +51,9 @@ class FocusManager {
 
         document.addEventListener('keydown', this.escHandler);
 
-        // Subscribe to events
-        eventBus.on(EVENTS.FOCUS_MODE_TOGGLE, () => this.toggle());
+        // Subscribe to events — track subscriptions so dispose() can detach (memory leak fix)
+        this.subscriptions = this.subscriptions || new Subscriptions();
+        this.subscriptions.on(EVENTS.FOCUS_MODE_TOGGLE, () => this.toggle());
     }
 
     /**
@@ -121,6 +122,9 @@ class FocusManager {
     dispose() {
         if (this.escHandler) {
             document.removeEventListener('keydown', this.escHandler);
+        }
+        if (this.subscriptions) {
+            this.subscriptions.dispose();
         }
         this.isEnabled = false;
         document.body.classList.remove('focus-mode');

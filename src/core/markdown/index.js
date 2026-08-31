@@ -223,7 +223,9 @@ class MarkdownService {
         mermaid.initialize({
             startOnLoad: false,
             theme: 'default',
-            securityLevel: 'loose',
+            // SECURITY: 'strict' prevents mermaid from executing javascript: callbacks
+            // inside diagram `click` definitions (mermaid #1 XSS vector).
+            securityLevel: 'strict',
             fontFamily: 'inherit',
             ...options
         });
@@ -337,12 +339,23 @@ class MarkdownService {
             const code = block.textContent;
 
             try {
-                const id = `mermaid-${Date.now()}-${i}`;
+                // Monotonic counter avoids Date.now() collision on fast re-renders
+                // (mermaid throws on duplicate IDs).
+                MarkdownService._mermaidSeq = (MarkdownService._mermaidSeq || 0) + 1;
+                const id = `mermaid-${MarkdownService._mermaidSeq}`;
                 const { svg } = await mermaid.render(id, code);
+
+                // Defense-in-depth: sanitize the mermaid SVG before injecting.
+                // securityLevel: 'strict' already prevents script execution, but we
+                // still run it through DOMPurify to strip any unexpected attrs.
+                const cleanSvg = sanitizePreviewHtml(svg, {
+                    ADD_TAGS: ['svg', 'g', 'path', 'circle', 'rect', 'line', 'polyline', 'text', 'tspan', 'defs', 'marker', 'title', 'style'],
+                    ADD_ATTR: ['viewBox', 'd', 'transform', 'fill', 'stroke', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'points', 'x', 'y', 'width', 'height', 'font-size', 'text-anchor']
+                });
 
                 const wrapper = document.createElement('div');
                 wrapper.className = 'mermaid-diagram';
-                wrapper.innerHTML = svg;
+                wrapper.innerHTML = cleanSvg;
 
                 pre.replaceWith(wrapper);
             } catch (err) {

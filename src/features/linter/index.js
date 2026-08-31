@@ -4,7 +4,7 @@
  * @module features/linter
  */
 
-import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
 import { markdownService } from '../../core/markdown/index.js';
 import { editorService } from '../../core/editor/index.js';
 import { debounce } from '../../utils/debounce.js';
@@ -271,7 +271,8 @@ class LinterManager {
             this.lint(content);
         }, 500);
 
-        eventBus.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
+        this.subscriptions = this.subscriptions || new Subscriptions();
+        this.subscriptions.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
             if (this.enabled) {
                 debouncedLint(content);
             }
@@ -520,6 +521,7 @@ class LinterManager {
         this.issues = [];
         this.initialized = false;
         LinterManager.instance = null;
+        if (this.subscriptions) this.subscriptions.dispose();
     }
 }
 

@@ -179,6 +179,10 @@ function createHostedEmbed(hosted, sourceUrl = '') {
 
     const iframe = document.createElement('iframe');
     iframe.setAttribute('loading', 'lazy');
+    // SECURITY: sandbox the embedded player so a compromised provider or
+    // injected embed URL cannot navigate the top frame, access geolocation,
+    // or run scripts outside the embed surface.
+    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
     iframe.allowFullscreen = true;
     iframe.setAttribute(
         'allow',

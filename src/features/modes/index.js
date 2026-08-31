@@ -107,11 +107,11 @@ class ModesManager {
     _setupResizeObserver() {
         if (!this.mainContainer) return;
 
-        const observer = new ResizeObserver(() => {
+        this._resizeObserver = new ResizeObserver(() => {
             editorService.layout();
         });
 
-        observer.observe(this.mainContainer);
+        this._resizeObserver.observe(this.mainContainer);
     }
 
     /**
@@ -344,6 +344,8 @@ class ModesManager {
      */
     dispose() {
         this._saveSettings();
+        this._resizeObserver?.disconnect();
+        this._resizeObserver = null;
         this.initialized = false;
         ModesManager.instance = null;
     }

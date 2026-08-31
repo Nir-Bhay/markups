@@ -4,7 +4,7 @@
  * @module features/fullscreen
  */
 
-import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
 
 /**
  * FullscreenManager class
@@ -47,7 +47,8 @@ class FullscreenManager {
         document.addEventListener('MSFullscreenChange', () => this._handleFullscreenChange());
 
         // Subscribe to events
-        eventBus.on(EVENTS.FULLSCREEN_TOGGLE, () => this.toggle());
+        this.subscriptions = this.subscriptions || new Subscriptions();
+        this.subscriptions.on(EVENTS.FULLSCREEN_TOGGLE, () => this.toggle());
     }
 
     /**
@@ -177,6 +178,7 @@ class FullscreenManager {
     dispose() {
         if (this.isEnabled) {
             this.exit();
+        if (this.subscriptions) this.subscriptions.dispose();
         }
         FullscreenManager.instance = null;
     }

@@ -20,6 +20,7 @@ import {
   insertText,
   getSelection,
   insertTable,
+  transformSelection,
 } from './utils.js';
 
 export class ToolbarManager {

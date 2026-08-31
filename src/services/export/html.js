@@ -189,7 +189,7 @@ class HTMLExporter {
         const content = markdownService.parse(markdown);
 
         // Build HTML
-        let html = HTML_TEMPLATE
+        const html = HTML_TEMPLATE
             .replace('{{title}}', this._escapeHtml(title))
             .replace('{{content}}', content)
             .replace('{{customStyles}}', customStyles)

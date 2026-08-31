@@ -4,7 +4,7 @@
  * @module features/goals
  */
 
-import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
 import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { markdownService } from '../../core/markdown/index.js';
@@ -124,7 +124,8 @@ class GoalsManager {
      */
     _setupEventListeners() {
         // Listen for content changes
-        eventBus.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
+        this.subscriptions = this.subscriptions || new Subscriptions();
+        this.subscriptions.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
             this._updateProgress(content);
         });
     }
@@ -395,6 +396,7 @@ class GoalsManager {
     dispose() {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
+        if (this.subscriptions) this.subscriptions.dispose();
         }
         this._saveGoals();
         this.goals = [];

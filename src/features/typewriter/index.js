@@ -4,7 +4,7 @@
  * @module features/typewriter
  */
 
-import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
 import { editorService } from '../../core/editor/index.js';
 
 /**
@@ -43,7 +43,8 @@ class TypewriterManager {
         }
 
         // Subscribe to events
-        eventBus.on(EVENTS.TYPEWRITER_MODE_TOGGLE, () => this.toggle());
+        this.subscriptions = this.subscriptions || new Subscriptions();
+        this.subscriptions.on(EVENTS.TYPEWRITER_MODE_TOGGLE, () => this.toggle());
     }
 
     /**
@@ -128,6 +129,7 @@ class TypewriterManager {
     dispose() {
         if (this.cursorListener) {
             this.cursorListener.dispose();
+        if (this.subscriptions) this.subscriptions.dispose();
         }
         this.isEnabled = false;
         TypewriterManager.instance = null;

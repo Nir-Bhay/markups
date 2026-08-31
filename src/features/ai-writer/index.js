@@ -5,7 +5,7 @@
  * @module features/ai-writer
  */
 
-import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
 import { editorService } from '../../core/editor/index.js';
 import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
@@ -367,30 +367,33 @@ class AIWriterManager {
      * @private
      */
     _setupEventListeners() {
+        this.subscriptions = this.subscriptions || new Subscriptions();
+        const sub = (event, handler) => this.subscriptions.on(event, handler);
+
         // Panel toggle from UI
-        eventBus.on(EVENTS.AI_PANEL_TOGGLED, ({ visible }) => {
+        sub(EVENTS.AI_PANEL_TOGGLED, ({ visible }) => {
             if (!visible && this.visible) {
                 this.hide();
             }
         });
 
         // Cancel generation
-        eventBus.on(EVENTS.AI_GENERATION_CANCELLED, () => {
+        sub(EVENTS.AI_GENERATION_CANCELLED, () => {
             this.stopGeneration();
         });
 
         // Insert result
-        eventBus.on(EVENTS.AI_RESULT_INSERTED, ({ text, mode }) => {
+        sub(EVENTS.AI_RESULT_INSERTED, ({ text, mode }) => {
             this._insertResult(text, mode);
         });
 
         // Action events from UI buttons
-        eventBus.on('ai:action-generate', () => this.generate());
-        eventBus.on('ai:action-continue', () => this.continueWriting());
-        eventBus.on('ai:action-edit', () => this.editSelection());
-        eventBus.on('ai:action-improve', () => this.improve());
-        eventBus.on('ai:action-summarize', () => this.summarize());
-        eventBus.on('ai:action-expand', () => this.expand());
+        sub('ai:action-generate', () => this.generate());
+        sub('ai:action-continue', () => this.continueWriting());
+        sub('ai:action-edit', () => this.editSelection());
+        sub('ai:action-improve', () => this.improve());
+        sub('ai:action-summarize', () => this.summarize());
+        sub('ai:action-expand', () => this.expand());
     }
 
     /**

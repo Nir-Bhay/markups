@@ -4,7 +4,7 @@
  * @module features/toc
  */
 
-import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
 import { editorService } from '../../core/editor/index.js';
 import { debounce } from '../../utils/debounce.js';
 
@@ -68,7 +68,8 @@ class TOCManager {
             this.update(content);
         }, 500);
 
-        eventBus.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
+        this.subscriptions = this.subscriptions || new Subscriptions();
+        this.subscriptions.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
             debouncedUpdate(content);
         });
     }
@@ -356,6 +357,7 @@ class TOCManager {
         this.flat = [];
         this.initialized = false;
         TOCManager.instance = null;
+        if (this.subscriptions) this.subscriptions.dispose();
     }
 }
 

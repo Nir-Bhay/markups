@@ -13,9 +13,13 @@ export const PREVIEW_SANITIZE_CONFIG = {
     USE_PROFILES: { html: true },
     // Markdown preview extensions. Mermaid iframes are created later through DOM,
     // not accepted from user-authored Markdown HTML.
-    ADD_TAGS: ['math', 'mrow', 'mo', 'mi', 'mn', 'msup', 'mfrac', 'semantics', 'annotation', 'video', 'source'],
-    ADD_ATTR: ['target', 'class', 'id', 'aria-*', 'controls', 'preload', 'playsinline', 'controlslist', 'rel'],
-    FORBID_TAGS: ['iframe', 'script', 'object', 'embed', 'form'],
+    ADD_TAGS: ['math', 'mrow', 'mo', 'mi', 'mn', 'msup', 'mfrac', 'semantics', 'annotation'],
+    // NOTE: 'video' and 'source' intentionally NOT allowed. Raw <video>/<source> in
+    // author markdown would bypass the URL validation in video-embed.js. Video embeds
+    // are created exclusively via the DOM-based helpers which validate against
+    // VIDEO_EXT_RE / YOUTUBE_RE / VIMEO_RE / GITHUB_ASSET_RE.
+    ADD_ATTR: ['target', 'class', 'id', 'aria-label', 'aria-hidden', 'controls', 'preload', 'playsinline', 'controlslist', 'rel'],
+    FORBID_TAGS: ['iframe', 'script', 'object', 'embed', 'form', 'video', 'source'],
     FORBID_ATTR: ['style', 'srcdoc'],
     ALLOW_DATA_ATTR: false
 };
@@ -46,7 +50,20 @@ export function shouldOpenPreviewLinkInNewTab(href) {
     const value = String(href || '').trim();
     if (!value) return false;
     if (value.startsWith('#')) return false;
-    if (/^(javascript|vbscript|data):/i.test(value.replace(/[\u0000-\u001F\u007F\s]+/g, ''))) {
+    // Decode HTML entities (e.g. java&#x09;script:, javascript&colon;) before the
+    // scheme test so entity-encoded javascript:/vbscript:/data: URLs are still blocked.
+    // Browsers resolve named entities like &colon; &sol; &tab; inside URLs, so we must
+    // decode the ones that can split a scheme from its colon.
+    const named = {
+        amp: '&', lt: '<', gt: '>', quot: '"', apos: "'",
+        colon: ':', sol: '/', tab: '\t', newline: '\n', nl: '\n',
+        space: ' ', nbsp: ' '
+    };
+    const decoded = value
+        .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+        .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+        .replace(/&([a-z]+);/gi, (m, name) => named[name.toLowerCase()] ?? m);
+    if (/^(javascript|vbscript|data):/i.test(decoded.replace(/[\u0000-\u001F\u007F\s]+/g, ''))) {
         return false;
     }
     return true;

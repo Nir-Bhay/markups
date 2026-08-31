@@ -249,8 +249,8 @@ class MobileUIManager {
 
             // Keep icon in sync via MutationObserver watching body class changes
             this._syncMobileThemeIcon();
-            const observer = new MutationObserver(() => this._syncMobileThemeIcon());
-            observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+            this._mobileThemeObserver = new MutationObserver(() => this._syncMobileThemeIcon());
+            this._mobileThemeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
         }
     }
 
@@ -682,7 +682,7 @@ class MobileUIManager {
 
         addSection('Insert');
         addItem('footnote', '¹', 'Footnote', () => {
-            const id = `fn-${Date.now().toString(36).slice(-4)}`;
+            const id = `fn-${(globalThis.__markdownFootnoteCounter ??= 0) + 1}`;
             insertText(`[^${id}]\n\n[^${id}]: Footnote text`);
         });
         addItem('abbr', '🔤', 'Abbreviation', () => insertText('\n*[ABBR]: Full Text\n'));
@@ -867,6 +867,8 @@ class MobileUIManager {
             window.removeEventListener('resize', this._boundBreakpointResize);
             this._boundBreakpointResize = null;
         }
+        this._mobileThemeObserver?.disconnect();
+        this._mobileThemeObserver = null;
         if (this._docsListTimers?.length) {
             this._docsListTimers.forEach((id) => clearTimeout(id));
             this._docsListTimers = [];

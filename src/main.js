@@ -128,6 +128,8 @@ const APP_CONFIG = {
 
 // Global state and constants
 let editor;
+// Actions queued before the editor is ready (e.g. file import) — flushed on EDITOR_READY
+let pendingEditorActions = [];
 let hasEdited = false;
 let isApplyingPreviewEdit = false;
 let livePreviewEditController = null;
@@ -188,7 +190,7 @@ const collectReferencedImageIds = (texts) => {
 
 const getOpenDocumentImageRefs = () => collectReferencedImageIds([
     ...(Array.isArray(documents) ? documents.map((d) => d.content) : []),
-    ...(editor ? [editor.getValue()] : [])
+    ...(editor ? [editor?.getValue()] : [])
 ]);
 
 /**
@@ -231,7 +233,7 @@ const imageStoreGet = (imgId) => imageStore.get(imgId);
 const pruneUnreferencedImages = (extraTexts = []) => {
     const texts = [
         ...(Array.isArray(documents) ? documents.map((d) => d.content) : []),
-        ...(editor ? [editor.getValue()] : []),
+        ...(editor ? [editor?.getValue()] : []),
         ...extraTexts
     ];
     const referenced = collectReferencedImageIds(texts);
@@ -253,7 +255,7 @@ const pruneUnreferencedImages = (extraTexts = []) => {
 const cleanupImagesAfterTabClose = (closedContent) => {
     const remainingTexts = [
         ...(Array.isArray(documents) ? documents.map((d) => d.content) : []),
-        ...(editor ? [editor.getValue()] : [])
+        ...(editor ? [editor?.getValue()] : [])
     ];
     const stillUsed = collectReferencedImageIds(remainingTexts);
     const closedIds = collectReferencedImageIds([closedContent]);
@@ -392,7 +394,7 @@ const createFileInSelectedFolder = async () => {
     await addNewTab(explorerManager?.getSelectedFolderId());
 };
 
-let initTabs = async () => {
+const initTabs = async () => {
     await runMigration();
     await ensureFileTreeFromNotes();
 
@@ -422,7 +424,7 @@ let initTabs = async () => {
         onDeleteNode: (node) => deleteNode(node),
         onMoveNode: (payload) => moveNodeInTree(payload),
         onLayoutChange: () => {
-            if (editor) editor.layout();
+            if (editor) editor?.layout();
         }
     });
     explorerManager.initialize();
@@ -435,7 +437,7 @@ let initTabs = async () => {
 };
 
 // Mouse wheel horizontal scroll for tabs
-let setupTabsWheelScroll = () => {
+const setupTabsWheelScroll = () => {
     const tabsList = document.getElementById('tabs-list');
     if (!tabsList) return;
 
@@ -449,7 +451,7 @@ let setupTabsWheelScroll = () => {
 };
 
 // Rename tab functionality
-let startRenameTab = (docId, tabNameElement) => {
+const startRenameTab = (docId, tabNameElement) => {
     const doc = documents.find(d => d.id === docId);
     if (!doc) return;
 
@@ -513,23 +515,28 @@ let renderTabs = () => {
 
         // Double-click to rename
         const tabName = tab.querySelector('.tab-name');
-        tabName.addEventListener('dblclick', (e) => {
-            e.stopPropagation();
-            startRenameTab(doc.id, tabName);
-        });
+        if (tabName) {
+            tabName.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                startRenameTab(doc.id, tabName);
+            });
+        }
 
         // Close button
-        tab.querySelector('.tab-close').addEventListener('click', (e) => {
-            e.stopPropagation();
-            closeTab(doc.id);
-        });
+        const tabClose = tab.querySelector('.tab-close');
+        if (tabClose) {
+            tabClose.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeTab(doc.id);
+            });
+        }
 
         tabsList.appendChild(tab);
     });
 
 };
 
-let addNewTab = async (parentFolderId) => {
+const addNewTab = async (parentFolderId) => {
     const note = await noteStorage.createNote({
         title: 'Untitled',
         content: ''
@@ -548,7 +555,7 @@ let addNewTab = async (parentFolderId) => {
     switchTab(newDoc.id);
 };
 
-let switchTab = (id) => {
+const switchTab = (id) => {
     if (id === activeDocId) return;
 
     // Sync preview edits back to Markdown before switching tabs,
@@ -566,7 +573,7 @@ let switchTab = (id) => {
     loadActiveDocument();
 };
 
-let closeTab = (id) => {
+const closeTab = (id) => {
     if (documents.length <= 1) {
         showToast('Cannot close the last tab', 'warning');
         return;
@@ -590,7 +597,7 @@ let closeTab = (id) => {
         // Capture content before removal (use live editor value if closing active tab)
         let closedContent = closingDoc?.content || '';
         if (id === activeDocId && editor) {
-            closedContent = editor.getValue();
+            closedContent = editor?.getValue();
         }
 
         // If closing active tab, switch to another
@@ -613,7 +620,7 @@ let closeTab = (id) => {
     }
 };
 
-let createFolder = async (parentFolderId) => {
+const createFolder = async (parentFolderId) => {
     await fileTreeStorage.createNode({
         type: 'folder',
         name: 'New Folder',
@@ -622,7 +629,7 @@ let createFolder = async (parentFolderId) => {
     await syncTreeFromDocuments();
 };
 
-let renameNode = async (node, explicitName = '') => {
+const renameNode = async (node, explicitName = '') => {
     const currentLabel = node.type === 'file' ? `${node.name}.md` : node.name;
     const nextName = explicitName || prompt(`Rename ${node.type}:`, currentLabel);
     if (!nextName || !nextName.trim()) return;
@@ -645,7 +652,7 @@ let renameNode = async (node, explicitName = '') => {
     await syncTreeFromDocuments();
 };
 
-let moveNodeInTree = async ({ draggedNode, targetNode, position, sortMode }) => {
+const moveNodeInTree = async ({ draggedNode, targetNode, position, sortMode }) => {
     if (!draggedNode || !targetNode || draggedNode.id === 'root') return;
 
     const movingIntoFolder = targetNode.type === 'folder';
@@ -672,7 +679,7 @@ let moveNodeInTree = async ({ draggedNode, targetNode, position, sortMode }) => 
     await syncTreeFromDocuments();
 };
 
-let deleteNode = async (node) => {
+const deleteNode = async (node) => {
     const isFolder = node.type === 'folder';
     const message = isFolder
         ? `Delete folder "${node.name}"?`
@@ -708,7 +715,27 @@ let deleteNode = async (node) => {
 
     const result = await fileTreeStorage.deleteNodeRecursive(node.id);
     if (result.deletedNoteIds.length > 0) {
-        await Promise.all(result.deletedNoteIds.map((noteId) => noteStorage.deleteNote(noteId)));
+        try {
+            // Use allSettled so one failed IDB delete doesn't abort the whole teardown
+            // (previously an unhandled rejection from a single failed write could crash
+            // the tab-close flow). Remaining deletions continue even if some reject.
+            const outcomes = await Promise.allSettled(
+                result.deletedNoteIds.map((noteId) => noteStorage.deleteNote(noteId))
+            );
+            const failures = outcomes.filter((o) => o.status === 'rejected');
+            if (failures.length > 0) {
+                console.error(
+                    `deleteNode: failed to delete ${failures.length}/${result.deletedNoteIds.length} note(s):`,
+                    failures.map((f) => f.reason)
+                );
+                showToast(`Could not delete ${failures.length} note(s)`, 'error');
+            }
+        } catch (err) {
+            // Degrade gracefully: the file-tree node is already gone; a failure here
+            // must not throw out of the delete handler.
+            console.error('deleteNode: note cleanup threw unexpectedly:', err);
+            showToast('Some notes could not be cleaned up', 'error');
+        }
     }
 
     documents = documents.filter((doc) => !result.deletedNodeIds.includes(doc.id));
@@ -728,8 +755,8 @@ let deleteNode = async (node) => {
     loadActiveDocument();
 };
 
-let saveCurrentDoc = async () => {
-    const content = editor.getValue();
+const saveCurrentDoc = async () => {
+    const content = editor?.getValue() ?? '';
     const docIndex = documents.findIndex(d => d.id === activeDocId);
 
     if (docIndex !== -1) {
@@ -760,22 +787,22 @@ let saveCurrentDoc = async () => {
     }
 };
 
-let loadActiveDocument = () => {
+const loadActiveDocument = () => {
     const doc = documents.find(d => d.id === activeDocId);
     if (doc) {
         // Prevent triggering save loop if possible, or accept it
         // editor.setValue triggers onDidChangeModelContent
         // We can set a temporary flag to ignore save? 
         // For simplicity, let it save (no change to content)
-        const current = editor.getValue();
+        const current = editor?.getValue();
         if (current !== doc.content) {
-            editor.setValue(doc.content);
-            editor.setScrollTop(0);
+            editor?.setValue(doc.content);
+            editor?.setScrollTop(0);
         }
     }
 };
 
-let saveDocsToStorage = () => {
+const saveDocsToStorage = () => {
     const expiredAt = new Date(2099, 1, 1);
     try {
         Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
@@ -801,7 +828,7 @@ let saveDocsToStorage = () => {
     }
 };
 
-let setupEditor = () => {
+const setupEditor = () => {
     editor = monaco.editor.create(document.querySelector('#editor'), {
         fontSize: 16,
         language: 'markdown',
@@ -829,7 +856,7 @@ let setupEditor = () => {
         isProgrammaticChange = false;
     };
 
-    editor.onDidChangeModelContent((e) => {
+    editor?.onDidChangeModelContent((e) => {
         // Auto-clear welcome content on first real user keystroke
         if (!isApplyingPreviewEdit && isShowingWelcome && !isProgrammaticChange && e.changes && e.changes.length > 0) {
             const change = e.changes[0];
@@ -837,13 +864,13 @@ let setupEditor = () => {
             if (change.text.length > 0) {
                 isShowingWelcome = false;
                 const typed = change.text;
-                editor.setValue(typed);
+                editor?.setValue(typed);
                 // Place cursor at end of typed text
-                const model = editor.getModel();
+                const model = editor?.getModel();
                 if (model) {
                     const lastLine = model.getLineCount();
                     const lastCol = model.getLineMaxColumn(lastLine);
-                    editor.setPosition({ lineNumber: lastLine, column: lastCol });
+                    editor?.setPosition({ lineNumber: lastLine, column: lastCol });
                 }
                 return; // setValue triggers this handler again, but isProgrammaticChange guards it
             }
@@ -851,12 +878,12 @@ let setupEditor = () => {
             isShowingWelcome = false;
         }
 
-        let changed = editor.getValue() != defaultInput;
+        const changed = editor?.getValue() != defaultInput;
         if (changed) {
             hasEdited = true;
             setHasEdited(true);
         }
-        let value = editor.getValue();
+        const value = editor?.getValue();
         if (!isApplyingPreviewEdit) {
             debouncedConvert(value);  // Use debounced version for performance
         }
@@ -878,7 +905,7 @@ let setupEditor = () => {
 
     // Typewriter Mode: Center cursor + Update cursor position in status bar
     let isCursorSyncing = false;
-    editor.onDidChangeCursorPosition((e) => {
+    editor?.onDidChangeCursorPosition((e) => {
         // Update status bar cursor position
         const cursorPosEl = document.getElementById('cursor-position');
         if (cursorPosEl) {
@@ -887,15 +914,15 @@ let setupEditor = () => {
         }
 
         if (isTypewriterMode) {
-            editor.revealLineInCenter(e.position.lineNumber);
+            editor?.revealLineInCenter(e.position.lineNumber);
         }
 
         if (cursorSync && !isCursorSyncing) {
             isCursorSyncing = true;
             const previewElement = document.querySelector('.preview-wrapper');
             if (previewElement) {
-                const lineTop = editor.getTopForLineNumber(e.position.lineNumber);
-                const editorHeight = editor.getScrollHeight();
+                const lineTop = editor?.getTopForLineNumber(e.position.lineNumber);
+                const editorHeight = editor?.getScrollHeight();
 
                 if (editorHeight > 0) {
                     const ratio = lineTop / editorHeight;
@@ -979,7 +1006,7 @@ marked.use(markedFootnote());
 marked.use(markedEmoji(emojiMarkedOptions));
 
 // Slugify function for heading IDs
-let slugify = (text) => {
+const slugify = (text) => {
     return text
         .toLowerCase()
         .trim()
@@ -1034,7 +1061,7 @@ renderer.image = function (token) {
 marked.use({ renderer });
 
 // Generate TOC HTML
-let generateTOC = () => {
+const generateTOC = () => {
     if (tocItems.length === 0) return '';
 
     let tocHtml = '<nav class="toc-nav"><h4 class="toc-title">📑 Table of Contents</h4><ul class="toc-list">';
@@ -1049,7 +1076,7 @@ let generateTOC = () => {
 };
 
 // Update TOC panel
-let updateTOC = () => {
+const updateTOC = () => {
     const tocListPanel = document.getElementById('toc-list-panel');
     if (tocListPanel) {
         tocListPanel.innerHTML = generateTOC();
@@ -1063,7 +1090,7 @@ let updateTOC = () => {
 };
 
 // Update Right TOC Sidebar (preview mode)
-let updateRightTOC = () => {
+const updateRightTOC = () => {
     const tocList = document.getElementById('toc-list');
     const outputElement = document.querySelector('#output');
 
@@ -1127,7 +1154,7 @@ let updateRightTOC = () => {
 };
 
 // Update Document Outline (left sidebar)
-let updateOutline = () => {
+const updateOutline = () => {
     const outlineList = document.getElementById('outline-list');
     const outlineEmpty = document.getElementById('outline-empty');
     const outputElement = document.querySelector('#output');
@@ -1186,7 +1213,7 @@ let updateOutline = () => {
 };
 
 // Update scroll progress in outline
-let updateOutlineScrollProgress = () => {
+const updateOutlineScrollProgress = () => {
     const previewWrapper = document.querySelector('#preview-wrapper');
     const progressBar = document.querySelector('.outline-scroll-indicator .scroll-progress');
 
@@ -1200,7 +1227,7 @@ let updateOutlineScrollProgress = () => {
 };
 
 // Update active item in outline based on scroll position
-let updateActiveOutlineItem = () => {
+const updateActiveOutlineItem = () => {
     const previewElement = document.querySelector('#preview');
     const outlineList = document.getElementById('outline-list');
     const outputElement = document.querySelector('#output');
@@ -1237,7 +1264,7 @@ let updateActiveOutlineItem = () => {
     }
 };
 
-let setupGoals = () => {
+const setupGoals = () => {
     const saved = Storehouse.getItem(localStorageNamespace, localStorageGoalsKey);
     if (saved) goalsData = saved;
 
@@ -1253,7 +1280,7 @@ let setupGoals = () => {
     const openModal = () => {
         modal.style.display = 'block';
         if (overlay) overlay.style.display = 'block';
-        updateGoalProgress(editor.getValue());
+        updateGoalProgress(editor?.getValue());
         goalsModalFocusTrap?.deactivate();
         goalsModalFocusTrap = createFocusTrap(modal, { onEscape: () => closeModal() });
         goalsModalFocusTrap.activate();
@@ -1271,7 +1298,7 @@ let setupGoals = () => {
         input.addEventListener('change', (e) => {
             goalsData.dailyTarget = parseInt(e.target.value) || 500;
             saveGoals();
-            updateGoalProgress(editor.getValue());
+            updateGoalProgress(editor?.getValue());
         });
     }
 
@@ -1300,12 +1327,12 @@ let setupGoals = () => {
     }
 
     // Listen for content changes
-    editor.onDidChangeModelContent(() => {
-        updateGoalProgress(editor.getValue());
+    editor?.onDidChangeModelContent(() => {
+        updateGoalProgress(editor?.getValue());
     });
 };
 
-let updateGoalProgress = (content) => {
+const updateGoalProgress = (content) => {
     // Simple word count approximation
     const text = content.replace(/[#*`_~\[\]()]/g, '').trim();
     const wordCount = text ? text.split(/\s+/).length : 0;
@@ -1315,7 +1342,7 @@ let updateGoalProgress = (content) => {
     const streakDisplay = document.getElementById('streak-count');
 
     if (progressBar && goalText) {
-        let percentage = Math.min((wordCount / goalsData.dailyTarget) * 100, 100);
+        const percentage = Math.min((wordCount / goalsData.dailyTarget) * 100, 100);
         progressBar.style.width = percentage + '%';
         goalText.textContent = `${wordCount} / ${goalsData.dailyTarget} words`;
 
@@ -1336,7 +1363,7 @@ let updateGoalProgress = (content) => {
     }
 };
 
-let checkDailyGoal = (count) => {
+const checkDailyGoal = (count) => {
     const today = new Date().toDateString();
 
     if (goalsData.lastGoalDate !== today && count >= goalsData.dailyTarget) {
@@ -1348,7 +1375,7 @@ let checkDailyGoal = (count) => {
     }
 };
 
-let saveGoals = () => {
+const saveGoals = () => {
     const expiredAt = new Date(2099, 1, 1);
     Storehouse.setItem(localStorageNamespace, localStorageGoalsKey, goalsData, expiredAt);
 };
@@ -1356,7 +1383,7 @@ let saveGoals = () => {
 // ----- Linter System -----
 let linterDebounceTimer;
 
-let setupLinter = () => {
+const setupLinter = () => {
     const lintBtn = document.getElementById('lint-button');
     const lintPanel = document.getElementById('lint-panel');
     const closeBtn = document.querySelector('.close-lint');
@@ -1388,7 +1415,7 @@ let setupLinter = () => {
     }
 
     // Run linter on change (debounced)
-    editor.onDidChangeModelContent(() => {
+    editor?.onDidChangeModelContent(() => {
         clearTimeout(linterDebounceTimer);
         linterDebounceTimer = setTimeout(() => {
             // Only run if panel is visible
@@ -1400,8 +1427,8 @@ let setupLinter = () => {
 };
 
 // Simple browser-based markdown linter
-let runLinter = () => {
-    const content = editor.getValue();
+const runLinter = () => {
+    const content = editor?.getValue() ?? '';
     const lines = content.split('\n');
     const issues = [];
 
@@ -1467,7 +1494,7 @@ let runLinter = () => {
     updateEditorMarkers(issues);
 };
 
-let updateLintUI = (issues) => {
+const updateLintUI = (issues) => {
     const list = document.getElementById('lint-list');
     const btn = document.getElementById('lint-button');
     if (!list) return;
@@ -1498,16 +1525,16 @@ let updateLintUI = (issues) => {
                     <span class="lint-msg">${issue.ruleNames[1] || issue.ruleNames[0]}: ${issue.errorDescription}</span>
                 `;
             item.addEventListener('click', () => {
-                editor.revealLineInCenter(issue.lineNumber);
-                editor.setPosition({ lineNumber: issue.lineNumber, column: 1 });
-                editor.focus();
+                editor?.revealLineInCenter(issue.lineNumber);
+                editor?.setPosition({ lineNumber: issue.lineNumber, column: 1 });
+                editor?.focus();
             });
             list.appendChild(item);
         });
     }
 };
 
-let updateEditorMarkers = (issues) => {
+const updateEditorMarkers = (issues) => {
     const markers = issues.map(issue => ({
         severity: monaco.MarkerSeverity.Warning,
         message: issue.errorDescription,
@@ -1516,7 +1543,7 @@ let updateEditorMarkers = (issues) => {
         endLineNumber: issue.lineNumber,
         endColumn: 1000
     }));
-    monaco.editor.setModelMarkers(editor.getModel(), "markdownlint", markers);
+    monaco.editor?.setModelMarkers(editor?.getModel(), "markdownlint", markers);
 };
 
 // ----- Search System -----
@@ -1525,7 +1552,7 @@ let editorSearchDecorations = []; // Track Monaco editor search decorations
 let currentMatchIndex = -1; // Track which match is currently selected
 let allMatches = []; // Array of all match elements
 
-let setupSearch = () => {
+const setupSearch = () => {
     const searchBtn = document.getElementById('search-btn');
     const searchOverlay = document.getElementById('search-overlay');
     const searchInput = document.getElementById('search-input');
@@ -1557,7 +1584,7 @@ let setupSearch = () => {
         });
     }
 
-    let clearSearch = () => {
+    const clearSearch = () => {
         searchOverlay.classList.add('hidden');
         currentSearchQuery = '';
         searchInput.value = '';
@@ -1565,15 +1592,15 @@ let setupSearch = () => {
         allMatches = [];
         if (matchCountEl) matchCountEl.textContent = '';
         // Clear editor decorations
-        editorSearchDecorations = editor.deltaDecorations(editorSearchDecorations, []);
-        debouncedConvert(editor.getValue()); // Re-render without highlights (debounced for performance)
+        editorSearchDecorations = editor?.deltaDecorations(editorSearchDecorations, []);
+        debouncedConvert(editor?.getValue()); // Re-render without highlights (debounced for performance)
     };
 
     // Handle search input
     searchInput.addEventListener('input', (e) => {
         currentSearchQuery = e.target.value;
         currentMatchIndex = -1; // Reset to first match when search term changes
-        debouncedConvert(editor.getValue());
+        debouncedConvert(editor?.getValue());
         highlightEditorMatches();
         updateMatchCount();
     });
@@ -1627,14 +1654,14 @@ let setupSearch = () => {
 };
 
 // Highlight matches in Monaco editor using decorations
-let highlightEditorMatches = () => {
+const highlightEditorMatches = () => {
     if (!editor) return;
     if (!currentSearchQuery) {
-        editorSearchDecorations = editor.deltaDecorations(editorSearchDecorations, []);
+        editorSearchDecorations = editor?.deltaDecorations(editorSearchDecorations, []);
         return;
     }
 
-    const model = editor.getModel();
+    const model = editor?.getModel();
     if (!model) return;
 
     const matches = model.findMatches(currentSearchQuery, false, false, false, null, true);
@@ -1646,16 +1673,16 @@ let highlightEditorMatches = () => {
         }
     }));
 
-    editorSearchDecorations = editor.deltaDecorations(editorSearchDecorations, decorations);
+    editorSearchDecorations = editor?.deltaDecorations(editorSearchDecorations, decorations);
 };
 
 // Get all current match elements
-let getMatchElements = () => {
+const getMatchElements = () => {
     return Array.from(document.querySelectorAll('#output .search-highlight'));
 };
 
 // Navigate to a specific match index
-let navigateToMatch = (index) => {
+const navigateToMatch = (index) => {
     allMatches = getMatchElements();
     if (allMatches.length === 0) return;
     
@@ -1682,7 +1709,7 @@ let navigateToMatch = (index) => {
 };
 
 // Navigate to next match
-let goToNextMatch = () => {
+const goToNextMatch = () => {
     allMatches = getMatchElements();
     if (allMatches.length === 0) return;
     
@@ -1696,7 +1723,7 @@ let goToNextMatch = () => {
 };
 
 // Navigate to previous match
-let goToPreviousMatch = () => {
+const goToPreviousMatch = () => {
     allMatches = getMatchElements();
     if (allMatches.length === 0) return;
     
@@ -1710,7 +1737,7 @@ let goToPreviousMatch = () => {
 };
 
 // Update navigation button states and counter display
-let updateNavigationUI = () => {
+const updateNavigationUI = () => {
     const searchPrev = document.getElementById('search-prev');
     const searchNext = document.getElementById('search-next');
     const matchCountEl = document.getElementById('search-match-count');
@@ -1735,7 +1762,7 @@ let updateNavigationUI = () => {
 };
 
 // Update match count display
-let updateMatchCount = () => {
+const updateMatchCount = () => {
     const matchCountEl = document.getElementById('search-match-count');
     if (!matchCountEl) return;
 
@@ -1747,7 +1774,7 @@ let updateMatchCount = () => {
     // Count preview matches
     const previewMatches = document.querySelectorAll('.search-highlight').length;
     // Count editor matches
-    const model = editor.getModel();
+    const model = editor?.getModel();
     const editorMatches = model ? model.findMatches(currentSearchQuery, false, false, false, null, true).length : 0;
     const totalMatches = Math.max(previewMatches, editorMatches);
 
@@ -1760,7 +1787,7 @@ let updateMatchCount = () => {
     }
 };
 
-let highlightText = () => {
+const highlightText = () => {
     if (!currentSearchQuery) return;
     // Skip highlight when preview pane is hidden (code-only mode)
     if (getCurrentViewMode() === 'code') return;
@@ -2053,12 +2080,12 @@ function annotateSourceLines(outputElement, markdown) {
 
 // Render markdown text as html
 // Parse stays sync (already behind debouncedConvert); DOM write + secondary UI use rAF
-let convert = (markdown) => {
+const convert = (markdown) => {
     // Reset TOC items
     tocItems = [];
 
     // Resolve image store references to actual data URLs before rendering
-    let resolvedMarkdown = resolveImageReferences(markdown, true);
+    const resolvedMarkdown = resolveImageReferences(markdown, true);
 
     // Strip persisted image attributes before rendering to prevent raw metadata from showing in preview
     let renderableMarkdown = resolvedMarkdown.replace(/(!\[[^\]]*\]\([^)]+\))\s*\{[^}]*\}/g, '$1');
@@ -2068,8 +2095,8 @@ let convert = (markdown) => {
     // Preview Mode uses renderableMarkdown (attrs stripped) for clean rendering.
     const documentModeMarkdown = resolvedMarkdown;
 
-    let html = marked.parse(renderableMarkdown);
-    let sanitized = sanitizePreviewHtml(html);
+    const html = marked.parse(renderableMarkdown);
+    const sanitized = sanitizePreviewHtml(html);
 
     const token = ++_convertToken;
 
@@ -2183,13 +2210,13 @@ const debouncedConvert = debounce((markdown) => {
     convert(markdown);
 }, 300);
 
-let updatePreview = () => {
+const updatePreview = () => {
     if (!editor) return;
-    convert(editor.getValue());
+    convert(editor?.getValue());
 };
 
-let applyMarkdownFromPreviewEdit = (markdown) => {
-    if (!editor || typeof markdown !== 'string' || markdown === editor.getValue()) return;
+const applyMarkdownFromPreviewEdit = (markdown) => {
+    if (!editor || typeof markdown !== 'string' || markdown === editor?.getValue()) return;
 
     const model = editor.getModel?.();
     isApplyingPreviewEdit = true;
@@ -2197,14 +2224,14 @@ let applyMarkdownFromPreviewEdit = (markdown) => {
     try {
         if (model && typeof model.getFullModelRange === 'function') {
             editor.pushUndoStop?.();
-            editor.executeEdits('live-preview-edit', [{
+            editor?.executeEdits('live-preview-edit', [{
                 range: model.getFullModelRange(),
                 text: markdown,
                 forceMoveMarkers: true
             }]);
             editor.pushUndoStop?.();
         } else {
-            editor.setValue(markdown);
+            editor?.setValue(markdown);
         }
     } finally {
         isApplyingPreviewEdit = false;
@@ -2216,19 +2243,19 @@ let applyMarkdownFromPreviewEdit = (markdown) => {
     updateStats(markdown);
 };
 
-let setupLivePreviewEdit = () => {
+const setupLivePreviewEdit = () => {
     livePreviewEditController = initLivePreviewEdit({
         output: '#output',
         toggle: '#live-preview-edit-toggle',
         markdownToggle: '#markdown-mode-toggle',
         getSourceMarkdown: () => editor?.getValue() || '',
         onMarkdownChange: applyMarkdownFromPreviewEdit,
-        onExit: () => convert(editor.getValue()),
+        onExit: () => convert(editor?.getValue()),
         showToast
     });
 };
 
-let setupVideoControls = () => {
+const setupVideoControls = () => {
     videoControlsController = initVideoControls({
         output: '#output',
         getMarkdown: () => editor?.getValue() || '',
@@ -2239,7 +2266,7 @@ let setupVideoControls = () => {
     });
 };
 
-let setupImageControls = () => {
+const setupImageControls = () => {
     imageControlsController = initImageControls({
         output: '#output',
         getMarkdown: () => editor?.getValue() || '',
@@ -2252,7 +2279,7 @@ let setupImageControls = () => {
 
 // Add GitHub-style language badge + copy button to code blocks (Issue #42 polish)
 // Lowercase language-* classes so ```XML matches Prism + CSS like ```xml
-let normalizeCodeLanguageClasses = (root) => {
+const normalizeCodeLanguageClasses = (root) => {
     if (!root?.querySelectorAll) return;
     root.querySelectorAll('code[class*="language-"]').forEach((codeEl) => {
         codeEl.className = codeEl.className.replace(
@@ -2262,7 +2289,7 @@ let normalizeCodeLanguageClasses = (root) => {
     });
 };
 
-let addCodeCopyButtons = () => {
+const addCodeCopyButtons = () => {
     const codeBlocks = document.querySelectorAll('#output pre');
     codeBlocks.forEach((pre) => {
         if (pre.querySelector('.code-block-header') || pre.querySelector('.code-copy-btn')) return;
@@ -2310,10 +2337,10 @@ let addCodeCopyButtons = () => {
 };
 
 // Reset input text
-let reset = () => {
-    let changed = editor.getValue() != defaultInput;
+const reset = () => {
+    const changed = editor?.getValue() != defaultInput;
     if (hasEdited || changed) {
-        var confirmed = window.confirm(confirmationMessage);
+        const confirmed = window.confirm(confirmationMessage);
         if (!confirmed) {
             return;
         }
@@ -2326,18 +2353,18 @@ let reset = () => {
     showToast('Editor reset to default content', 'info');
 };
 
-let presetValue = (value) => {
-    editor.setValue(value);
-    editor.revealPosition({ lineNumber: 1, column: 1 });
-    editor.focus();
+const presetValue = (value) => {
+    editor?.setValue(value);
+    editor?.revealPosition({ lineNumber: 1, column: 1 });
+    editor?.focus();
     hasEdited = false;
     setHasEdited(false);
 };
 
 // ----- sync scroll position -----
 
-let initScrollBarSync = (settings) => {
-    let checkbox = document.querySelector('#sync-scroll-checkbox');
+const initScrollBarSync = (settings) => {
+    const checkbox = document.querySelector('#sync-scroll-checkbox');
     checkbox.checked = settings;
     scrollBarSync = settings;
     scrollSync.setEnabled(settings);
@@ -2349,7 +2376,7 @@ let initScrollBarSync = (settings) => {
     }
 
     checkbox.addEventListener('change', (event) => {
-        let checked = event.currentTarget.checked;
+        const checked = event.currentTarget.checked;
         scrollBarSync = checked;
         scrollSync.setEnabled(checked);
         saveScrollBarSettings(checked);
@@ -2361,25 +2388,25 @@ let initScrollBarSync = (settings) => {
     });
 };
 
-let initCursorSync = (settings) => {
-    let checkbox = document.querySelector('#sync-preview-cursor-checkbox');
+const initCursorSync = (settings) => {
+    const checkbox = document.querySelector('#sync-preview-cursor-checkbox');
     if (!checkbox) return;
     checkbox.checked = settings;
     cursorSync = settings;
 
     checkbox.addEventListener('change', (event) => {
-        let checked = event.currentTarget.checked;
+        const checked = event.currentTarget.checked;
         cursorSync = checked;
         saveCursorSyncSettings(checked);
     });
 };
 
-let enableScrollBarSync = () => {
+const enableScrollBarSync = () => {
     scrollBarSync = true;
     scrollSync.setEnabled(true);
 };
 
-let disableScrollBarSync = () => {
+const disableScrollBarSync = () => {
     scrollBarSync = false;
     scrollSync.setEnabled(false);
 };
@@ -2387,17 +2414,17 @@ let disableScrollBarSync = () => {
 // ----- toast / clipboard -----
 // showToast + copyToClipboard imported from modular APIs (ui/toast, utils/clipboard)
 
-let copyMarkdownToClipboard = async () => {
-    const mdContent = editor.getValue();
+const copyMarkdownToClipboard = async () => {
+    const mdContent = editor?.getValue();
     const ok = await copyToClipboard(mdContent);
     showToast(ok ? 'Markdown copied to clipboard!' : 'Failed to copy Markdown', ok ? 'success' : 'error');
 };
 
-let notifyCopied = () => {
+const notifyCopied = () => {
     showToast('Markdown copied to clipboard!', 'success');
 };
 
-let copyHTMLToClipboard = async () => {
+const copyHTMLToClipboard = async () => {
     const htmlContent = document.querySelector('#output')?.innerHTML || '';
     const ok = await copyToClipboard(htmlContent);
     showToast(ok ? 'HTML copied to clipboard!' : 'Failed to copy HTML', ok ? 'success' : 'error');
@@ -2405,7 +2432,7 @@ let copyHTMLToClipboard = async () => {
 
 // ----- stats utils -----
 
-let updateStats = (text) => {
+const updateStats = (text) => {
     // Count words (split by whitespace and filter empty strings)
     const words = text.trim().split(/\s+/).filter(word => word.length > 0);
     const wordCount = text.trim() === '' ? 0 : words.length;
@@ -2455,7 +2482,7 @@ let updateStats = (text) => {
     }
 };
 
-let setupStatsButton = () => {
+const setupStatsButton = () => {
     const statsBtn = document.querySelector("#stats-button");
     const modal = document.querySelector("#stats-modal");
     const overlay = document.querySelector("#stats-modal-overlay");
@@ -2468,7 +2495,7 @@ let setupStatsButton = () => {
         if (modal) modal.style.display = "block";
         if (overlay) overlay.style.display = "block";
         // Force update stats when opening
-        const text = editor.getValue();
+        const text = editor?.getValue();
         updateStats(text);
         if (modal) {
             statsModalFocusTrap?.deactivate();
@@ -2620,7 +2647,7 @@ Wrap up your thoughts.
     }
 };
 
-let setupTemplatesButton = () => {
+const setupTemplatesButton = () => {
     const templatesBtn = document.querySelector("#templates-button");
     const modal = document.querySelector("#templates-modal");
     const overlay = document.querySelector("#templates-modal-overlay");
@@ -2659,8 +2686,8 @@ let setupTemplatesButton = () => {
 
             card.addEventListener('click', () => {
                 if (confirm('This will overwrite your current editor content. Continue?')) {
-                    editor.setValue(template.content);
-                    editor.revealPosition({ lineNumber: 1, column: 1 });
+                    editor?.setValue(template.content);
+                    editor?.revealPosition({ lineNumber: 1, column: 1 });
                     closeModal();
                     showToast(`Template "${template.title}" loaded!`, 'success');
                 }
@@ -2761,7 +2788,7 @@ $$
     }
 };
 
-let setupSnippetsButton = () => {
+const setupSnippetsButton = () => {
     const dropdown = document.querySelector("#snippets-dropdown");
 
     if (dropdown && dropdown.children.length === 0) {
@@ -2774,11 +2801,11 @@ let setupSnippetsButton = () => {
                 `;
 
             item.addEventListener('click', () => {
-                const selection = editor.getSelection();
+                const selection = editor?.getSelection();
                 const text = snippet.content;
                 const op = { range: selection, text: text, forceMoveMarkers: true };
-                editor.executeEdits("my-source", [op]);
-                editor.focus();
+                editor?.executeEdits("my-source", [op]);
+                editor?.focus();
                 showToast(`Snippet "${snippet.title}" inserted!`, 'success');
             });
 
@@ -2787,7 +2814,7 @@ let setupSnippetsButton = () => {
     }
 };
 
-let positionToolbarDropdown = (sheet, trigger) => {
+const positionToolbarDropdown = (sheet, trigger) => {
     const rect = trigger.getBoundingClientRect();
     sheet.style.top = `${Math.round(rect.bottom + 8)}px`;
     sheet.style.bottom = 'auto';
@@ -2801,7 +2828,7 @@ let positionToolbarDropdown = (sheet, trigger) => {
     }
 };
 
-let setupCalloutDropdown = () => {
+const setupCalloutDropdown = () => {
     const trigger = document.getElementById('callout-dropdown-btn');
     const sheet = document.getElementById('callout-dropdown-sheet');
 
@@ -2877,8 +2904,8 @@ let setupCalloutDropdown = () => {
 
 // ----- download utils -----
 
-let downloadMarkdown = () => {
-    const content = resolveImageReferences(editor.getValue(), false);
+const downloadMarkdown = () => {
+    const content = resolveImageReferences(editor?.getValue() ?? '', false);
     const filename = getExportFilename('md');
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -2892,7 +2919,7 @@ let downloadMarkdown = () => {
     showToast(`Downloaded: ${filename}`, 'success');
 };
 
-let exportToPDF = async () => {
+const exportToPDF = async () => {
     showToast('Generating PDF...', 'info', 2000);
     try {
         const html2pdf = await getHtml2Pdf();
@@ -2923,7 +2950,7 @@ let exportToPDF = async () => {
     }
 };
 
-let exportToHTML = () => {
+const exportToHTML = () => {
     const title = getActiveDocTitle();
     const filename = getExportFilename('html');
     const html = `<!DOCTYPE html>
@@ -3003,7 +3030,7 @@ ${document.getElementById('output').innerHTML}
     showToast(`HTML exported: ${filename}`, 'success');
 };
 
-let exportToDOCX = () => {
+const exportToDOCX = () => {
     const title = getActiveDocTitle();
     const filename = getExportFilename('doc');
     const content = document.getElementById('output').innerHTML;
@@ -3040,8 +3067,8 @@ ${content}
 };
 
 // Export as Plain Text
-let exportToTXT = () => {
-    const content = editor.getValue();
+const exportToTXT = () => {
+    const content = editor?.getValue() ?? '';
     // Strip markdown syntax for plain text
     const plainText = content
         .replace(/^#{1,6}\s+/gm, '')  // Remove headings
@@ -3070,7 +3097,7 @@ let exportToTXT = () => {
 };
 
 // Export as PNG Image
-let exportToPNG = async () => {
+const exportToPNG = async () => {
     showToast('Generating image...', 'info', 2000);
     try {
         const html2canvas = await getHtml2Canvas();
@@ -3093,7 +3120,7 @@ let exportToPNG = async () => {
 };
 
 // Print document
-let printDocument = () => {
+const printDocument = () => {
     const content = document.getElementById('output').innerHTML;
     const title = getActiveDocTitle();
     const printWindow = window.open('', '_blank');
@@ -3126,20 +3153,20 @@ let printDocument = () => {
 };
 
 // Helper: Get active document title
-let getActiveDocTitle = () => {
+const getActiveDocTitle = () => {
     const doc = documents.find(d => d.id === activeDocId);
     return doc ? doc.title : 'Untitled';
 };
 
 // Helper: Generate export filename with extension
-let getExportFilename = (ext) => {
+const getExportFilename = (ext) => {
     const title = getActiveDocTitle();
     // Sanitize filename: remove invalid characters
     const sanitized = title.replace(/[<>:"/\\|?*]/g, '').trim() || 'document';
     return `${sanitized}.${ext}`;
 };
 
-let setupAdditionalExportButtons = () => {
+const setupAdditionalExportButtons = () => {
     const btnHtml = document.getElementById('export-html-button');
     const btnDocx = document.getElementById('export-docx-button');
     const btnTxt = document.getElementById('export-txt-button');
@@ -3158,7 +3185,7 @@ let currentExportFormat = 'pdf';
 let exportModalZoom = 0.9;
 let exportPreviewDebounceTimer = null;
 
-let scheduleExportPreviewUpdate = (format, includeSize = true, delay = 150) => {
+const scheduleExportPreviewUpdate = (format, includeSize = true, delay = 150) => {
     if (exportPreviewDebounceTimer) {
         clearTimeout(exportPreviewDebounceTimer);
     }
@@ -3171,7 +3198,7 @@ let scheduleExportPreviewUpdate = (format, includeSize = true, delay = 150) => {
     }, delay);
 };
 
-let setupExportModal = () => {
+const setupExportModal = () => {
     const modal = document.getElementById('export-modal');
     const overlay = document.getElementById('export-modal-overlay');
     const closeBtn = document.getElementById('export-modal-close');
@@ -3265,7 +3292,7 @@ let setupExportModal = () => {
     setupExportOptionListeners();
 };
 
-let updateZoom = () => {
+const updateZoom = () => {
     const pngContainer = document.getElementById('png-container');
     if (pngContainer) {
         pngContainer.style.transform = `scale(${exportModalZoom})`;
@@ -3273,7 +3300,7 @@ let updateZoom = () => {
 };
 
 // Setup listeners for all export options to auto-update preview
-let setupExportOptionListeners = () => {
+const setupExportOptionListeners = () => {
     // PDF options
     const pdfOptions = ['export-paper-size', 'export-orientation', 'export-page-numbers', 'export-header-footer'];
     pdfOptions.forEach(id => {
@@ -3378,7 +3405,7 @@ let setupExportOptionListeners = () => {
     });
 };
 
-let openExportModal = () => {
+const openExportModal = () => {
     const modal = document.getElementById('export-modal');
     const overlay = document.getElementById('export-modal-overlay');
 
@@ -3416,7 +3443,7 @@ let openExportModal = () => {
     exportModalFocusTrap.activate();
 };
 
-let closeExportModal = () => {
+const closeExportModal = () => {
     const modal = document.getElementById('export-modal');
     const overlay = document.getElementById('export-modal-overlay');
     const loadingOverlay = document.getElementById('export-loading-overlay');
@@ -3437,7 +3464,7 @@ let closeExportModal = () => {
     if (spinner) spinner.style.display = '';
 };
 
-let updateExportUI = (format) => {
+const updateExportUI = (format) => {
     // Hide all option panels
     document.querySelectorAll('.export-options').forEach(el => el.classList.add('hidden'));
 
@@ -3485,7 +3512,7 @@ let updateExportUI = (format) => {
     estimateFileSize(format);
 };
 
-let updateExportPreview = (format) => {
+const updateExportPreview = (format) => {
     const content = document.getElementById('output').innerHTML;
     const title = getActiveDocTitle();
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -3547,8 +3574,12 @@ let updateExportPreview = (format) => {
         const includeFrontmatter = document.getElementById('export-frontmatter')?.checked ?? false;
 
         if (txtContent) {
-            // Convert to plain text
-            let plainText = editor.getValue()
+            // Convert to plain text — null-safe + bounded for large docs
+            const raw = editor?.getValue() || '';
+            if (raw.length > 2_000_000) {
+                showToast('Document is very large; TXT preview may be slow', 'warning');
+            }
+            let plainText = raw
                 .replace(/^#{1,6}\s+/gm, '')
                 .replace(/\*\*(.+?)\*\*/g, '$1')
                 .replace(/\*(.+?)\*/g, '$1')
@@ -3613,8 +3644,8 @@ let updateExportPreview = (format) => {
     }
 };
 
-let estimateFileSize = (format) => {
-    const content = editor.getValue();
+const estimateFileSize = (format) => {
+    const content = editor?.getValue() || '';
     const htmlContent = document.getElementById('output').innerHTML;
     let estimatedSize = 0;
 
@@ -3656,7 +3687,7 @@ let estimateFileSize = (format) => {
     }
 };
 
-let showExportLoading = (text = 'Generating your file...', progress = 30) => {
+const showExportLoading = (text = 'Generating your file...', progress = 30) => {
     const overlay = document.getElementById('export-loading-overlay');
     const textEl = document.getElementById('export-loading-text');
     const progressEl = document.getElementById('export-loading-progress-bar');
@@ -3670,7 +3701,7 @@ let showExportLoading = (text = 'Generating your file...', progress = 30) => {
     if (successIcon) successIcon.style.display = 'none';
 };
 
-let updateExportProgress = (progress, text) => {
+const updateExportProgress = (progress, text) => {
     const progressEl = document.getElementById('export-loading-progress-bar');
     const textEl = document.getElementById('export-loading-text');
 
@@ -3678,7 +3709,7 @@ let updateExportProgress = (progress, text) => {
     if (textEl && text) textEl.textContent = text;
 };
 
-let hideExportLoading = ({ success = true, text = 'Complete!', closeModal = true, delay = 900 } = {}) => {
+const hideExportLoading = ({ success = true, text = 'Complete!', closeModal = true, delay = 900 } = {}) => {
     const overlay = document.getElementById('export-loading-overlay');
     const spinner = overlay?.querySelector('.export-loading-spinner');
     const successIcon = overlay?.querySelector('.export-loading-success-icon');
@@ -3719,11 +3750,11 @@ let hideExportLoading = ({ success = true, text = 'Complete!', closeModal = true
     }, delay);
 };
 
-let failExportLoading = (text = 'Export failed') => {
+const failExportLoading = (text = 'Export failed') => {
     hideExportLoading({ success: false, text, closeModal: false });
 };
 
-let executeExport = (format) => {
+const executeExport = (format) => {
     switch (format) {
         case 'pdf':
             exportToPDFWithOptions();
@@ -3751,7 +3782,7 @@ let executeExport = (format) => {
 
 // Helper: Convert inline SVGs to canvas-based images for better html2canvas compatibility
 // Uses synchronous canvas drawing (no Image loading) to avoid blob URL / onload hangs
-let convertSVGsToImages = (container) => {
+const convertSVGsToImages = (container) => {
     // Only target top-level SVGs inside mermaid diagrams — skip KaTeX & nested SVGs
     const mermaidSvgs = container.querySelectorAll('.mermaid-diagram > svg');
     // Also grab standalone top-level SVGs (direct children of output), but not nested ones
@@ -3821,7 +3852,7 @@ let convertSVGsToImages = (container) => {
 };
 
 // Enhanced export functions with options
-let exportToPDFWithOptions = async () => {
+const exportToPDFWithOptions = async () => {
     let tempContainer = null;
 
     try {
@@ -3931,7 +3962,7 @@ let exportToPDFWithOptions = async () => {
     }
 };
 
-let exportToHTMLWithOptions = () => {
+const exportToHTMLWithOptions = () => {
     const theme = document.getElementById('export-html-theme')?.value || 'light';
     const includeCSS = document.getElementById('export-include-css')?.checked ?? true;
     const minify = document.getElementById('export-minify-html')?.checked ?? false;
@@ -4002,7 +4033,7 @@ ${content}
     }
 };
 
-let exportToPNGWithOptions = async () => {
+const exportToPNGWithOptions = async () => {
     const widthInput = document.getElementById('export-image-width')?.value || '1200 px';
     const resolution = parseInt(document.getElementById('export-resolution')?.value || '2');
     const transparentBg = document.getElementById('export-transparent-bg')?.checked ?? false;
@@ -4073,7 +4104,7 @@ let exportToPNGWithOptions = async () => {
     }
 };
 
-let printDocumentWithOptions = () => {
+const printDocumentWithOptions = () => {
     const paperSize = document.getElementById('print-paper-size')?.value || 'a4';
     const orientation = document.getElementById('print-orientation')?.value || 'portrait';
     const margins = document.getElementById('print-margins')?.value || 'default';
@@ -4151,9 +4182,9 @@ let printDocumentWithOptions = () => {
 };
 
 // Download Markdown with options
-let downloadMarkdownWithOptions = () => {
+const downloadMarkdownWithOptions = () => {
     showExportLoading('Preparing Markdown file...', 50);
-    const content = resolveImageReferences(editor.getValue(), false);
+    const content = resolveImageReferences(editor?.getValue() ?? '', false);
     const filename = getExportFilename('md');
     try {
         updateExportProgress(80, 'Downloading...');
@@ -4174,7 +4205,7 @@ let downloadMarkdownWithOptions = () => {
 };
 
 // Export DOCX with options
-let exportToDOCXWithOptions = () => {
+const exportToDOCXWithOptions = () => {
     const title = getActiveDocTitle();
     const filename = getExportFilename('doc');
     const content = document.getElementById('output').innerHTML;
@@ -4273,14 +4304,28 @@ ${content}
 };
 
 // Export TXT with options
-let exportToTXTWithOptions = () => {
+const exportToTXTWithOptions = () => {
     const wordWrap = document.getElementById('export-word-wrap')?.checked ?? true;
     const includeFrontmatter = document.getElementById('export-frontmatter')?.checked ?? false;
 
     showExportLoading('Converting to plain text...', 40);
-    const content = editor.getValue();
+    const content = editor?.getValue() ?? '';
     const title = getActiveDocTitle();
     const today = new Date().toISOString().split('T')[0];
+
+    // Size guard: TXT export runs a dozen synchronous regex passes over the
+    // entire document. For very large docs, warn the user and continue (the
+    // export still works, it just may take a moment) instead of freezing
+    // silently. We deliberately do NOT block — that would be worse UX than a
+    // slow-but-successful export.
+    const TXT_WARN_BYTES = 10 * 1024 * 1024; // 10 MB
+    if (content.length > TXT_WARN_BYTES) {
+        showToast(
+            `Large document (${(content.length / 1024 / 1024).toFixed(1)} MB) — TXT export may take a moment`,
+            'warning',
+            3000
+        );
+    }
 
     // Strip markdown syntax for plain text
     let plainText = content
@@ -4357,21 +4402,43 @@ Words: ${wordCount}
 
 // ----- import utils -----
 
-let importFile = () => {
-    let fileInput = document.querySelector('#file-input');
+const importFile = () => {
+    const fileInput = document.querySelector('#file-input');
     fileInput.click();
 };
 
-let handleFileImport = (event) => {
+const handleFileImport = (event) => {
     const file = event.target.files[0];
     if (!file) return;
+
+    // Guard against OOM/freeze on very large text imports. Mirrors the guard
+    // already applied in src/features/import/index.js so both import entry
+    // points reject oversized files instead of reading the whole thing in.
+    const MAX_IMPORT_BYTES = 5 * 1024 * 1024; // 5 MB
+    if (file.size > MAX_IMPORT_BYTES) {
+        showToast(
+            `File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 5 MB.`,
+            'error'
+        );
+        event.target.value = '';
+        return;
+    }
 
     const reader = new FileReader();
     reader.onload = (e) => {
         const content = e.target.result;
-        editor.setValue(content);
-        editor.revealPosition({ lineNumber: 1, column: 1 });
-        editor.focus();
+        if (!editor) {
+            // Editor not ready yet — queue the import until EDITOR_READY
+            pendingEditorActions.push(() => {
+                editor?.setValue(content);
+                editor?.revealPosition({ lineNumber: 1, column: 1 });
+                editor?.focus();
+            });
+            return;
+        }
+        editor?.setValue(content);
+        editor?.revealPosition({ lineNumber: 1, column: 1 });
+        editor?.focus();
         hasEdited = true;
         setHasEdited(true);
         showToast(`File "${file.name}" imported successfully!`, 'success');
@@ -4387,7 +4454,7 @@ let handleFileImport = (event) => {
 
 // ----- image upload -----
 
-let setupImageUpload = () => {
+const setupImageUpload = () => {
     const imageInput = document.querySelector('#image-input');
     const editorElement = document.querySelector('#editor');
 
@@ -4425,7 +4492,7 @@ let setupImageUpload = () => {
     });
 };
 
-let handleImageUpload = (event) => {
+const handleImageUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -4438,8 +4505,8 @@ let handleImageUpload = (event) => {
     event.target.value = '';
 };
 
-let handleImageDrop = (files) => {
-    for (let file of files) {
+const handleImageDrop = (files) => {
+    for (const file of files) {
         if (file.type.startsWith('image/')) {
             processImageFile(file);
         }
@@ -4453,9 +4520,9 @@ let settingsModalFocusTrap = null;
 
 // Validate image file signature (magic bytes) — shared util
 // (local alias kept for call sites / clarity)
-let validateImageSignatureLocal = validateImageSignature;
+const validateImageSignatureLocal = validateImageSignature;
 
-let processImageFile = (file) => {
+const processImageFile = (file) => {
     // Check file size (configurable max size)
     const maxSize = APP_CONFIG.MAX_IMAGE_SIZE_MB * 1024 * 1024;
     if (file.size > maxSize) {
@@ -4515,8 +4582,8 @@ let processImageFile = (file) => {
 };
 
 // Helper: insert image reference into editor after processing
-let insertImageIntoEditor = (file, base64Image) => {
-    const selection = editor.getSelection();
+const insertImageIntoEditor = (file, base64Image) => {
+    const selection = editor?.getSelection();
     const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
 
     // Generate short unique ID and store base64 in the image store (LRU-capped)
@@ -4527,27 +4594,27 @@ let insertImageIntoEditor = (file, base64Image) => {
     // Insert short readable reference instead of enormous base64 string
     const markdown = `![${fileName}](markups-img:${imgId})`;
 
-    editor.executeEdits('image-upload', [{
+    editor?.executeEdits('image-upload', [{
         range: selection,
         text: markdown
     }]);
 
-    editor.focus();
+    editor?.focus();
     showToast('Image inserted successfully!', 'success');
 };
 
 // ----- dark mode -----
 
-let initDarkMode = (settings) => {
-    let checkbox = document.querySelector('#dark-mode-checkbox');
-    let toggleBtn = document.querySelector('#dark-mode-toggle');
+const initDarkMode = (settings) => {
+    const checkbox = document.querySelector('#dark-mode-checkbox');
+    const toggleBtn = document.querySelector('#dark-mode-toggle');
 
     checkbox.checked = settings;
     darkMode = settings;
     applyDarkMode(settings);
 
     checkbox.addEventListener('change', (event) => {
-        let checked = event.currentTarget.checked;
+        const checked = event.currentTarget.checked;
         darkMode = checked;
         applyDarkMode(checked);
         saveDarkModeSettings(checked);
@@ -4565,7 +4632,7 @@ let initDarkMode = (settings) => {
     }
 };
 
-let applyDarkMode = (enabled) => {
+const applyDarkMode = (enabled) => {
     if (enabled) {
         document.body.classList.add('dark-mode');
         monaco.editor.setTheme('vs-dark');
@@ -4575,12 +4642,18 @@ let applyDarkMode = (enabled) => {
     }
 };
 
+// Alias used by settings handlers (dark-mode checkbox + initial load).
+// Defined here so both entry points share the same implementation.
+function toggleDarkMode(enabled) {
+    applyDarkMode(enabled);
+}
+
 // ----- settings modal -----
 
 // Settings state storage
 const SETTINGS_STORAGE_KEY = 'markdown_editor_settings';
 
-let loadSettings = () => {
+const loadSettings = () => {
     try {
         const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
         if (!saved) return getDefaultSettings();
@@ -4598,7 +4671,7 @@ let loadSettings = () => {
     }
 };
 
-let getDefaultSettings = () => ({
+const getDefaultSettings = () => ({
     general: {
         darkMode: false,
         autoSave: true,
@@ -4625,7 +4698,7 @@ let getDefaultSettings = () => ({
     theme: 'vs-dark'
 });
 
-let saveSettings = (settings) => {
+const saveSettings = (settings) => {
     try {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     } catch (e) {
@@ -4635,7 +4708,7 @@ let saveSettings = (settings) => {
 
 let currentSettings = loadSettings();
 
-let setupSettingsModal = () => {
+const setupSettingsModal = () => {
     const settingsBtn = document.querySelector('#settings-btn');
     const modal = document.querySelector('#settings-modal');
     const overlay = document.querySelector('#settings-modal-overlay');
@@ -4665,7 +4738,7 @@ let setupSettingsModal = () => {
         });
     }
 
-    let openSettingsModal = () => {
+    const openSettingsModal = () => {
         modal.classList.add('active');
         overlay.classList.add('active');
         loadSettingsUI();
@@ -4674,7 +4747,7 @@ let setupSettingsModal = () => {
         settingsModalFocusTrap.activate();
     };
 
-    let closeSettingsModal = () => {
+    const closeSettingsModal = () => {
         settingsModalFocusTrap?.deactivate();
         settingsModalFocusTrap = null;
         modal.classList.remove('active');
@@ -4727,7 +4800,7 @@ let setupSettingsModal = () => {
     });
 
     // Load settings into UI
-    let loadSettingsUI = () => {
+    const loadSettingsUI = () => {
         // General
         setCheckbox('dark-mode-checkbox', document.body.classList.contains('dark-mode'));
         setCheckbox('auto-save-checkbox', currentSettings.general.autoSave);
@@ -4757,12 +4830,12 @@ let setupSettingsModal = () => {
         });
     };
 
-    let setCheckbox = (id, value) => {
+    const setCheckbox = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.checked = value;
     };
 
-    let setDropdown = (id, value) => {
+    const setDropdown = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.value = value;
     };
@@ -4797,7 +4870,7 @@ let setupSettingsModal = () => {
     }
 };
 
-let setupGeneralSettings = () => {
+const setupGeneralSettings = () => {
     // Dark mode toggle
     const darkModeCheckbox = document.getElementById('dark-mode-checkbox');
     if (darkModeCheckbox) {
@@ -4828,13 +4901,13 @@ let setupGeneralSettings = () => {
     }
 };
 
-let setupEditorSettings = () => {
+const setupEditorSettings = () => {
     // Font family
     const fontFamilyDropdown = document.getElementById('font-family-dropdown');
     if (fontFamilyDropdown) {
         fontFamilyDropdown.addEventListener('change', (e) => {
             currentSettings.editor.fontFamily = e.target.value;
-            editor.updateOptions({ fontFamily: e.target.value });
+            editor?.updateOptions({ fontFamily: e.target.value });
             showToast(`Font: ${e.target.value}`, 'info', 1500);
         });
     }
@@ -4845,7 +4918,7 @@ let setupEditorSettings = () => {
         fontSizeDropdown.addEventListener('change', (e) => {
             const size = parseInt(e.target.value);
             currentSettings.editor.fontSize = size;
-            editor.updateOptions({ fontSize: size });
+            editor?.updateOptions({ fontSize: size });
             showToast(`Font size: ${size}px`, 'info', 1500);
         });
     }
@@ -4856,7 +4929,7 @@ let setupEditorSettings = () => {
         lineHeightDropdown.addEventListener('change', (e) => {
             const height = parseFloat(e.target.value);
             currentSettings.editor.lineHeight = height;
-            editor.updateOptions({ lineHeight: height * 14 }); // Monaco uses pixels
+            editor?.updateOptions({ lineHeight: height * 14 }); // Monaco uses pixels
             showToast(`Line height: ${height}`, 'info', 1500);
         });
     }
@@ -4867,7 +4940,7 @@ let setupEditorSettings = () => {
         tabSizeDropdown.addEventListener('change', (e) => {
             const size = parseInt(e.target.value);
             currentSettings.editor.tabSize = size;
-            editor.updateOptions({ tabSize: size });
+            editor?.updateOptions({ tabSize: size });
             showToast(`Tab size: ${size} spaces`, 'info', 1500);
         });
     }
@@ -4877,7 +4950,7 @@ let setupEditorSettings = () => {
     if (wordWrapCheckbox) {
         wordWrapCheckbox.addEventListener('change', (e) => {
             currentSettings.editor.wordWrap = e.target.checked;
-            editor.updateOptions({ wordWrap: e.target.checked ? 'on' : 'off' });
+            editor?.updateOptions({ wordWrap: e.target.checked ? 'on' : 'off' });
             showToast(e.target.checked ? 'Word wrap enabled' : 'Word wrap disabled', 'info', 1500);
         });
     }
@@ -4887,7 +4960,7 @@ let setupEditorSettings = () => {
     if (lineNumbersCheckbox) {
         lineNumbersCheckbox.addEventListener('change', (e) => {
             currentSettings.editor.lineNumbers = e.target.checked;
-            editor.updateOptions({ lineNumbers: e.target.checked ? 'on' : 'off' });
+            editor?.updateOptions({ lineNumbers: e.target.checked ? 'on' : 'off' });
             showToast(e.target.checked ? 'Line numbers enabled' : 'Line numbers disabled', 'info', 1500);
         });
     }
@@ -4897,7 +4970,7 @@ let setupEditorSettings = () => {
     if (minimapCheckbox) {
         minimapCheckbox.addEventListener('change', (e) => {
             currentSettings.editor.minimap = e.target.checked;
-            editor.updateOptions({ minimap: { enabled: e.target.checked } });
+            editor?.updateOptions({ minimap: { enabled: e.target.checked } });
             showToast(e.target.checked ? 'Minimap enabled' : 'Minimap disabled', 'info', 1500);
         });
     }
@@ -4907,13 +4980,13 @@ let setupEditorSettings = () => {
     if (bracketMatchingCheckbox) {
         bracketMatchingCheckbox.addEventListener('change', (e) => {
             currentSettings.editor.bracketMatching = e.target.checked;
-            editor.updateOptions({ matchBrackets: e.target.checked ? 'always' : 'never' });
+            editor?.updateOptions({ matchBrackets: e.target.checked ? 'always' : 'never' });
             showToast(e.target.checked ? 'Bracket matching enabled' : 'Bracket matching disabled', 'info', 1500);
         });
     }
 };
 
-let setupPreviewSettings = () => {
+const setupPreviewSettings = () => {
     // Live preview
     const livePreviewCheckbox = document.getElementById('live-preview-checkbox');
     if (livePreviewCheckbox) {
@@ -4965,7 +5038,7 @@ let setupPreviewSettings = () => {
     }
 };
 
-let setupThemeSettings = () => {
+const setupThemeSettings = () => {
     const themeRadios = document.querySelectorAll('input[name="editor-theme"]');
     themeRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
@@ -4981,7 +5054,7 @@ let setupThemeSettings = () => {
     });
 };
 
-let setupKeyboardSearch = () => {
+const setupKeyboardSearch = () => {
     const searchInput = document.getElementById('shortcuts-search-input');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
@@ -4999,13 +5072,13 @@ let setupKeyboardSearch = () => {
     }
 };
 
-let applyAllSettings = () => {
+const applyAllSettings = () => {
     // Apply dark mode
     toggleDarkMode(currentSettings.general.darkMode);
 
     // Apply editor settings
     if (editor) {
-        editor.updateOptions({
+        editor?.updateOptions({
             fontFamily: currentSettings.editor.fontFamily,
             fontSize: currentSettings.editor.fontSize,
             lineHeight: currentSettings.editor.lineHeight * 14,
@@ -5027,7 +5100,7 @@ let applyAllSettings = () => {
 
 // ----- theme switching -----
 
-let initThemeSelector = (savedTheme) => {
+const initThemeSelector = (savedTheme) => {
     const themeRadios = document.querySelectorAll('input[name="editor-theme"]');
 
     // Check for system preference if no saved theme
@@ -5063,7 +5136,7 @@ let initThemeSelector = (savedTheme) => {
     });
 };
 
-let defineCustomThemes = () => {
+const defineCustomThemes = () => {
     monaco.editor.defineTheme('dracula', {
         base: 'vs-dark',
         inherit: true,
@@ -5096,7 +5169,7 @@ let defineCustomThemes = () => {
     });
 };
 
-let applyTheme = (theme) => {
+const applyTheme = (theme) => {
     monaco.editor.setTheme(theme);
 
     // Remove all theme classes
@@ -5131,7 +5204,7 @@ let applyTheme = (theme) => {
     }
 };
 
-let getThemeName = (theme) => {
+const getThemeName = (theme) => {
     const themeNames = {
         'vs': 'Light',
         'vs-dark': 'Dark',
@@ -5140,11 +5213,11 @@ let getThemeName = (theme) => {
     return themeNames[theme] || theme;
 };
 
-let loadThemeSettings = () => {
+const loadThemeSettings = () => {
     return Storehouse.getItem(localStorageNamespace, localStorageThemeKey);
 };
 
-let saveThemeSettings = (theme) => {
+const saveThemeSettings = (theme) => {
     const expiredAt = new Date(2099, 1, 1);
     Storehouse.setItem(localStorageNamespace, localStorageThemeKey, theme, expiredAt);
 };
@@ -5152,7 +5225,7 @@ let saveThemeSettings = (theme) => {
 // ----- setup -----
 
 // setup navigation actions
-let setupResetButton = () => {
+const setupResetButton = () => {
     const btn = document.querySelector("#reset-button");
     if (btn) {
         btn.addEventListener('click', (event) => {
@@ -5162,19 +5235,19 @@ let setupResetButton = () => {
     }
 };
 
-let setupCopyButton = (editor) => {
+const setupCopyButton = (editor) => {
     const btn = document.querySelector("#copy-button");
     if (btn) {
         btn.addEventListener('click', async (event) => {
             event.preventDefault();
-            const value = editor.getValue();
+            const value = editor?.getValue();
             const ok = await copyToClipboard(value);
             if (ok) notifyCopied();
         });
     }
 };
 
-let setupCopyHTMLButton = () => {
+const setupCopyHTMLButton = () => {
     const btn = document.querySelector("#copy-html-button");
     if (btn) {
         btn.addEventListener('click', (event) => {
@@ -5184,7 +5257,7 @@ let setupCopyHTMLButton = () => {
     }
 };
 
-let setupDownloadButton = () => {
+const setupDownloadButton = () => {
     const btn = document.querySelector("#download-md-button");
     if (btn) {
         btn.addEventListener('click', (event) => {
@@ -5194,7 +5267,7 @@ let setupDownloadButton = () => {
     }
 };
 
-let setupExportPDFButton = () => {
+const setupExportPDFButton = () => {
     const btn = document.querySelector("#export-pdf-button");
     if (btn) {
         btn.addEventListener('click', (event) => {
@@ -5204,7 +5277,7 @@ let setupExportPDFButton = () => {
     }
 };
 
-let setupImportButton = () => {
+const setupImportButton = () => {
     const btn = document.querySelector("#import-button");
     if (btn) {
         btn.addEventListener('click', (event) => {
@@ -5219,7 +5292,7 @@ let setupImportButton = () => {
     }
 };
 
-let setupHelpButton = () => {
+const setupHelpButton = () => {
     const modal = document.querySelector("#help-modal");
     const overlay = document.querySelector("#help-modal-overlay");
     const helpBtn = document.querySelector("#help-button");
@@ -5272,7 +5345,7 @@ let setupHelpButton = () => {
  * Shows an unread dot until the user opens/dismisses once for this notice version.
  * Bump NOTICE_KEY (e.g. v2) when you want the badge to reappear for a new tip.
  */
-let setupUpdateNotice = () => {
+const setupUpdateNotice = () => {
     const NOTICE_KEY = 'com.markdownlivepreview.update_notice_v3';
     const root = document.getElementById('header-notice');
     const btn = document.getElementById('update-notice-btn');
@@ -5388,7 +5461,7 @@ const applyTocVisibility = (tocSidebar, tocBtn, mobileOverlay, isVisible) => {
 };
 
 // TOC toggle button (right sidebar only)
-let setupTOCButton = () => {
+const setupTOCButton = () => {
     const tocBtn = document.querySelector("#toc-button");
     const tocSidebar = document.querySelector("#toc-sidebar");
     const mobileOverlay = document.querySelector('#mobile-toc-overlay');
@@ -5443,7 +5516,7 @@ let setupTOCButton = () => {
 };
 
 // Scroll Sync toggle button
-let setupScrollSyncButton = () => {
+const setupScrollSyncButton = () => {
     const scrollSyncBtn = document.querySelector("#scroll-sync-button");
     const syncScrollCheckbox = document.querySelector('#sync-scroll-checkbox');
 
@@ -5475,13 +5548,13 @@ let setupScrollSyncButton = () => {
 // ----- View Mode -----
 
 // Helper to determine current view mode from body class
-let getCurrentViewMode = () => {
+const getCurrentViewMode = () => {
     if (document.body.classList.contains('view-editor')) return 'code';
     if (document.body.classList.contains('view-preview')) return 'preview';
     return 'split';
 };
 
-let setViewMode = (mode) => {
+const setViewMode = (mode) => {
     // Use the actual pane elements (same IDs as setupDivider uses)
     const leftPane = document.getElementById('edit');      // .editor-pane
     const rightPane = document.getElementById('preview');  // .preview-pane
@@ -5535,14 +5608,14 @@ let setViewMode = (mode) => {
 
     // Trigger resize for Monaco
     setTimeout(() => {
-        if (editor) editor.layout();
+        if (editor) editor?.layout();
     }, 50);
 
     // Save view mode preference
     saveViewMode(mode);
 };
 
-let setupViewButtons = () => {
+const setupViewButtons = () => {
     const btnCode = document.getElementById('view-code');
     const btnSplit = document.getElementById('view-split');
     const btnPreview = document.getElementById('view-preview');
@@ -5564,7 +5637,7 @@ let setupViewButtons = () => {
 
 let isFocusMode = false;
 
-let toggleFocusMode = () => {
+const toggleFocusMode = () => {
     const focusBtn = document.querySelector("#focus-button");
     isFocusMode = !isFocusMode;
 
@@ -5579,7 +5652,7 @@ let toggleFocusMode = () => {
     }
 };
 
-let setupFocusMode = () => {
+const setupFocusMode = () => {
     const focusBtn = document.querySelector("#focus-button");
     if (focusBtn) {
         focusBtn.addEventListener('click', (e) => {
@@ -5593,7 +5666,7 @@ let setupFocusMode = () => {
 
 let isTypewriterMode = false;
 
-let toggleTypewriterMode = () => {
+const toggleTypewriterMode = () => {
     const typewriterBtn = document.querySelector("#typewriter-button");
     isTypewriterMode = !isTypewriterMode;
 
@@ -5601,9 +5674,9 @@ let toggleTypewriterMode = () => {
         if (typewriterBtn) typewriterBtn.classList.add('active');
 
         // Center current line immediately
-        const position = editor.getPosition();
+        const position = editor?.getPosition();
         if (position) {
-            editor.revealLineInCenter(position.lineNumber);
+            editor?.revealLineInCenter(position.lineNumber);
         }
 
         showToast('Typewriter Mode Enabled', 'success', 1500);
@@ -5613,7 +5686,7 @@ let toggleTypewriterMode = () => {
     }
 };
 
-let setupTypewriterButton = () => {
+const setupTypewriterButton = () => {
     const typewriterBtn = document.querySelector("#typewriter-button");
     if (typewriterBtn) {
         typewriterBtn.addEventListener('click', (e) => {
@@ -5627,7 +5700,7 @@ let setupTypewriterButton = () => {
 
 let isFullscreen = false;
 
-let toggleFullscreen = () => {
+const toggleFullscreen = () => {
     const fullscreenBtn = document.querySelector("#fullscreen-button");
 
     if (!isFullscreen) {
@@ -5659,7 +5732,7 @@ let toggleFullscreen = () => {
     }
 };
 
-let setupFullscreenButton = () => {
+const setupFullscreenButton = () => {
     const fullscreenBtn = document.querySelector("#fullscreen-button");
     if (!fullscreenBtn) return;
 
@@ -5686,7 +5759,7 @@ let setupFullscreenButton = () => {
     });
 };
 
-let setupKeyboardShortcuts = () => {
+const setupKeyboardShortcuts = () => {
     document.addEventListener('keydown', (event) => {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const ctrlKey = isMac ? event.metaKey : event.ctrlKey;
@@ -5720,6 +5793,7 @@ let setupKeyboardShortcuts = () => {
         else if (ctrlKey && event.key === 'h') {
             event.preventDefault();
             const modal = document.querySelector("#help-modal");
+            if (!modal) return;
             const isVisible = modal.style.display === "block";
             modal.style.display = isVisible ? "none" : "block";
         }
@@ -5778,7 +5852,7 @@ let tableSizePopoverState = {
     onDocumentKeyDown: null
 };
 
-let closeTableSizePopover = () => {
+const closeTableSizePopover = () => {
     if (!tableSizePopoverState.panel) return false;
 
     if (tableSizePopoverState.onDocumentMouseDown) {
@@ -5798,7 +5872,7 @@ let closeTableSizePopover = () => {
     return true;
 };
 
-let openTableSizePopover = (triggerEl) => {
+const openTableSizePopover = (triggerEl) => {
     if (!triggerEl) return;
 
     closeTableSizePopover();
@@ -5929,7 +6003,7 @@ let openTableSizePopover = (triggerEl) => {
     rowsInput.select();
 };
 
-let insertMarkdown = (type) => {
+const insertMarkdown = (type) => {
     switch (type) {
         case 'bold':
             wrapSelection('**', '**');
@@ -5982,7 +6056,7 @@ let insertMarkdown = (type) => {
     }
 };
 
-let setupInsertVideoButton = () => {
+const setupInsertVideoButton = () => {
     const btn = document.getElementById('toolbar-video');
     if (!btn) return;
 
@@ -6089,7 +6163,7 @@ let setupInsertVideoButton = () => {
     });
 };
 
-let setupToolbar = () => {
+const setupToolbar = () => {
     document.getElementById('toolbar-undo').addEventListener('click', () => {
         editor?.trigger('toolbar', 'undo');
     });
@@ -6129,19 +6203,20 @@ let setupToolbar = () => {
 
 // ----- local state -----
 
-let loadLastContent = () => {
-    let lastContent = Storehouse.getItem(localStorageNamespace, localStorageKey);
+const loadLastContent = () => {
+    const lastContent = Storehouse.getItem(localStorageNamespace, localStorageKey);
     return lastContent;
 };
 
-let saveLastContent = (content) => {
-    let expiredAt = new Date(2099, 1, 1);
+const saveLastContent = (content) => {
+    const expiredAt = new Date(2099, 1, 1);
     Storehouse.setItem(localStorageNamespace, localStorageKey, content, expiredAt);
     showAutosaveIndicator();
 };
 
-let showAutosaveIndicator = () => {
+const showAutosaveIndicator = () => {
     const indicator = document.querySelector('#autosave-indicator');
+    if (!indicator) return;
     indicator.textContent = '💾 Saving...';
     indicator.classList.add('saving');
 
@@ -6151,39 +6226,39 @@ let showAutosaveIndicator = () => {
     }, 500);
 };
 
-let loadScrollBarSettings = () => {
-    let lastContent = Storehouse.getItem(localStorageNamespace, localStorageScrollBarKey);
+const loadScrollBarSettings = () => {
+    const lastContent = Storehouse.getItem(localStorageNamespace, localStorageScrollBarKey);
     return lastContent;
 };
 
-let saveScrollBarSettings = (settings) => {
-    let expiredAt = new Date(2099, 1, 1);
+const saveScrollBarSettings = (settings) => {
+    const expiredAt = new Date(2099, 1, 1);
     Storehouse.setItem(localStorageNamespace, localStorageScrollBarKey, settings, expiredAt);
 };
 
-let loadCursorSyncSettings = () => {
-    let lastContent = Storehouse.getItem(localStorageNamespace, localStorageCursorSyncKey);
+const loadCursorSyncSettings = () => {
+    const lastContent = Storehouse.getItem(localStorageNamespace, localStorageCursorSyncKey);
     return lastContent;
 };
 
-let saveCursorSyncSettings = (settings) => {
-    let expiredAt = new Date(2099, 1, 1);
+const saveCursorSyncSettings = (settings) => {
+    const expiredAt = new Date(2099, 1, 1);
     Storehouse.setItem(localStorageNamespace, localStorageCursorSyncKey, settings, expiredAt);
 };
 
-let loadDarkModeSettings = () => {
-    let lastSettings = Storehouse.getItem(localStorageNamespace, localStorageDarkModeKey);
+const loadDarkModeSettings = () => {
+    const lastSettings = Storehouse.getItem(localStorageNamespace, localStorageDarkModeKey);
     return lastSettings;
 };
 
-let saveDarkModeSettings = (settings) => {
-    let expiredAt = new Date(2099, 1, 1);
+const saveDarkModeSettings = (settings) => {
+    const expiredAt = new Date(2099, 1, 1);
     Storehouse.setItem(localStorageNamespace, localStorageDarkModeKey, settings, expiredAt);
 };
 
 // ----- Image Store Persistence (LRU + tab-close cleanup) -----
 
-let loadImageStore = () => {
+const loadImageStore = () => {
     const saved = Storehouse.getItem(localStorageNamespace, localStorageImagesKey);
     if (saved && typeof saved === 'object') {
         // Load via LRU setter so oversized stores are trimmed on boot
@@ -6193,13 +6268,13 @@ let loadImageStore = () => {
     }
 };
 
-let saveImageStore = () => {
+const saveImageStore = () => {
     const expiredAt = new Date(2099, 1, 1);
     const obj = Object.fromEntries(imageStore);
     Storehouse.setItem(localStorageNamespace, localStorageImagesKey, obj, expiredAt);
 };
 
-let resolveImageReferences = (text, forPreview = true) => {
+const resolveImageReferences = (text, forPreview = true) => {
     return text.replace(
         /markups-img:(img_\w+)/g,
         (match, imgId) => forPreview ? (imageStoreGet(imgId) || match) : match
@@ -6214,7 +6289,7 @@ let resolveImageReferences = (text, forPreview = true) => {
  * 
  * @param {HTMLElement} container - The preview container element
  */
-let decodeImageState = (serialized) => {
+const decodeImageState = (serialized) => {
     if (!serialized) return null;
 
     try {
@@ -6227,7 +6302,7 @@ let decodeImageState = (serialized) => {
     }
 };
 
-let parseImageAttributeBlock = (rawAttrs) => {
+const parseImageAttributeBlock = (rawAttrs) => {
     const attrs = {};
     const pattern = /([A-Za-z0-9_-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+))/g;
     let match;
@@ -6241,7 +6316,7 @@ let parseImageAttributeBlock = (rawAttrs) => {
     return attrs;
 };
 
-let parseImageAttributes = (content) => {
+const parseImageAttributes = (content) => {
     const result = [];
     const pattern = /!\[([^\]]*)\]\(([^)]+)\)\s*(\{([^}]+)\})?/g;
     let match;
@@ -6303,7 +6378,7 @@ let parseImageAttributes = (content) => {
     return result;
 };
 
-let applySavedImageState = (img, state) => {
+const applySavedImageState = (img, state) => {
     if (!state) return;
 
     const width = parseInt(state.width, 10);
@@ -6360,11 +6435,11 @@ let applySavedImageState = (img, state) => {
     });
 };
 
-let processPreviewImages = (container) => {
+const processPreviewImages = (container) => {
     const images = container.querySelectorAll('img');
 
     // Get markdown source to parse saved image state
-    const editorContent = editor ? editor.getValue() : '';
+    const editorContent = editor ? editor?.getValue() : '';
     const imageAttrsMap = parseImageAttributes(editorContent);
     const markdownImageSrcs = Array.from(editorContent.matchAll(/!\[([^\]]*)\]\(([^)\s]+)\)/g)).map((m) => m[2]);
 
@@ -6430,14 +6505,14 @@ let processPreviewImages = (container) => {
 
 let monacoFindControllerPromise = null;
 
-let ensureMonacoFindController = () => {
+const ensureMonacoFindController = () => {
     if (!monacoFindControllerPromise) {
         monacoFindControllerPromise = import('monaco-editor/esm/vs/editor/contrib/find/browser/findController.js');
     }
     return monacoFindControllerPromise;
 };
 
-let openFindReplace = async () => {
+const openFindReplace = async () => {
     if (!editor) return;
 
     try {
@@ -6445,7 +6520,7 @@ let openFindReplace = async () => {
         // the user explicitly asks for find/replace instead of putting it in the
         // initial editor bundle.
         await ensureMonacoFindController();
-        editor.trigger('keyboard', 'editor.action.startFindReplaceAction', null);
+        editor?.trigger('keyboard', 'editor.action.startFindReplaceAction', null);
     } catch (error) {
         console.warn('Find/replace controller failed to load; falling back to search overlay.', error);
         const searchOverlay = document.getElementById('search-overlay');
@@ -6458,7 +6533,7 @@ let openFindReplace = async () => {
     }
 };
 
-let setupFindReplaceButton = () => {
+const setupFindReplaceButton = () => {
     const btn = document.getElementById('find-replace-btn');
     if (btn) {
         btn.addEventListener('click', () => {
@@ -6477,7 +6552,7 @@ let setupFindReplaceButton = () => {
 
 // ----- URL Auto-Format on Paste + Toolbar Button -----
 
-let extractDomain = (url) => {
+const extractDomain = (url) => {
     try {
         const parsed = new URL(url);
         return parsed.hostname.replace(/^www\./, '');
@@ -6486,7 +6561,7 @@ let extractDomain = (url) => {
     }
 };
 
-let setupURLAutoFormat = () => {
+const setupURLAutoFormat = () => {
     // Auto-format URLs on paste
     const editorElement = document.querySelector('#editor');
     if (editorElement) {
@@ -6497,7 +6572,7 @@ let setupURLAutoFormat = () => {
             // Check for images first (higher priority)
             const items = clipboardData.items;
             if (items) {
-                for (let item of items) {
+                for (const item of items) {
                     if (item.type.startsWith('image/')) {
                         return; // Let clipboard image paste handler deal with it
                     }
@@ -6516,25 +6591,25 @@ let setupURLAutoFormat = () => {
                 const domain = extractDomain(url);
                 const markdownLink = domain ? `[${domain}](${url})` : `[link](${url})`;
 
-                const selection = editor.getSelection();
-                editor.executeEdits('url-format', [{
+                const selection = editor?.getSelection();
+                editor?.executeEdits('url-format', [{
                     range: selection,
                     text: markdownLink
                 }]);
-                editor.focus();
+                editor?.focus();
                 showToast('URL formatted as markdown link', 'success', 1500);
             }
         }, true);
     }
 };
 
-let setupURLToolbarButton = () => {
+const setupURLToolbarButton = () => {
     const urlBtn = document.getElementById('toolbar-url');
     if (!urlBtn) return;
 
     urlBtn.addEventListener('click', () => {
-        const selection = editor.getSelection();
-        const selectedText = editor.getModel().getValueInRange(selection);
+        const selection = editor?.getSelection();
+        const selectedText = editor?.getModel().getValueInRange(selection);
 
         // Check if selected text is a URL
         const urlRegex = /^https?:\/\/[^\s]+$/;
@@ -6542,7 +6617,7 @@ let setupURLToolbarButton = () => {
             const url = selectedText.trim();
             const domain = extractDomain(url);
             const markdownLink = domain ? `[${domain}](${url})` : `[link](${url})`;
-            editor.executeEdits('url-format', [{
+            editor?.executeEdits('url-format', [{
                 range: selection,
                 text: markdownLink
             }]);
@@ -6550,25 +6625,25 @@ let setupURLToolbarButton = () => {
         } else if (selectedText) {
             // Wrap selected text as link text with placeholder URL
             const markdownLink = `[${selectedText}](https://)`;
-            editor.executeEdits('url-format', [{
+            editor?.executeEdits('url-format', [{
                 range: selection,
                 text: markdownLink
             }]);
         } else {
             // Insert link template
             const markdownLink = `[link text](https://url)`;
-            editor.executeEdits('url-format', [{
+            editor?.executeEdits('url-format', [{
                 range: selection,
                 text: markdownLink
             }]);
         }
-        editor.focus();
+        editor?.focus();
     });
 };
 
 // ----- Paste Image from Clipboard (Ctrl+V) -----
 
-let setupClipboardImagePaste = () => {
+const setupClipboardImagePaste = () => {
     const editorElement = document.querySelector('#editor');
     if (!editorElement) return;
 
@@ -6576,7 +6651,7 @@ let setupClipboardImagePaste = () => {
         const clipboardData = e.clipboardData || window.clipboardData;
         if (!clipboardData || !clipboardData.items) return;
 
-        for (let item of clipboardData.items) {
+        for (const item of clipboardData.items) {
             if (item.type.startsWith('image/')) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -6595,12 +6670,12 @@ let setupClipboardImagePaste = () => {
 
 const localStorageViewModeKey = 'view_mode';
 
-let saveViewMode = (mode) => {
+const saveViewMode = (mode) => {
     const expiredAt = new Date(2099, 1, 1);
     Storehouse.setItem(localStorageNamespace, localStorageViewModeKey, mode, expiredAt);
 };
 
-let loadViewMode = () => {
+const loadViewMode = () => {
     return Storehouse.getItem(localStorageNamespace, localStorageViewModeKey);
 };
 
@@ -6608,7 +6683,7 @@ let loadViewMode = () => {
 
 let draggedTabId = null;
 
-let setupDragDropTabs = () => {
+const setupDragDropTabs = () => {
     // Hook into renderTabs to add drag attributes after each render
     const originalRenderTabs = renderTabs;
 
@@ -6668,7 +6743,7 @@ let setupDragDropTabs = () => {
 
 // ----- Word Wrap Quick Toggle -----
 
-let setupWordWrapToggle = () => {
+const setupWordWrapToggle = () => {
     const btn = document.getElementById('word-wrap-toggle');
     if (!btn) return;
 
@@ -6676,7 +6751,7 @@ let setupWordWrapToggle = () => {
 
     btn.addEventListener('click', () => {
         isWrapped = !isWrapped;
-        editor.updateOptions({ wordWrap: isWrapped ? 'on' : 'off' });
+        editor?.updateOptions({ wordWrap: isWrapped ? 'on' : 'off' });
         btn.querySelector('span').textContent = isWrapped ? 'Wrap: On' : 'Wrap: Off';
         showToast(isWrapped ? 'Word wrap enabled' : 'Word wrap disabled', 'info', 1000);
     });
@@ -6687,13 +6762,13 @@ let setupWordWrapToggle = () => {
 
 // ----- Mobile Swipe Gestures -----
 // Now handled by MobileUIManager in features/mobile/index.js
-let setupMobileSwipeGestures = () => {
+const setupMobileSwipeGestures = () => {
     // No-op: swipe gestures are handled by mobile module
 };
 
 // ----- Mobile UI Setup -----
 // Now handled by MobileUIManager in features/mobile/index.js
-let setupMobileUI = () => {
+const setupMobileUI = () => {
     // Expose tab data and functions globally for mobile module
     window.__markups_documents = documents;
     window.__markups_activeDocId = activeDocId;
@@ -6706,7 +6781,7 @@ let setupMobileUI = () => {
 
         // Apply mobile-specific Monaco settings
         if (mobileUIManager.isMobile() && editor) {
-            editor.updateOptions({
+            editor?.updateOptions({
                 minimap: { enabled: false },
                 lineNumbers: 'off',
                 folding: false,
@@ -6722,7 +6797,7 @@ let setupMobileUI = () => {
                 wordWrap: 'on',
                 fontSize: 15,
             });
-            editor.layout();
+            editor?.layout();
         }
     }).catch(err => {
         console.warn('Mobile module load error:', err);
@@ -6730,12 +6805,12 @@ let setupMobileUI = () => {
 };
 
 // Handle mobile drawer actions - now handled by mobile module
-let handleMobileDrawerAction = (action) => { };
+const handleMobileDrawerAction = (action) => { };
 
 // Handle FAB actions - now handled by mobile module
-let handleFabAction = (action) => { };
+const handleFabAction = (action) => { };
 
-let setupDivider = () => {
+const setupDivider = () => {
     let lastLeftRatio = 0.5;
     const divider = document.getElementById('split-divider');
     const leftPane = document.getElementById('edit');
@@ -6807,8 +6882,8 @@ let setupDivider = () => {
         const minWidth = 200;
         const maxWidth = availableWidth - minWidth;
 
-        let leftWidth = Math.max(minWidth, Math.min(offsetX, maxWidth));
-        let rightWidth = availableWidth - leftWidth;
+        const leftWidth = Math.max(minWidth, Math.min(offsetX, maxWidth));
+        const rightWidth = availableWidth - leftWidth;
 
         // Set flex to none and use explicit widths
         leftPane.style.flex = 'none';
@@ -6863,7 +6938,7 @@ let setupDivider = () => {
 };
 
 // ----- Global Escape Key Handler -----
-let setupGlobalEscapeKey = () => {
+const setupGlobalEscapeKey = () => {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             let closed = false;
@@ -6937,11 +7012,19 @@ const initializeApp = async () => {
     // Define custom Monaco themes first
     defineCustomThemes();
 
-    let lastContent = loadLastContent();
+    const lastContent = loadLastContent();
     loadImageStore(); // Load image store before editor setup so convert() can resolve refs
     editor = setupEditor();
     if (typeof window !== 'undefined') {
         window.editor = editor;
+    }
+    // Flush any actions queued before the editor was ready (EDITOR_READY)
+    if (pendingEditorActions.length) {
+        const queued = pendingEditorActions;
+        pendingEditorActions = [];
+        queued.forEach((action) => {
+            try { action(); } catch (err) { console.error('pendingEditorActions flush failed:', err); }
+        });
     }
     if (lastContent) {
         presetValue(lastContent);
@@ -6972,10 +7055,10 @@ const initializeApp = async () => {
 
     // Load and apply scroll sync settings BEFORE setting up the button
     // so the button reads the correct scrollBarSync value
-    let scrollBarSettings = loadScrollBarSettings() ?? true;
+    const scrollBarSettings = loadScrollBarSettings() ?? true;
     initScrollBarSync(scrollBarSettings);
 
-    let cursorSyncSettings = loadCursorSyncSettings() ?? false;
+    const cursorSyncSettings = loadCursorSyncSettings() ?? false;
     initCursorSync(cursorSyncSettings);
 
     setupScrollSyncButton();
@@ -7002,10 +7085,10 @@ const initializeApp = async () => {
     setupKeyboardShortcuts();
     setupGlobalEscapeKey();
 
-    let themeSettings = loadThemeSettings() || 'vs';
+    const themeSettings = loadThemeSettings() || 'vs';
     initThemeSelector(themeSettings);
 
-    let darkModeSettings = loadDarkModeSettings() || false;
+    const darkModeSettings = loadDarkModeSettings() || false;
     initDarkMode(darkModeSettings);
 
     setupSettingsModal();
@@ -7035,7 +7118,7 @@ const initializeApp = async () => {
     }
 
     // Initialize stats with current content
-    updateStats(editor.getValue());
+    updateStats(editor?.getValue());
 
     // Custom context menu
     appContextMenuManager.initialize();
@@ -7096,4 +7179,3 @@ window.addEventListener("load", () => {
         }
     });
 });
-

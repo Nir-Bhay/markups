@@ -123,7 +123,16 @@ class FileTreeStorageService {
         if (fromIndex === -1) return false;
         const [moved] = siblings.splice(fromIndex, 1);
         siblings.splice(Math.max(0, Math.min(toIndex, siblings.length)), 0, moved);
-        await Promise.all(siblings.map((item, idx) => db.file_nodes.update(item.id, { order: idx, updatedAt: Date.now() })));
+        const outcomes = await Promise.allSettled(
+            siblings.map((item, idx) => db.file_nodes.update(item.id, { order: idx, updatedAt: Date.now() }))
+        );
+        const failures = outcomes.filter((o) => o.status === 'rejected');
+        if (failures.length > 0) {
+            console.error(
+                `reorderNode: failed to persist order for ${failures.length}/${siblings.length} sibling(s):`,
+                failures.map((f) => f.reason)
+            );
+        }
         return true;
     }
 

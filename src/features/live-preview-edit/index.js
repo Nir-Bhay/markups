@@ -493,6 +493,23 @@ export class LivePreviewEditController {
             return replaceMarkdownBlockAtLine(sourceMarkdown, Number(sourceLine), serializePreviewToMarkdown(block));
         }
 
+        // Large-doc guard: when we have no block anchor the fallback serializes
+        // the ENTIRE preview DOM to Markdown. For 50MB+ documents doing that on
+        // every keystroke can freeze the UI. In that case skip the full-preview
+        // serialize (block-level edits above still apply) and treat the edit as
+        // a no-op sync so we never block the main thread on a huge doc.
+        if (sourceMarkdown && sourceMarkdown.length > 50 * 1024 * 1024) {
+            if (!this._largeDocWarned) {
+                this._largeDocWarned = true;
+                this.showToast?.(
+                    'Document is very large — full-preview sync disabled; per-block edits still apply',
+                    'warning',
+                    3000
+                );
+            }
+            return sourceMarkdown; // idempotent no-op (matches source → skipped by _syncFromPreview)
+        }
+
         return serializePreviewToMarkdown(this.output);
     }
 
