@@ -132,11 +132,12 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/css/premium-ui.css">
+    <link rel="stylesheet" href="/css/video-controls.css">
     <link rel="stylesheet" href="/css/github-markdown-light.css">
     <link rel="icon" type="image/svg+xml" href="/image/og-image.svg">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/image/og-image.svg">
-
+
 
     <!-- ============================================================ -->
     <!-- JSON-LD Structured Data for Markups.dev                      -->
@@ -436,16 +437,16 @@
       ]
     }
     </script>
-  <script type="module" crossorigin src="/assets/main-DblrqRWx.js"></script>
+  <script type="module" crossorigin src="/assets/main-BGYEQ8_H.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
   <link rel="modulepreload" crossorigin href="/assets/monaco-editor-BNx18KVd.js">
-  <link rel="modulepreload" crossorigin href="/assets/katex-vendor-BcocKhHJ.js">
-  <link rel="modulepreload" crossorigin href="/assets/markdown-vendor-CdE-Mwro.js">
-  <link rel="modulepreload" crossorigin href="/assets/highlight-vendor-Bi7oemg5.js">
-  <link rel="modulepreload" crossorigin href="/assets/sanitize-vendor-2FREwzWT.js">
-  <link rel="modulepreload" crossorigin href="/assets/storage-vendor-ou1V6OGm.js">
+  <link rel="modulepreload" crossorigin href="/assets/katex-vendor-DR829_GP.js">
+  <link rel="modulepreload" crossorigin href="/assets/markdown-vendor-Bahpa6el.js">
+  <link rel="modulepreload" crossorigin href="/assets/highlight-vendor-Cr0yU2uC.js">
+  <link rel="modulepreload" crossorigin href="/assets/sanitize-vendor-DwWOFlc6.js">
+  <link rel="modulepreload" crossorigin href="/assets/storage-vendor-ByQHoVpg.js">
   <link rel="stylesheet" crossorigin href="/assets/monaco-editor-CP2cXDiA.css">
-  <link rel="stylesheet" crossorigin href="/assets/katex-vendor-DvXFAOB1.css">
+  <link rel="stylesheet" crossorigin href="/assets/katex-vendor-BYZTj3zW.css">
   <link rel="stylesheet" crossorigin href="/assets/highlight-vendor-Dz1pgzwE.css">
 </head>
 
@@ -583,6 +584,47 @@
                 <span class="btn-label">Help</span>
             </button>
 
+            <!-- Update notice (hard-refresh tip) -->
+            <div class="header-notice" id="header-notice">
+                <button class="header-btn icon-with-label header-notice-btn" id="update-notice-btn"
+                    type="button" title="Updates &amp; tip" aria-label="Updates and tip"
+                    aria-haspopup="dialog" aria-expanded="false" aria-controls="update-notice-popover">
+                    <span class="header-notice-icon-wrap" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        <span class="header-notice-dot" id="update-notice-dot"></span>
+                    </span>
+                    <span class="btn-label">Tips</span>
+                </button>
+                <div class="header-notice-popover hidden" id="update-notice-popover" role="dialog"
+                    aria-labelledby="update-notice-title" hidden>
+                    <div class="header-notice-popover-head">
+                        <strong id="update-notice-title">What’s new</strong>
+                        <button type="button" class="header-notice-close" id="update-notice-close"
+                            aria-label="Close tip">×</button>
+                    </div>
+                    <ul class="header-notice-features" aria-label="New features">
+                        <li>Video preview — paste a bare MP4 / GitHub / YouTube URL alone to play inline</li>
+                        <li>Video links — <code>[text](url)</code> stays a link; click <strong>Show as video</strong> to embed</li>
+                        <li>Insert Video — toolbar button pastes a bare URL (player). Click a video to size/align</li>
+                        <li>Document Mode — edit the live preview, not only Markdown source</li>
+                    </ul>
+                    <div class="header-notice-refresh">
+                        <p class="header-notice-copy">
+                            After an update, hard-refresh so you get the latest build:
+                        </p>
+                        <div class="header-notice-shortcut" id="update-notice-shortcut">
+                            <kbd>Ctrl</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>R</kbd>
+                        </div>
+                        <p class="header-notice-footnote">Mac: use <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd></p>
+                    </div>
+                    <button type="button" class="header-notice-got-it" id="update-notice-dismiss">Got it</button>
+                </div>
+            </div>
+
             <!-- View Mode Toggle -->
             <div class="view-mode-toggle" role="group" aria-label="View mode">
                 <button class="view-mode-btn" id="view-code" data-view="editor" title="Editor only"
@@ -591,6 +633,18 @@
                     aria-label="Split view">Split</button>
                 <button class="view-mode-btn" id="view-preview" data-view="preview" title="Preview only"
                     aria-label="Preview only">Preview</button>
+            </div>
+
+            <!-- Edit Mode Toggle (Markdown source vs Document Mode visual edits) -->
+            <div class="edit-mode-toggle" role="group" aria-label="Editing mode">
+                <button class="edit-mode-btn active" id="markdown-mode-toggle" type="button"
+                    aria-pressed="true" title="Markdown Mode — edit the raw source">
+                    Markdown
+                </button>
+                <button class="edit-mode-btn" id="live-preview-edit-toggle" type="button"
+                    aria-pressed="false" title="Document Mode — edit the rendered preview (Beta)">
+                    Document
+                </button>
             </div>
 
             <!-- Theme Toggle -->
@@ -718,6 +772,13 @@
                     <path d="M6.002 5.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
                     <path
                         d="M2.002 1a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V3a2 2 0 00-2-2h-12zm12 1a1 1 0 011 1v6.5l-3.777-1.947a.5.5 0 00-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 00-.63.062L1.002 12V3a1 1 0 011-1h12z" />
+                </svg>
+            </button>
+            <button class="toolbar-btn" id="toolbar-video" title="Insert Video" aria-label="Insert Video"
+                aria-haspopup="dialog" aria-expanded="false" aria-controls="video-insert-popover">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path
+                        d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2V5z" />
                 </svg>
             </button>
             <button class="toolbar-btn" id="toolbar-table" title="Insert Table" aria-label="Insert Table">
@@ -1031,45 +1092,6 @@
         <!-- Preview Pane -->
         <section class="preview-pane" id="preview">
             <div class="preview-wrapper" id="preview-wrapper">
-                <div class="preview-edit-toolbar" id="preview-edit-toolbar" aria-label="Preview editing controls">
-                    <div class="preview-edit-summary">
-                        <span class="preview-edit-kicker">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
-                                <circle cx="12" cy="12" r="3" />
-                            </svg>
-                            Preview editor
-                        </span>
-                        <strong>Choose how you want to write</strong>
-                        <span>Use Markdown for precision or Document Mode for quick visual edits.</span>
-                    </div>
-                    <div class="preview-mode-switch" role="group" aria-label="Editing mode">
-                        <button class="preview-mode-btn active" id="markdown-mode-toggle" type="button"
-                            aria-pressed="true" title="Use the Markdown source editor as the primary editing surface">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <polyline points="16 18 22 12 16 6" />
-                                <polyline points="8 6 2 12 8 18" />
-                                <line x1="14" y1="4" x2="10" y2="20" />
-                            </svg>
-                            <span class="preview-mode-copy">
-                                <span>Markdown Mode</span>
-                                <small>Raw source</small>
-                            </span>
-                        </button>
-                        <button class="preview-mode-btn" id="live-preview-edit-toggle" type="button"
-                            aria-pressed="false" title="Edit rendered preview and sync changes back to Markdown">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                            <span class="preview-mode-copy">
-                                <span>Document Mode</span>
-                                <small>Visual edits</small>
-                            </span>
-                        </button>
-                    </div>
-                    <span class="preview-edit-beta" title="Document Mode is a safe preview-editing proof of concept">Beta</span>
-                </div>
                 <article class="preview-content markdown-body" id="output">
                     <!-- Rendered Markdown -->
                 </article>
@@ -1890,6 +1912,7 @@
                     <div class="shortcut-item"><span>Find</span><kbd>Ctrl+F</kbd></div>
                     <div class="shortcut-item"><span>Find & Replace</span><kbd>Ctrl+Shift+H</kbd></div>
                     <div class="shortcut-item"><span>Paste Image</span><kbd>Ctrl+V (image)</kbd></div>
+                    <div class="shortcut-item"><span>Insert Video</span><kbd>Toolbar → Video</kbd></div>
                 </div>
                 <div class="shortcuts-section">
                     <h4>

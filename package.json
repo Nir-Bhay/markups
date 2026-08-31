@@ -9,7 +9,7 @@
     "build:modular": "vite build --mode modular",
     "verify:health": "node scripts/verify-health.mjs",
     "preview": "vite preview",
-    "lint": "echo 'No linter configured'",
+    "lint": "eslint src/ && echo 'Lint passed (0 errors)'",
     "test": "vitest run",
     "test:issue40": "vitest run src/__tests__/videoEmbed.test.js src/__tests__/videoControls.test.js src/__tests__/livePreviewEdit.test.js src/__tests__/markdownService.test.js src/__tests__/sanitize.test.js",
     "test:e2e": "playwright test",
@@ -43,7 +43,9 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.62.0",
+    "eslint": "^9.39.5",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.6.1",
     "jsdom": "^28.0.0",
