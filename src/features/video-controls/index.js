@@ -339,6 +339,10 @@ export class VideoControlsController {
         this.showToast = showToast;
         this.activeVideo = null;
         this.toolbar = null;
+        // Element that had keyboard focus right before the popover opened.
+        // Restored on hide() so Escape / close returns the user to where they were
+        // (improves keyboard / screen-reader navigation — a11y M2).
+        this._returnFocusTo = null;
         this._handleClick = this._handleClick.bind(this);
         this._handleDocumentClick = this._handleDocumentClick.bind(this);
         this._handleDateInput = this._handleDateInput.bind(this);
@@ -575,6 +579,8 @@ export class VideoControlsController {
     }
 
     show(video) {
+        // a11y M2: remember where keyboard focus was so we can return it on close.
+        this._returnFocusTo = document.activeElement;
         this.activeVideo?.classList.remove('preview-video--selected');
         this.activeVideo = video;
         this.activeVideo.classList.add('preview-video--selected');
@@ -598,6 +604,11 @@ export class VideoControlsController {
         }
         this.activeVideo = null;
         this.toolbar?.classList.add('hidden');
+        // a11y M2: return focus to the element that opened the popover.
+        if (this._returnFocusTo && typeof this._returnFocusTo.focus === 'function') {
+            try { this._returnFocusTo.focus(); } catch (_) { /* ignore stale element */ }
+            this._returnFocusTo = null;
+        }
         this._setDetailsOpen(false);
     }
 
