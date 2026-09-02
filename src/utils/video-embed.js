@@ -166,9 +166,15 @@ function createHtml5Video(url, opts = {}) {
  * Build a privacy-friendly iframe for YouTube / Vimeo
  * Created via DOM (not innerHTML) so we never feed iframes through DOMPurify.
  * @param {{ type: string, id: string }} hosted
+ * @param {string} [sourceUrl] - original markdown URL (for data attrs / cache key)
+ * @param {{ reuseIframeEl?: HTMLIFrameElement|null }} [opts] - when provided, re-insert
+ *   the SAME already-constructed iframe DOM node instead of building a fresh one. Moving
+ *   a live element back into the new wrapper preserves its loaded state + player position,
+ *   so typing elsewhere does NOT reload the embed on every render. The hitbox is rebuilt
+ *   per render (it's plain DOM, no network impact).
  * @returns {HTMLElement}
  */
-function createHostedEmbed(hosted, sourceUrl = '') {
+function createHostedEmbed(hosted, sourceUrl = '', opts = {}) {
     const wrap = document.createElement('div');
     wrap.className = 'preview-video preview-video--embed';
     wrap.dataset.videoUrl = normalizeVideoUrl(sourceUrl);
@@ -177,24 +183,31 @@ function createHostedEmbed(hosted, sourceUrl = '') {
     const frame = document.createElement('div');
     frame.className = 'preview-video-frame';
 
-    const iframe = document.createElement('iframe');
-    iframe.setAttribute('loading', 'lazy');
-    // SECURITY: sandbox the embedded player so a compromised provider or
-    // injected embed URL cannot navigate the top frame, access geolocation,
-    // or run scripts outside the embed surface.
-    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
-    iframe.allowFullscreen = true;
-    iframe.setAttribute(
-        'allow',
-        'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
-    );
-    iframe.title = hosted.type === 'youtube' ? 'YouTube video' : 'Vimeo video';
+    // Reuse the existing, already-loaded <iframe> node if we have one. Otherwise build
+    // a fresh iframe with all security/UX attrs. The same-node reuse path means typing
+    // never re-creates the embed → no reload, no flicker, no lost playback position.
+    const iframe = opts.reuseIframeEl || document.createElement('iframe');
+        if (!opts.reuseIframeEl) {
+            iframe.setAttribute('loading', 'lazy');
+            // SECURITY: sandbox the embedded player so a compromised provider or
+            // injected embed URL cannot navigate the top frame, access geolocation,
+            // or run scripts outside the embed surface.
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
+            iframe.allowFullscreen = true;
+            iframe.setAttribute(
+                'allow',
+                'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
+            );
+            iframe.title = hosted.type === 'youtube' ? 'YouTube video' : 'Vimeo video';
 
-    if (hosted.type === 'youtube') {
-        iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(hosted.id)}`;
-    } else {
-        iframe.src = `https://player.vimeo.com/video/${encodeURIComponent(hosted.id)}`;
-    }
+            const embedSrc = hosted.type === 'youtube'
+                ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(hosted.id)}`
+                : `https://player.vimeo.com/video/${encodeURIComponent(hosted.id)}`;
+            iframe.setAttribute('src', embedSrc);
+        }
+        // For a reused iframe we deliberately leave its src/allow/title/sandbox alone —
+        // changing any of these would force the provider to reload the player. Same URL
+        // means same node means no reload.
 
     // Iframes swallow clicks, so a transparent hitbox lets users select the
     // video for layout editing. Play mode (in video-controls) disables it.
@@ -281,7 +294,10 @@ function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null, reuseVid
     const hosted = parseHostedVideo(url);
     let player;
     if (hosted) {
-        player = createHostedEmbed(hosted, url);
+        // Reuse the live (already-loaded) iframe node for this source line (URL as
+        // fallback) so typing elsewhere never re-creates + reloads the embed.
+        const reusedIframe = reuseVideos?.get?.(sourceLine) || reuseVideos?.get?.(url);
+        player = createHostedEmbed(hosted, url, { reuseIframeEl: reusedIframe });
     } else {
         // Reuse the live (already-loaded) video node for this source line (URL as
         // fallback) so typing elsewhere never re-creates + reloads the player.

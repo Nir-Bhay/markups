@@ -186,4 +186,77 @@ describe('video embed helpers', () => {
         expect(reused).toBeTruthy();
         expect(reused).toBe(original); // same DOM node object − no reload, no flicker
     });
+
+    it('reuses the SAME already-loaded YouTube/Vimeo <iframe> node on re-render (no embed reload)', () => {
+        // YouTube bare URL: first render creates a fresh <iframe>.
+        const yt = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+        const first = document.createElement('div');
+        first.innerHTML = `<p data-source-line="7"><a href="${yt}">${yt}</a></p>`;
+        processPreviewVideos(first, 'smart', null, new Map());
+        const originalYT = first.querySelector('iframe');
+        expect(originalYT).toBeTruthy();
+        expect(originalYT.getAttribute('src')).toContain('youtube-nocookie.com/embed/dQw4w9WgXcQ');
+
+        // Second render with the original iframe in reuseVideos keyed by source line.
+        // The SAME DOM node must come back — provider embed must NOT be re-created.
+        const again = document.createElement('div');
+        again.innerHTML = `<p data-source-line="7"><a href="${yt}">${yt}</a></p>`;
+        const reuse = new Map();
+        reuse.set('7', originalYT);
+        processPreviewVideos(again, 'smart', null, reuse);
+        const reusedYT = again.querySelector('iframe');
+        expect(reusedYT).toBeTruthy();
+        expect(reusedYT).toBe(originalYT); // same DOM node → no reload, no flicker, no lost playback position
+
+        // URL fallback key (when source-line doesn't match across renders) must also reuse.
+        const urlFallback = new Map();
+        urlFallback.set(yt, originalYT);
+        const again2 = document.createElement('div');
+        again2.innerHTML = `<p data-source-line="99"><a href="${yt}">${yt}</a></p>`;
+        processPreviewVideos(again2, 'smart', null, urlFallback);
+        expect(again2.querySelector('iframe')).toBe(originalYT);
+
+        // Vimeo reuse (same contract).
+        const vimeo = 'https://vimeo.com/76979871';
+        const firstV = document.createElement('div');
+        firstV.innerHTML = `<p data-source-line="11"><a href="${vimeo}">${vimeo}</a></p>`;
+        processPreviewVideos(firstV, 'smart', null, new Map());
+        const originalV = firstV.querySelector('iframe');
+        expect(originalV).toBeTruthy();
+        expect(originalV.getAttribute('src')).toContain('player.vimeo.com/video/76979871');
+
+        const againV = document.createElement('div');
+        againV.innerHTML = `<p data-source-line="11"><a href="${vimeo}">${vimeo}</a></p>`;
+        const reuseV = new Map();
+        reuseV.set('11', originalV);
+        processPreviewVideos(againV, 'smart', null, reuseV);
+        expect(againV.querySelector('iframe')).toBe(originalV);
+    });
+
+    it('leaves reused <iframe> src + sandbox + allow attrs untouched (provider stays loaded)', () => {
+        // When we reuse an iframe we MUST NOT rewrite src/allow/sandbox, because any of
+        // those attribute changes force the provider to reload the embed (and the user
+        // loses playback position). Guard against a future refactor breaking this.
+        const yt = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+        const first = document.createElement('div');
+        first.innerHTML = `<p data-source-line="3"><a href="${yt}">${yt}</a></p>`;
+        processPreviewVideos(first, 'smart', null, new Map());
+        const original = first.querySelector('iframe');
+        expect(original).toBeTruthy();
+
+        // Tamper with attrs to simulate state set by the provider after load.
+        original.setAttribute('src', original.getAttribute('src') + '?t=42');
+        original.setAttribute('data-test-marker', 'preserved');
+
+        const again = document.createElement('div');
+        again.innerHTML = `<p data-source-line="3"><a href="${yt}">${yt}</a></p>`;
+        const reuse = new Map();
+        reuse.set('3', original);
+        processPreviewVideos(again, 'smart', null, reuse);
+
+        const reused = again.querySelector('iframe');
+        expect(reused).toBe(original);
+        expect(reused.getAttribute('src')).toContain('?t=42'); // not stripped
+        expect(reused.getAttribute('data-test-marker')).toBe('preserved');
+    });
 });

@@ -2111,17 +2111,34 @@ const convert = (markdown) => {
         // (user typing elsewhere) reuses the already-loaded element instead of
         // building a fresh one. Re-inserting the live node means NO network
         // re-fetch and NO player flicker on every keystroke.
+        //
+        // Key strategy (works for both <video> direct-URL/GitHub-attachment AND
+        // <iframe> YouTube/Vimeo): data-source-line is the primary key (stable
+        // when typing doesn't add/remove lines before the player). data-video-url
+        // (the *original* markdown URL the user wrote, NOT the provider's embed URL)
+        // is the fallback so a line-shift doesn't kill reuse. The iframe's own src
+        // is also stored (provider embed URL) as a last-resort key.
         const reuseVideoElements = new Map();
+        const captureMedia = (media, getLine) => {
+            const line = getLine(media);
+            const wrap = media.closest?.('.preview-video');
+            const originalUrl = wrap?.dataset?.videoUrl || media.dataset?.videoUrl || null;
+            const embedSrc = media.getAttribute('src') || null;
+            if (line && !reuseVideoElements.has(line)) reuseVideoElements.set(line, media);
+            if (originalUrl && !reuseVideoElements.has(originalUrl)) reuseVideoElements.set(originalUrl, media);
+            if (embedSrc && !reuseVideoElements.has(embedSrc)) reuseVideoElements.set(embedSrc, media);
+        };
         outputElement.querySelectorAll('.preview-video video').forEach((v) => {
-            const line = v.parentElement?.dataset?.sourceLine || v.closest?.('.preview-video')?.dataset?.sourceLine;
-            const key = line || v.dataset?.videoUrl || v.getAttribute('src');
-            if (key && !reuseVideoElements.has(key)) {
-                reuseVideoElements.set(key, v);
-            }
-            const byUrl = v.dataset?.videoUrl || v.getAttribute('src');
-            if (byUrl && !reuseVideoElements.has(byUrl)) {
-                reuseVideoElements.set(byUrl, v);
-            }
+            captureMedia(v, (m) => m.parentElement?.dataset?.sourceLine || m.closest?.('.preview-video')?.dataset?.sourceLine);
+        });
+        // Also capture live <iframe> nodes (YouTube / Vimeo embeds). The wrapper
+        // DIV.preview-video--embed carries both data-source-line AND data-video-url
+        // (the *original* markdown URL), which is what tryReplaceWithVideo passes
+        // back as `url`. Keying off data-video-url means the URL fallback key
+        // matches the lookup key in tryReplaceWithVideo.
+        outputElement.querySelectorAll('.preview-video iframe').forEach((f) => {
+            const wrap = f.closest?.('.preview-video');
+            captureMedia(f, () => wrap?.dataset?.sourceLine);
         });
 
         outputElement.innerHTML = sanitized;
