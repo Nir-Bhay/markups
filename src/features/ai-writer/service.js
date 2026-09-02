@@ -528,26 +528,29 @@ class AIService {
     }
 
     /**
-     * Get API key from localStorage (direct, not through StorageService namespace)
+     * Get API key from storage (namespaced, with legacy fallback)
      * @private
      */
     _getApiKey() {
         try {
-            return localStorage.getItem('markups_ai_api_key') || '';
+            // First try namespaced key, then legacy key for migration
+            return storageService.getString(STORAGE_KEYS.AI_API_KEY) ||
+                localStorage.getItem('markups_ai_api_key') || '';
         } catch {
             return '';
         }
     }
 
     /**
-     * Set API key directly in localStorage
+     * Set API key through StorageService (namespaced)
      * @private
      */
     _setApiKey(key) {
         try {
             if (key) {
-                localStorage.setItem('markups_ai_api_key', key);
+                storageService.set(STORAGE_KEYS.AI_API_KEY, key);
             } else {
+                storageService.remove(STORAGE_KEYS.AI_API_KEY);
                 localStorage.removeItem('markups_ai_api_key');
             }
         } catch (e) {

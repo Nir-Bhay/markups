@@ -6,6 +6,8 @@
 
 import { showToast } from '../../ui/toast/index.js';
 import { createFocusTrap } from '../../utils/dom.js';
+import { storageService } from '../../core/storage/index.js';
+import { STORAGE_KEYS } from '../../core/storage/keys.js';
 
 const STORAGE_KEY = 'version_history';
 const MAX_VERSIONS = 20;
@@ -32,8 +34,11 @@ export function stopVersionHistoryPolling() {
  */
 function loadVersionHistory() {
     try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        return stored ? JSON.parse(stored) : [];
+        // Try namespaced first, then legacy key
+        const stored = storageService.getArray(STORAGE_KEYS.VERSION_HISTORY);
+        if (stored && stored.length) return stored;
+        const legacy = localStorage.getItem(STORAGE_KEY);
+        return legacy ? JSON.parse(legacy) : [];
     } catch {
         return [];
     }
@@ -45,7 +50,8 @@ function loadVersionHistory() {
  */
 function saveVersionHistory(versions) {
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(versions));
+        storageService.set(STORAGE_KEYS.VERSION_HISTORY, versions);
+        localStorage.removeItem(STORAGE_KEY);
     } catch (error) {
         console.error('Failed to save version history:', error);
     }

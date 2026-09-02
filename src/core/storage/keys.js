@@ -52,7 +52,15 @@ export const STORAGE_KEYS = {
     AI_MODEL: 'ai_model',
     AI_TEMPERATURE: 'ai_temperature',
     AI_MAX_TOKENS: 'ai_max_tokens',
-    AI_PANEL_VISIBLE: 'ai_panel_visible'
+    AI_PANEL_VISIBLE: 'ai_panel_visible',
+
+    // Feature-specific keys (legacy -> namespaced)
+    AI_API_KEY: 'ai_api_key',
+    EXPLORER_SORT_MODE: 'explorer_sort_mode',
+    EXPLORER_DRAWER_WIDTH: 'explorer_drawer_width',
+    CUSTOM_SNIPPETS: 'custom_snippets',
+    CUSTOM_TEMPLATES: 'custom_templates',
+    VERSION_HISTORY: 'version_history'
 };
 
 /**

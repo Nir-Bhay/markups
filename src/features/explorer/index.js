@@ -3,6 +3,9 @@ const FOLDER_ICON = `<svg width="14" height="14" viewBox="0 0 16 16" fill="curre
 const RENAME_ICON = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M12.854.146a.5.5 0 0 1 .707 0l2.293 2.293a.5.5 0 0 1 0 .707l-9.5 9.5L4 13l.354-2.354 9.5-9.5zM3.5 13.5l2.25-.35L3.85 11.25 3.5 13.5z"/></svg>`;
 const DELETE_ICON = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.5 1a1 1 0 0 0-1 1V3H2.75a.75.75 0 0 0 0 1.5h.41l.73 9.3A2 2 0 0 0 5.88 15h4.24a2 2 0 0 0 1.99-1.2l.73-9.3h.41a.75.75 0 0 0 0-1.5H10.5V2a1 1 0 0 0-1-1h-3zm2.5 2h-2V2h2v1z"/></svg>`;
 
+import { storageService } from '../../core/storage/index.js';
+import { STORAGE_KEYS } from '../../core/storage/keys.js';
+
 export class ExplorerManager {
     constructor(config) {
         this.config = config;
@@ -51,11 +54,12 @@ export class ExplorerManager {
             this.render();
         });
 
-        this.sortMode = localStorage.getItem(this.sortModeKey) || 'manual';
+        this.sortMode = storageService.getString(STORAGE_KEYS.EXPLORER_SORT_MODE) ||
+            localStorage.getItem(this.sortModeKey) || 'manual';
         if (this.sortSelect) this.sortSelect.value = this.sortMode;
         this.sortSelect?.addEventListener('change', () => {
             this.sortMode = this.sortSelect.value || 'manual';
-            localStorage.setItem(this.sortModeKey, this.sortMode);
+            storageService.set(STORAGE_KEYS.EXPLORER_SORT_MODE, this.sortMode);
             this.render();
         });
 
@@ -114,7 +118,8 @@ export class ExplorerManager {
     }
 
     getSavedWidth() {
-        const value = Number(localStorage.getItem(this.drawerWidthKey));
+        const stored = storageService.getNumber(STORAGE_KEYS.EXPLORER_DRAWER_WIDTH);
+        let value = Number.isFinite(stored) ? stored : Number(localStorage.getItem(this.drawerWidthKey));
         return Number.isFinite(value) ? this.clampWidth(value) : this.defaultDrawerWidth;
     }
 
@@ -123,7 +128,9 @@ export class ExplorerManager {
         const finalWidth = this.clampWidth(width);
         this.drawer.style.setProperty('--explorer-width', `${finalWidth}px`);
         this.updateCompactMode(finalWidth);
-        if (persist) localStorage.setItem(this.drawerWidthKey, String(finalWidth));
+        if (persist) {
+            storageService.set(STORAGE_KEYS.EXPLORER_DRAWER_WIDTH, finalWidth);
+        }
     }
 
     applySavedWidth() {

@@ -6,6 +6,8 @@
 
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
 import { editorService } from '../../core/editor/index.js';
+import { storageService } from '../../core/storage/index.js';
+import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { TEMPLATES } from '../../config/templates.js';
 
 /**
@@ -54,9 +56,15 @@ class TemplatesManager {
      */
     _loadCustomTemplates() {
         try {
-            const saved = localStorage.getItem('custom_templates');
-            if (saved) {
-                this.customTemplates = JSON.parse(saved);
+            // Try namespaced first, then legacy key
+            const stored = storageService.getArray(STORAGE_KEYS.CUSTOM_TEMPLATES);
+            if (stored && stored.length) {
+                this.customTemplates = stored;
+            } else {
+                const saved = localStorage.getItem('custom_templates');
+                if (saved) {
+                    this.customTemplates = JSON.parse(saved);
+                }
             }
         } catch (e) {
             console.error('Failed to load custom templates:', e);
@@ -69,7 +77,8 @@ class TemplatesManager {
      */
     _saveCustomTemplates() {
         try {
-            localStorage.setItem('custom_templates', JSON.stringify(this.customTemplates));
+            storageService.set(STORAGE_KEYS.CUSTOM_TEMPLATES, this.customTemplates);
+            localStorage.removeItem('custom_templates');
         } catch (e) {
             console.error('Failed to save custom templates:', e);
         }

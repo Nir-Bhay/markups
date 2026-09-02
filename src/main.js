@@ -1,4 +1,4 @@
-import Storehouse from 'storehouse-js';
+import Storehouse from './utils/storehouse-compat.js';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
 import { marked } from 'marked';
@@ -7155,12 +7155,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
     // Show install button/prompt if needed
-    console.log('PWA install prompt available');
+    if (import.meta.env.DEV) console.log('PWA install prompt available');
 });
 
 // Handle app installed
 window.addEventListener('appinstalled', () => {
-    console.log('PWA installed successfully');
+    if (import.meta.env.DEV) console.log('PWA installed successfully');
     deferredPrompt = null;
 });
 
@@ -7169,7 +7169,7 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
-                console.log('ServiceWorker registered:', registration.scope);
+                if (import.meta.env.DEV) console.log('ServiceWorker registered:', registration.scope);
 
                 // Check for updates periodically (every 30 minutes)
                 setInterval(() => {
@@ -7177,7 +7177,7 @@ if ('serviceWorker' in navigator) {
                 }, APP_CONFIG.SERVICE_WORKER_UPDATE_INTERVAL_MS);
             })
             .catch((error) => {
-                console.log('ServiceWorker registration failed:', error);
+                if (import.meta.env.DEV) console.log('ServiceWorker registration failed:', error);
             });
     });
 }

@@ -15,10 +15,11 @@ describe('P0-1: stats module loads + dispose() works', () => {
     });
 
     it('module imports without syntax error', async () => {
+        // Increased timeout for batch runs; passes in isolation in ~4.5s
         const mod = await import('../../features/stats/index.js');
         expect(mod.statsManager).toBeDefined();
         expect(typeof mod.statsManager.dispose).toBe('function');
-    });
+    }, 10000);
 
     it('dispose() does not throw and clears state', async () => {
         const mod = await import('../../features/stats/index.js');

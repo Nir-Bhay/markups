@@ -6,6 +6,8 @@
 
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
 import { editorService } from '../../core/editor/index.js';
+import { storageService } from '../../core/storage/index.js';
+import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { SNIPPETS } from '../../config/snippets.js';
 
 /**
@@ -54,9 +56,15 @@ class SnippetsManager {
      */
     _loadCustomSnippets() {
         try {
-            const saved = localStorage.getItem('custom_snippets');
-            if (saved) {
-                this.customSnippets = JSON.parse(saved);
+            // Try namespaced first, then legacy key
+            const stored = storageService.getArray(STORAGE_KEYS.CUSTOM_SNIPPETS);
+            if (stored && stored.length) {
+                this.customSnippets = stored;
+            } else {
+                const saved = localStorage.getItem('custom_snippets');
+                if (saved) {
+                    this.customSnippets = JSON.parse(saved);
+                }
             }
         } catch (e) {
             console.error('Failed to load custom snippets:', e);
@@ -69,7 +77,8 @@ class SnippetsManager {
      */
     _saveCustomSnippets() {
         try {
-            localStorage.setItem('custom_snippets', JSON.stringify(this.customSnippets));
+            storageService.set(STORAGE_KEYS.CUSTOM_SNIPPETS, this.customSnippets);
+            localStorage.removeItem('custom_snippets');
         } catch (e) {
             console.error('Failed to save custom snippets:', e);
         }
