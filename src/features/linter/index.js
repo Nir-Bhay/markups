@@ -9,10 +9,6 @@ import { markdownService } from '../../core/markdown/index.js';
 import { editorService } from '../../core/editor/index.js';
 import { debounce } from '../../utils/debounce.js';
 
-// #region agent log
-fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run3-pre',hypothesisId:'H1_H3',location:'src/features/linter/index.js:13',message:'linter module parsed',data:{severityInlineExport:true},timestamp:Date.now()})}).catch(()=>{});
-// #endregion
-
 /**
  * Issue severity levels
  */
@@ -31,17 +27,17 @@ const LINTER_RULES = [
         name: 'Multiple H1 Headings',
         severity: SEVERITY.WARNING,
         check: (lines) => {
-            const h1Lines = lines
-                .map((line, i) => ({ line, index: i }))
-                .filter(({ line }) => /^#\s/.test(line));
+        const h1Lines = lines
+        .map((line, i) => ({ line, index: i }))
+        .filter(({ line }) => /^#\s/.test(line));
 
-            if (h1Lines.length > 1) {
-                return h1Lines.slice(1).map(({ index }) => ({
-                    line: index + 1,
-                    message: 'Multiple H1 headings found. Consider using only one H1 per document.'
-                }));
-            }
-            return [];
+        if (h1Lines.length > 1) {
+        return h1Lines.slice(1).map(({ index }) => ({
+        line: index + 1,
+        message: 'Multiple H1 headings found. Consider using only one H1 per document.'
+        }));
+        }
+        return [];
         }
     },
     {
@@ -49,24 +45,24 @@ const LINTER_RULES = [
         name: 'Heading Level Increment',
         severity: SEVERITY.WARNING,
         check: (lines) => {
-            const issues = [];
-            let lastLevel = 0;
+        const issues = [];
+        let lastLevel = 0;
 
-            lines.forEach((line, index) => {
-                const match = line.match(/^(#+)\s/);
-                if (match) {
-                    const level = match[1].length;
-                    if (lastLevel > 0 && level > lastLevel + 1) {
-                        issues.push({
-                            line: index + 1,
-                            message: `Heading level jumped from H${lastLevel} to H${level}. Consider using H${lastLevel + 1} instead.`
-                        });
-                    }
-                    lastLevel = level;
-                }
-            });
+        lines.forEach((line, index) => {
+        const match = line.match(/^(#+)\s/);
+        if (match) {
+        const level = match[1].length;
+        if (lastLevel > 0 && level > lastLevel + 1) {
+        issues.push({
+        line: index + 1,
+        message: `Heading level jumped from H${lastLevel} to H${level}. Consider using H${lastLevel + 1} instead.`
+        });
+        }
+        lastLevel = level;
+        }
+        });
 
-            return issues;
+        return issues;
         }
     },
     {
@@ -74,13 +70,13 @@ const LINTER_RULES = [
         name: 'Trailing Spaces',
         severity: SEVERITY.INFO,
         check: (lines) => {
-            return lines
-                .map((line, index) => ({ line, index }))
-                .filter(({ line }) => /\s{3,}$/.test(line))
-                .map(({ index }) => ({
-                    line: index + 1,
-                    message: 'Excessive trailing whitespace'
-                }));
+        return lines
+        .map((line, index) => ({ line, index }))
+        .filter(({ line }) => /\s{3,}$/.test(line))
+        .map(({ index }) => ({
+        line: index + 1,
+        message: 'Excessive trailing whitespace'
+        }));
         }
     },
     {
@@ -88,19 +84,19 @@ const LINTER_RULES = [
         name: 'Empty Link URLs',
         severity: SEVERITY.ERROR,
         check: (lines) => {
-            const issues = [];
+        const issues = [];
 
-            lines.forEach((line, index) => {
-                const matches = line.matchAll(/\[([^\]]*)\]\(\s*\)/g);
-                for (const match of matches) {
-                    issues.push({
-                        line: index + 1,
-                        message: `Empty link URL for "${match[1]}"`
-                    });
-                }
-            });
+        lines.forEach((line, index) => {
+        const matches = line.matchAll(/\[([^\]]*)\]\(\s*\)/g);
+        for (const match of matches) {
+        issues.push({
+        line: index + 1,
+        message: `Empty link URL for "${match[1]}"`
+        });
+        }
+        });
 
-            return issues;
+        return issues;
         }
     },
     {
@@ -108,19 +104,19 @@ const LINTER_RULES = [
         name: 'Empty Image Alt Text',
         severity: SEVERITY.WARNING,
         check: (lines) => {
-            const issues = [];
+        const issues = [];
 
-            lines.forEach((line, index) => {
-                const matches = line.matchAll(/!\[\s*\]\([^)]+\)/g);
-                for (const match of matches) {
-                    issues.push({
-                        line: index + 1,
-                        message: 'Image missing alt text for accessibility'
-                    });
-                }
-            });
+        lines.forEach((line, index) => {
+        const matches = line.matchAll(/!\[\s*\]\([^)]+\)/g);
+        for (const match of matches) {
+        issues.push({
+        line: index + 1,
+        message: 'Image missing alt text for accessibility'
+        });
+        }
+        });
 
-            return issues;
+        return issues;
         }
     },
     {
@@ -128,30 +124,30 @@ const LINTER_RULES = [
         name: 'Unbalanced Brackets',
         severity: SEVERITY.ERROR,
         check: (lines) => {
-            const issues = [];
+        const issues = [];
 
-            lines.forEach((line, index) => {
-                // Check for unbalanced square brackets
-                const openSquare = (line.match(/\[/g) || []).length;
-                const closeSquare = (line.match(/\]/g) || []).length;
-                if (openSquare !== closeSquare) {
-                    issues.push({
-                        line: index + 1,
-                        message: 'Unbalanced square brackets []'
-                    });
-                }
+        lines.forEach((line, index) => {
+        // Check for unbalanced square brackets
+        const openSquare = (line.match(/\[/g) || []).length;
+        const closeSquare = (line.match(/\]/g) || []).length;
+        if (openSquare !== closeSquare) {
+        issues.push({
+        line: index + 1,
+        message: 'Unbalanced square brackets []'
+        });
+        }
 
-                // Check for unbalanced parentheses in links
-                const linkPattern = /\]\([^)]*$/;
-                if (linkPattern.test(line)) {
-                    issues.push({
-                        line: index + 1,
-                        message: 'Unclosed link parenthesis'
-                    });
-                }
-            });
+        // Check for unbalanced parentheses in links
+        const linkPattern = /\]\([^)]*$/;
+        if (linkPattern.test(line)) {
+        issues.push({
+        line: index + 1,
+        message: 'Unclosed link parenthesis'
+        });
+        }
+        });
 
-            return issues;
+        return issues;
         }
     },
     {
@@ -159,25 +155,25 @@ const LINTER_RULES = [
         name: 'Duplicate Links',
         severity: SEVERITY.INFO,
         check: (lines) => {
-            const links = {};
-            const issues = [];
+        const links = {};
+        const issues = [];
 
-            lines.forEach((line, index) => {
-                const matches = line.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g);
-                for (const match of matches) {
-                    const url = match[2];
-                    if (links[url]) {
-                        issues.push({
-                            line: index + 1,
-                            message: `Duplicate link to "${url}" (first used on line ${links[url]})`
-                        });
-                    } else {
-                        links[url] = index + 1;
-                    }
-                }
-            });
+        lines.forEach((line, index) => {
+        const matches = line.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g);
+        for (const match of matches) {
+        const url = match[2];
+        if (links[url]) {
+        issues.push({
+        line: index + 1,
+        message: `Duplicate link to "${url}" (first used on line ${links[url]})`
+        });
+        } else {
+        links[url] = index + 1;
+        }
+        }
+        });
 
-            return issues;
+        return issues;
         }
     },
     {
@@ -185,14 +181,14 @@ const LINTER_RULES = [
         name: 'Long Lines',
         severity: SEVERITY.INFO,
         check: (lines) => {
-            const maxLength = 120;
-            return lines
-                .map((line, index) => ({ line, index }))
-                .filter(({ line }) => line.length > maxLength && !line.startsWith('|'))
-                .map(({ line, index }) => ({
-                    line: index + 1,
-                    message: `Line exceeds ${maxLength} characters (${line.length})`
-                }));
+        const maxLength = 120;
+        return lines
+        .map((line, index) => ({ line, index }))
+        .filter(({ line }) => line.length > maxLength && !line.startsWith('|'))
+        .map(({ line, index }) => ({
+        line: index + 1,
+        message: `Line exceeds ${maxLength} characters (${line.length})`
+        }));
         }
     },
     {
@@ -200,18 +196,18 @@ const LINTER_RULES = [
         name: 'Fenced Code Without Language',
         severity: SEVERITY.INFO,
         check: (lines) => {
-            const issues = [];
+        const issues = [];
 
-            lines.forEach((line, index) => {
-                if (/^```\s*$/.test(line)) {
-                    issues.push({
-                        line: index + 1,
-                        message: 'Fenced code block without language specifier'
-                    });
-                }
-            });
+        lines.forEach((line, index) => {
+        if (/^```\s*$/.test(line)) {
+        issues.push({
+        line: index + 1,
+        message: 'Fenced code block without language specifier'
+        });
+        }
+        });
 
-            return issues;
+        return issues;
         }
     }
 ];
@@ -225,7 +221,7 @@ class LinterManager {
 
     constructor() {
         if (LinterManager.instance) {
-            return LinterManager.instance;
+        return LinterManager.instance;
         }
 
         this.issues = [];
@@ -245,14 +241,10 @@ class LinterManager {
     initialize(container = null) {
         if (this.initialized) return;
 
-        // #region agent log
-        fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run3-pre',hypothesisId:'H2_H4',location:'src/features/linter/index.js:249',message:'linter initialize invoked',data:{hasContainer:!!container,hasEventBus:typeof eventBus==='object'},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-
         if (container) {
-            this.container = typeof container === 'string'
-                ? document.querySelector(container)
-                : container;
+        this.container = typeof container === 'string'
+        ? document.querySelector(container)
+        : container;
         }
 
         // Setup event listeners
@@ -268,14 +260,14 @@ class LinterManager {
     _setupEventListeners() {
         // Debounced lint on content change
         const debouncedLint = debounce((content) => {
-            this.lint(content);
+        this.lint(content);
         }, 500);
 
         this.subscriptions = this.subscriptions || new Subscriptions();
         this.subscriptions.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
-            if (this.enabled) {
-                debouncedLint(content);
-            }
+        if (this.enabled) {
+        debouncedLint(content);
+        }
         });
     }
 
@@ -286,10 +278,10 @@ class LinterManager {
      */
     lint(content) {
         if (!content) {
-            this.issues = [];
-            this._updateEditor();
-            this.render();
-            return this.issues;
+        this.issues = [];
+        this._updateEditor();
+        this.render();
+        return this.issues;
         }
 
         const lines = content.split('\n');
@@ -297,17 +289,17 @@ class LinterManager {
 
         // Run each enabled rule
         this.rules.forEach(rule => {
-            if (this.disabledRules.has(rule.id)) return;
+        if (this.disabledRules.has(rule.id)) return;
 
-            const ruleIssues = rule.check(lines);
-            ruleIssues.forEach(issue => {
-                this.issues.push({
-                    ...issue,
-                    ruleId: rule.id,
-                    ruleName: rule.name,
-                    severity: rule.severity
-                });
-            });
+        const ruleIssues = rule.check(lines);
+        ruleIssues.forEach(issue => {
+        this.issues.push({
+        ...issue,
+        ruleId: rule.id,
+        ruleName: rule.name,
+        severity: rule.severity
+        });
+        });
         });
 
         // Sort by line number
@@ -330,18 +322,18 @@ class LinterManager {
      */
     _updateEditor() {
         const markerSeverity = {
-            [SEVERITY.ERROR]: 8, // MarkerSeverity.Error
-            [SEVERITY.WARNING]: 4, // MarkerSeverity.Warning
-            [SEVERITY.INFO]: 2 // MarkerSeverity.Info
+        [SEVERITY.ERROR]: 8, // MarkerSeverity.Error
+        [SEVERITY.WARNING]: 4, // MarkerSeverity.Warning
+        [SEVERITY.INFO]: 2 // MarkerSeverity.Info
         };
 
         const markers = this.issues.map(issue => ({
-            severity: markerSeverity[issue.severity] || 4,
-            message: `[${issue.ruleName}] ${issue.message}`,
-            startLine: issue.line,
-            startColumn: 1,
-            endLine: issue.line,
-            endColumn: 1000
+        severity: markerSeverity[issue.severity] || 4,
+        message: `[${issue.ruleName}] ${issue.message}`,
+        startLine: issue.line,
+        startColumn: 1,
+        endLine: issue.line,
+        endColumn: 1000
         }));
 
         editorService.setMarkers(markers, 'linter');
@@ -372,9 +364,9 @@ class LinterManager {
      */
     toggle() {
         if (this.enabled) {
-            this.disable();
+        this.disable();
         } else {
-            this.enable();
+        this.enable();
         }
         return this.enabled;
     }
@@ -401,12 +393,12 @@ class LinterManager {
      */
     addRule(rule) {
         if (!rule.id || !rule.check) {
-            console.error('Invalid rule: must have id and check function');
-            return;
+        console.error('Invalid rule: must have id and check function');
+        return;
         }
         this.rules.push({
-            severity: SEVERITY.WARNING,
-            ...rule
+        severity: SEVERITY.WARNING,
+        ...rule
         });
     }
 
@@ -433,10 +425,10 @@ class LinterManager {
      */
     getIssueCounts() {
         return {
-            error: this.issues.filter(i => i.severity === SEVERITY.ERROR).length,
-            warning: this.issues.filter(i => i.severity === SEVERITY.WARNING).length,
-            info: this.issues.filter(i => i.severity === SEVERITY.INFO).length,
-            total: this.issues.length
+        error: this.issues.filter(i => i.severity === SEVERITY.ERROR).length,
+        warning: this.issues.filter(i => i.severity === SEVERITY.WARNING).length,
+        info: this.issues.filter(i => i.severity === SEVERITY.INFO).length,
+        total: this.issues.length
         };
     }
 
@@ -459,38 +451,38 @@ class LinterManager {
         const counts = this.getIssueCounts();
 
         if (this.issues.length === 0) {
-            this.container.innerHTML = `
-                <div class="linter-empty">
-                    <span class="linter-check">✓</span>
-                    <p>No issues found</p>
-                </div>
-            `;
-            return;
+        this.container.innerHTML = `
+        <div class="linter-empty">
+        <span class="linter-check">✓</span>
+        <p>No issues found</p>
+        </div>
+        `;
+        return;
         }
 
         this.container.innerHTML = `
-            <div class="linter-summary">
-                ${counts.error > 0 ? `<span class="linter-count error">${counts.error} errors</span>` : ''}
-                ${counts.warning > 0 ? `<span class="linter-count warning">${counts.warning} warnings</span>` : ''}
-                ${counts.info > 0 ? `<span class="linter-count info">${counts.info} hints</span>` : ''}
-            </div>
-            <div class="linter-issues">
-                ${this.issues.map(issue => `
-                    <div class="linter-issue ${issue.severity}" data-line="${issue.line}">
-                        <span class="issue-icon">${this._getSeverityIcon(issue.severity)}</span>
-                        <span class="issue-line">Line ${issue.line}</span>
-                        <span class="issue-message">${issue.message}</span>
-                    </div>
-                `).join('')}
-            </div>
+        <div class="linter-summary">
+        ${counts.error > 0 ? `<span class="linter-count error">${counts.error} errors</span>` : ''}
+        ${counts.warning > 0 ? `<span class="linter-count warning">${counts.warning} warnings</span>` : ''}
+        ${counts.info > 0 ? `<span class="linter-count info">${counts.info} hints</span>` : ''}
+        </div>
+        <div class="linter-issues">
+        ${this.issues.map(issue => `
+        <div class="linter-issue ${issue.severity}" data-line="${issue.line}">
+        <span class="issue-icon">${this._getSeverityIcon(issue.severity)}</span>
+        <span class="issue-line">Line ${issue.line}</span>
+        <span class="issue-message">${issue.message}</span>
+        </div>
+        `).join('')}
+        </div>
         `;
 
         // Add click handlers to navigate to issues
         this.container.querySelectorAll('.linter-issue').forEach(el => {
-            el.addEventListener('click', () => {
-                const line = parseInt(el.dataset.line, 10);
-                this.goToLine(line);
-            });
+        el.addEventListener('click', () => {
+        const line = parseInt(el.dataset.line, 10);
+        this.goToLine(line);
+        });
         });
     }
 
@@ -502,14 +494,14 @@ class LinterManager {
      */
     _getSeverityIcon(severity) {
         switch (severity) {
-            case SEVERITY.ERROR:
-                return '❌';
-            case SEVERITY.WARNING:
-                return '⚠️';
-            case SEVERITY.INFO:
-                return 'ℹ️';
-            default:
-                return '•';
+        case SEVERITY.ERROR:
+        return '❌';
+        case SEVERITY.WARNING:
+        return '⚠️';
+        case SEVERITY.INFO:
+        return 'ℹ️';
+        default:
+        return '•';
         }
     }
 

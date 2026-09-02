@@ -9,10 +9,6 @@ import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { markdownService } from '../../core/markdown/index.js';
 
-// #region agent log
-fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run2-pre',hypothesisId:'H1_H4',location:'src/features/goals/index.js:12',message:'goals module parsed',data:{goalTypesNamedExport:true},timestamp:Date.now()})}).catch(()=>{});
-// #endregion
-
 /**
  * Goal types
  */
@@ -41,7 +37,7 @@ class GoalsManager {
 
     constructor() {
         if (GoalsManager.instance) {
-            return GoalsManager.instance;
+        return GoalsManager.instance;
         }
 
         this.goals = [];
@@ -61,14 +57,10 @@ class GoalsManager {
     initialize(container = null) {
         if (this.initialized) return;
 
-        // #region agent log
-        fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run2-pre',hypothesisId:'H2_H3',location:'src/features/goals/index.js:66',message:'goals initialize invoked',data:{hasContainer:!!container,hasStorageService:typeof storageService==='object'},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-
         if (container) {
-            this.container = typeof container === 'string'
-                ? document.querySelector(container)
-                : container;
+        this.container = typeof container === 'string'
+        ? document.querySelector(container)
+        : container;
         }
 
         // Load saved goals
@@ -90,20 +82,20 @@ class GoalsManager {
     _loadGoals() {
         const savedGoals = storageService.get(STORAGE_KEYS.GOALS);
         if (savedGoals) {
-            this.goals = savedGoals.goals || [];
-            this.dailyGoal = savedGoals.dailyGoal || null;
+        this.goals = savedGoals.goals || [];
+        this.dailyGoal = savedGoals.dailyGoal || null;
 
-            // Check if daily goal is from today
-            if (this.dailyGoal) {
-                const today = new Date().toDateString();
-                const goalDate = new Date(this.dailyGoal.startedAt).toDateString();
-                if (today !== goalDate) {
-                    // Reset daily goal for new day
-                    this.dailyGoal.current = 0;
-                    this.dailyGoal.completed = false;
-                    this.dailyGoal.startedAt = Date.now();
-                }
-            }
+        // Check if daily goal is from today
+        if (this.dailyGoal) {
+        const today = new Date().toDateString();
+        const goalDate = new Date(this.dailyGoal.startedAt).toDateString();
+        if (today !== goalDate) {
+        // Reset daily goal for new day
+        this.dailyGoal.current = 0;
+        this.dailyGoal.completed = false;
+        this.dailyGoal.startedAt = Date.now();
+        }
+        }
         }
     }
 
@@ -113,8 +105,8 @@ class GoalsManager {
      */
     _saveGoals() {
         storageService.set(STORAGE_KEYS.GOALS, {
-            goals: this.goals,
-            dailyGoal: this.dailyGoal
+        goals: this.goals,
+        dailyGoal: this.dailyGoal
         });
     }
 
@@ -126,7 +118,7 @@ class GoalsManager {
         // Listen for content changes
         this.subscriptions = this.subscriptions || new Subscriptions();
         this.subscriptions.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
-            this._updateProgress(content);
+        this._updateProgress(content);
         });
     }
 
@@ -137,7 +129,7 @@ class GoalsManager {
     _startUpdateInterval() {
         // Update time-based goals every minute
         this.updateInterval = setInterval(() => {
-            this._updateTimeGoals();
+        this._updateTimeGoals();
         }, 60000);
     }
 
@@ -151,40 +143,40 @@ class GoalsManager {
 
         // Update word-based goals
         this.goals.forEach(goal => {
-            if (goal.type === GOAL_TYPES.WORDS) {
-                const wasCompleted = goal.completed;
-                goal.current = stats.words;
-                goal.completed = goal.current >= goal.target;
+        if (goal.type === GOAL_TYPES.WORDS) {
+        const wasCompleted = goal.completed;
+        goal.current = stats.words;
+        goal.completed = goal.current >= goal.target;
 
-                if (goal.completed && !wasCompleted) {
-                    this._onGoalCompleted(goal);
-                }
-            } else if (goal.type === GOAL_TYPES.CHARACTERS) {
-                const wasCompleted = goal.completed;
-                goal.current = stats.characters;
-                goal.completed = goal.current >= goal.target;
+        if (goal.completed && !wasCompleted) {
+        this._onGoalCompleted(goal);
+        }
+        } else if (goal.type === GOAL_TYPES.CHARACTERS) {
+        const wasCompleted = goal.completed;
+        goal.current = stats.characters;
+        goal.completed = goal.current >= goal.target;
 
-                if (goal.completed && !wasCompleted) {
-                    this._onGoalCompleted(goal);
-                }
-            }
+        if (goal.completed && !wasCompleted) {
+        this._onGoalCompleted(goal);
+        }
+        }
         });
 
         // Update daily goal
         if (this.dailyGoal) {
-            const wasCompleted = this.dailyGoal.completed;
+        const wasCompleted = this.dailyGoal.completed;
 
-            if (this.dailyGoal.type === GOAL_TYPES.WORDS) {
-                this.dailyGoal.current = stats.words;
-            } else if (this.dailyGoal.type === GOAL_TYPES.CHARACTERS) {
-                this.dailyGoal.current = stats.characters;
-            }
+        if (this.dailyGoal.type === GOAL_TYPES.WORDS) {
+        this.dailyGoal.current = stats.words;
+        } else if (this.dailyGoal.type === GOAL_TYPES.CHARACTERS) {
+        this.dailyGoal.current = stats.characters;
+        }
 
-            this.dailyGoal.completed = this.dailyGoal.current >= this.dailyGoal.target;
+        this.dailyGoal.completed = this.dailyGoal.current >= this.dailyGoal.target;
 
-            if (this.dailyGoal.completed && !wasCompleted) {
-                this._onGoalCompleted(this.dailyGoal, true);
-            }
+        if (this.dailyGoal.completed && !wasCompleted) {
+        this._onGoalCompleted(this.dailyGoal, true);
+        }
         }
 
         this._saveGoals();
@@ -199,15 +191,15 @@ class GoalsManager {
         const sessionMinutes = Math.floor((Date.now() - this.sessionStart) / 60000);
 
         this.goals.forEach(goal => {
-            if (goal.type === GOAL_TYPES.TIME) {
-                const wasCompleted = goal.completed;
-                goal.current = sessionMinutes;
-                goal.completed = goal.current >= goal.target;
+        if (goal.type === GOAL_TYPES.TIME) {
+        const wasCompleted = goal.completed;
+        goal.current = sessionMinutes;
+        goal.completed = goal.current >= goal.target;
 
-                if (goal.completed && !wasCompleted) {
-                    this._onGoalCompleted(goal);
-                }
-            }
+        if (goal.completed && !wasCompleted) {
+        this._onGoalCompleted(goal);
+        }
+        }
         });
 
         this._saveGoals();
@@ -225,11 +217,11 @@ class GoalsManager {
 
         // Show notification
         eventBus.emit(EVENTS.TOAST_SHOW, {
-            message: isDaily
-                ? '🎉 Daily goal completed!'
-                : `🎉 Goal reached: ${goal.target} ${goal.type}!`,
-            type: 'success',
-            duration: 5000
+        message: isDaily
+        ? '🎉 Daily goal completed!'
+        : `🎉 Goal reached: ${goal.target} ${goal.type}!`,
+        type: 'success',
+        duration: 5000
         });
     }
 
@@ -240,11 +232,11 @@ class GoalsManager {
      */
     setDailyGoal(type, target) {
         this.dailyGoal = {
-            type,
-            target,
-            current: 0,
-            startedAt: Date.now(),
-            completed: false
+        type,
+        target,
+        current: 0,
+        startedAt: Date.now(),
+        completed: false
         };
 
         this._saveGoals();
@@ -261,12 +253,12 @@ class GoalsManager {
      */
     addGoal(type, target) {
         const goal = {
-            id: `goal-${Date.now()}`,
-            type,
-            target,
-            current: 0,
-            startedAt: Date.now(),
-            completed: false
+        id: `goal-${Date.now()}`,
+        type,
+        target,
+        current: 0,
+        startedAt: Date.now(),
+        completed: false
         };
 
         this.goals.push(goal);
@@ -285,9 +277,9 @@ class GoalsManager {
     removeGoal(goalId) {
         const index = this.goals.findIndex(g => g.id === goalId);
         if (index !== -1) {
-            this.goals.splice(index, 1);
-            this._saveGoals();
-            this.render();
+        this.goals.splice(index, 1);
+        this._saveGoals();
+        this.render();
         }
     }
 
@@ -336,25 +328,25 @@ class GoalsManager {
 
         // Render daily goal
         if (this.dailyGoal) {
-            const dailyEl = this._createGoalElement(this.dailyGoal, true);
-            this.container.appendChild(dailyEl);
+        const dailyEl = this._createGoalElement(this.dailyGoal, true);
+        this.container.appendChild(dailyEl);
         }
 
         // Render session goals
         this.goals.forEach(goal => {
-            const goalEl = this._createGoalElement(goal);
-            this.container.appendChild(goalEl);
+        const goalEl = this._createGoalElement(goal);
+        this.container.appendChild(goalEl);
         });
 
         // Add "set goal" button if no daily goal
         if (!this.dailyGoal) {
-            const addBtn = document.createElement('button');
-            addBtn.className = 'goal-add-btn';
-            addBtn.textContent = '+ Set Daily Goal';
-            addBtn.addEventListener('click', () => {
-                eventBus.emit(EVENTS.SHOW_GOAL_DIALOG);
-            });
-            this.container.appendChild(addBtn);
+        const addBtn = document.createElement('button');
+        addBtn.className = 'goal-add-btn';
+        addBtn.textContent = '+ Set Daily Goal';
+        addBtn.addEventListener('click', () => {
+        eventBus.emit(EVENTS.SHOW_GOAL_DIALOG);
+        });
+        this.container.appendChild(addBtn);
         }
     }
 
@@ -372,19 +364,19 @@ class GoalsManager {
         goalEl.className = `goal ${goal.completed ? 'completed' : ''} ${isDaily ? 'daily' : ''}`;
 
         goalEl.innerHTML = `
-            <div class="goal-header">
-                <span class="goal-label">
-                    ${isDaily ? '📅 Daily' : '🎯'} ${goal.target} ${goal.type}
-                </span>
-                <span class="goal-value">${goal.current} / ${goal.target}</span>
-            </div>
-            <div class="goal-progress">
-                <div class="goal-progress-bar" style="width: ${progress}%"></div>
-            </div>
-            <div class="goal-footer">
-                <span class="goal-percentage">${progress}%</span>
-                ${goal.completed ? '<span class="goal-complete-badge">✓ Complete</span>' : ''}
-            </div>
+        <div class="goal-header">
+        <span class="goal-label">
+        ${isDaily ? '📅 Daily' : '🎯'} ${goal.target} ${goal.type}
+        </span>
+        <span class="goal-value">${goal.current} / ${goal.target}</span>
+        </div>
+        <div class="goal-progress">
+        <div class="goal-progress-bar" style="width: ${progress}%"></div>
+        </div>
+        <div class="goal-footer">
+        <span class="goal-percentage">${progress}%</span>
+        ${goal.completed ? '<span class="goal-complete-badge">✓ Complete</span>' : ''}
+        </div>
         `;
 
         return goalEl;
@@ -395,15 +387,15 @@ class GoalsManager {
      */
     dispose() {
         if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-        if (this.subscriptions) this.subscriptions.dispose();
+        clearInterval(this.updateInterval);
         }
+        if (this.subscriptions) this.subscriptions.dispose();
         this._saveGoals();
         this.goals = [];
         this.dailyGoal = null;
         this.initialized = false;
         GoalsManager.instance = null;
-    }
+        }
 }
 
 // Export singleton instance

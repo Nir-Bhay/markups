@@ -15,7 +15,7 @@ class FullscreenManager {
 
     constructor() {
         if (FullscreenManager.instance) {
-            return FullscreenManager.instance;
+        return FullscreenManager.instance;
         }
 
         this.isEnabled = false;
@@ -30,14 +30,14 @@ class FullscreenManager {
      */
     initialize(button) {
         this.button = typeof button === 'string'
-            ? document.querySelector(button)
-            : button;
+        ? document.querySelector(button)
+        : button;
 
         if (this.button) {
-            this.button.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.toggle();
-            });
+        this.button.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.toggle();
+        });
         }
 
         // Handle fullscreen change events from browser
@@ -57,16 +57,16 @@ class FullscreenManager {
      */
     _handleFullscreenChange() {
         const isFullscreen = !!(
-            document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.mozFullScreenElement ||
-            document.msFullscreenElement
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
         );
 
         if (!isFullscreen && this.isEnabled) {
-            this.isEnabled = false;
-            document.body.classList.remove('fullscreen-mode');
-            this._updateButtonText('Fullscreen');
+        this.isEnabled = false;
+        document.body.classList.remove('fullscreen-mode');
+        this._updateButtonText('Fullscreen');
         }
     }
 
@@ -77,10 +77,10 @@ class FullscreenManager {
      */
     _updateButtonText(text) {
         if (this.button) {
-            const link = this.button.querySelector('a');
-            if (link) {
-                link.textContent = text;
-            }
+        const link = this.button.querySelector('a');
+        if (link) {
+        link.textContent = text;
+        }
         }
     }
 
@@ -89,9 +89,9 @@ class FullscreenManager {
      */
     toggle() {
         if (this.isEnabled) {
-            this.exit();
+        this.exit();
         } else {
-            this.enter();
+        this.enter();
         }
     }
 
@@ -102,27 +102,27 @@ class FullscreenManager {
         const elem = document.documentElement;
 
         try {
-            if (elem.requestFullscreen) {
-                await elem.requestFullscreen();
-            } else if (elem.webkitRequestFullscreen) {
-                await elem.webkitRequestFullscreen();
-            } else if (elem.mozRequestFullScreen) {
-                await elem.mozRequestFullScreen();
-            } else if (elem.msRequestFullscreen) {
-                await elem.msRequestFullscreen();
-            }
+        if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+        await elem.webkitRequestFullscreen();
+        } else if (elem.mozRequestFullScreen) {
+        await elem.mozRequestFullScreen();
+        } else if (elem.msRequestFullscreen) {
+        await elem.msRequestFullscreen();
+        }
 
-            this.isEnabled = true;
-            document.body.classList.add('fullscreen-mode');
-            this._updateButtonText('Exit Fullscreen');
+        this.isEnabled = true;
+        document.body.classList.add('fullscreen-mode');
+        this._updateButtonText('Exit Fullscreen');
 
-            eventBus.emit(EVENTS.FULLSCREEN_CHANGED, { enabled: true });
+        eventBus.emit(EVENTS.FULLSCREEN_CHANGED, { enabled: true });
         } catch (error) {
-            console.error('Failed to enter fullscreen:', error);
-            eventBus.emit(EVENTS.TOAST_SHOW, {
-                message: 'Failed to enter fullscreen',
-                type: 'error'
-            });
+        console.error('Failed to enter fullscreen:', error);
+        eventBus.emit(EVENTS.TOAST_SHOW, {
+        message: 'Failed to enter fullscreen',
+        type: 'error'
+        });
         }
     }
 
@@ -131,23 +131,23 @@ class FullscreenManager {
      */
     async exit() {
         try {
-            if (document.exitFullscreen) {
-                await document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                await document.webkitExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                await document.mozCancelFullScreen();
-            } else if (document.msExitFullscreen) {
-                await document.msExitFullscreen();
-            }
+        if (document.exitFullscreen) {
+        await document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+        await document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+        await document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+        await document.msExitFullscreen();
+        }
 
-            this.isEnabled = false;
-            document.body.classList.remove('fullscreen-mode');
-            this._updateButtonText('Fullscreen');
+        this.isEnabled = false;
+        document.body.classList.remove('fullscreen-mode');
+        this._updateButtonText('Fullscreen');
 
-            eventBus.emit(EVENTS.FULLSCREEN_CHANGED, { enabled: false });
+        eventBus.emit(EVENTS.FULLSCREEN_CHANGED, { enabled: false });
         } catch (error) {
-            console.error('Failed to exit fullscreen:', error);
+        console.error('Failed to exit fullscreen:', error);
         }
     }
 
@@ -157,10 +157,10 @@ class FullscreenManager {
      */
     isSupported() {
         return !!(
-            document.documentElement.requestFullscreen ||
-            document.documentElement.webkitRequestFullscreen ||
-            document.documentElement.mozRequestFullScreen ||
-            document.documentElement.msRequestFullscreen
+        document.documentElement.requestFullscreen ||
+        document.documentElement.webkitRequestFullscreen ||
+        document.documentElement.mozRequestFullScreen ||
+        document.documentElement.msRequestFullscreen
         );
     }
 
@@ -177,9 +177,9 @@ class FullscreenManager {
      */
     dispose() {
         if (this.isEnabled) {
-            this.exit();
-        if (this.subscriptions) this.subscriptions.dispose();
+        this.exit();
         }
+        if (this.subscriptions) this.subscriptions.dispose();
         FullscreenManager.instance = null;
     }
 }

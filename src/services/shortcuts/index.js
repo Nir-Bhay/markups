@@ -8,10 +8,6 @@ import { eventBus, EVENTS } from '../../utils/eventBus.js';
 import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 
-// #region agent log
-fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run1',hypothesisId:'H1_H3',location:'src/services/shortcuts/index.js:11',message:'shortcuts module imported',data:{eventBusImport:'../../utils/eventBus.js',storageImport:'../../core/storage/index.js'},timestamp:Date.now()})}).catch(()=>{});
-// #endregion
-
 /**
  * Default keyboard shortcuts
  */
@@ -66,7 +62,7 @@ class ShortcutsManager {
 
     constructor() {
         if (ShortcutsManager.instance) {
-            return ShortcutsManager.instance;
+        return ShortcutsManager.instance;
         }
 
         this.shortcuts = { ...DEFAULT_SHORTCUTS };
@@ -84,10 +80,6 @@ class ShortcutsManager {
     initialize() {
         if (this.initialized) return;
 
-        // #region agent log
-        fetch('http://127.0.0.1:7909/ingest/f03de42b-8c4a-4b4d-b567-79894feaa967',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3321d0'},body:JSON.stringify({sessionId:'3321d0',runId:'run1',hypothesisId:'H2_H4',location:'src/services/shortcuts/index.js:88',message:'shortcuts initialize start',data:{hasStorageService:typeof storageService==='object',storageKeysType:typeof STORAGE_KEYS},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-
         // Load custom shortcuts
         this._loadCustomShortcuts();
 
@@ -104,9 +96,9 @@ class ShortcutsManager {
     _loadCustomShortcuts() {
         const saved = storageService.get(STORAGE_KEYS.SHORTCUTS);
         if (saved) {
-            this.customShortcuts = saved;
-            // Merge custom shortcuts
-            Object.assign(this.shortcuts, this.customShortcuts);
+        this.customShortcuts = saved;
+        // Merge custom shortcuts
+        Object.assign(this.shortcuts, this.customShortcuts);
         }
     }
 
@@ -130,12 +122,12 @@ class ShortcutsManager {
         const matchingAction = this._findMatchingAction(e);
 
         if (matchingAction) {
-            const handler = this.handlers.get(matchingAction);
-            if (handler) {
-                e.preventDefault();
-                handler(e);
-                eventBus.emit(EVENTS.SHORTCUT_TRIGGERED, { action: matchingAction });
-            }
+        const handler = this.handlers.get(matchingAction);
+        if (handler) {
+        e.preventDefault();
+        handler(e);
+        eventBus.emit(EVENTS.SHORTCUT_TRIGGERED, { action: matchingAction });
+        }
         }
     }
 
@@ -152,14 +144,14 @@ class ShortcutsManager {
         const alt = e.altKey;
 
         for (const [action, shortcut] of Object.entries(this.shortcuts)) {
-            if (
-                shortcut.key.toLowerCase() === key &&
-                !!shortcut.ctrl === ctrl &&
-                !!shortcut.shift === shift &&
-                !!shortcut.alt === alt
-            ) {
-                return action;
-            }
+        if (
+        shortcut.key.toLowerCase() === key &&
+        !!shortcut.ctrl === ctrl &&
+        !!shortcut.shift === shift &&
+        !!shortcut.alt === alt
+        ) {
+        return action;
+        }
         }
 
         return null;
@@ -188,7 +180,7 @@ class ShortcutsManager {
      */
     registerAll(handlers) {
         Object.entries(handlers).forEach(([action, handler]) => {
-            this.register(action, handler);
+        this.register(action, handler);
         });
     }
 
@@ -201,7 +193,7 @@ class ShortcutsManager {
         // Check for conflicts
         const conflict = this._findConflict(shortcut);
         if (conflict && conflict !== action) {
-            throw new Error(`Shortcut conflicts with "${conflict}"`);
+        throw new Error(`Shortcut conflicts with "${conflict}"`);
         }
 
         this.shortcuts[action] = shortcut;
@@ -215,9 +207,9 @@ class ShortcutsManager {
      */
     resetShortcut(action) {
         if (DEFAULT_SHORTCUTS[action]) {
-            this.shortcuts[action] = { ...DEFAULT_SHORTCUTS[action] };
-            delete this.customShortcuts[action];
-            this._saveCustomShortcuts();
+        this.shortcuts[action] = { ...DEFAULT_SHORTCUTS[action] };
+        delete this.customShortcuts[action];
+        this._saveCustomShortcuts();
         }
     }
 
@@ -238,14 +230,14 @@ class ShortcutsManager {
      */
     _findConflict(shortcut) {
         for (const [action, existing] of Object.entries(this.shortcuts)) {
-            if (
-                existing.key.toLowerCase() === shortcut.key.toLowerCase() &&
-                !!existing.ctrl === !!shortcut.ctrl &&
-                !!existing.shift === !!shortcut.shift &&
-                !!existing.alt === !!shortcut.alt
-            ) {
-                return action;
-            }
+        if (
+        existing.key.toLowerCase() === shortcut.key.toLowerCase() &&
+        !!existing.ctrl === !!shortcut.ctrl &&
+        !!existing.shift === !!shortcut.shift &&
+        !!existing.alt === !!shortcut.alt
+        ) {
+        return action;
+        }
         }
         return null;
     }
@@ -304,31 +296,31 @@ class ShortcutsManager {
      */
     renderHelp() {
         const categories = {
-            'File': ['save', 'new', 'open'],
-            'Edit': ['undo', 'redo', 'find', 'replace'],
-            'Format': ['bold', 'italic', 'link', 'code'],
-            'View': ['togglePreview', 'toggleFullscreen', 'zoomIn', 'zoomOut', 'resetZoom'],
-            'Panels': ['toggleTOC', 'toggleLinter', 'toggleSnippets'],
-            'Export': ['exportPDF', 'exportHTML'],
-            'Misc': ['commandPalette', 'help']
+        'File': ['save', 'new', 'open'],
+        'Edit': ['undo', 'redo', 'find', 'replace'],
+        'Format': ['bold', 'italic', 'link', 'code'],
+        'View': ['togglePreview', 'toggleFullscreen', 'zoomIn', 'zoomOut', 'resetZoom'],
+        'Panels': ['toggleTOC', 'toggleLinter', 'toggleSnippets'],
+        'Export': ['exportPDF', 'exportHTML'],
+        'Misc': ['commandPalette', 'help']
         };
 
         return Object.entries(categories).map(([category, actions]) => `
-            <div class="shortcuts-category">
-                <h4>${category}</h4>
-                <ul>
-                    ${actions.map(action => {
-            const shortcut = this.shortcuts[action];
-            if (!shortcut) return '';
-            return `
-                            <li>
-                                <span class="shortcut-action">${shortcut.description}</span>
-                                <kbd>${this.getDisplayString(action)}</kbd>
-                            </li>
-                        `;
+        <div class="shortcuts-category">
+        <h4>${category}</h4>
+        <ul>
+        ${actions.map(action => {
+        const shortcut = this.shortcuts[action];
+        if (!shortcut) return '';
+        return `
+        <li>
+        <span class="shortcut-action">${shortcut.description}</span>
+        <kbd>${this.getDisplayString(action)}</kbd>
+        </li>
+        `;
         }).join('')}
-                </ul>
-            </div>
+        </ul>
+        </div>
         `).join('');
     }
 

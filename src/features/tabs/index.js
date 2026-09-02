@@ -30,7 +30,7 @@ class TabsManager {
 
     constructor() {
         if (TabsManager.instance) {
-            return TabsManager.instance;
+        return TabsManager.instance;
         }
 
         this.tabs = [];
@@ -50,8 +50,8 @@ class TabsManager {
         if (this.initialized) return;
 
         this.container = typeof container === 'string'
-            ? document.querySelector(container)
-            : container;
+        ? document.querySelector(container)
+        : container;
 
         // Load saved tabs
         this._loadTabs();
@@ -64,12 +64,12 @@ class TabsManager {
 
         // If no tabs, create default one
         if (this.tabs.length === 0) {
-            this.createTab('Untitled', DEFAULT_CONTENT);
+        this.createTab('Untitled', DEFAULT_CONTENT);
         } else {
-            // Activate first tab or last active
-            const lastActiveId = storageService.get(STORAGE_KEYS.ACTIVE_TAB);
-            const tabToActivate = this.tabs.find(t => t.id === lastActiveId) || this.tabs[0];
-            this.activateTab(tabToActivate.id);
+        // Activate first tab or last active
+        const lastActiveId = storageService.get(STORAGE_KEYS.ACTIVE_TAB);
+        const tabToActivate = this.tabs.find(t => t.id === lastActiveId) || this.tabs[0];
+        this.activateTab(tabToActivate.id);
         }
 
         this.initialized = true;
@@ -82,7 +82,7 @@ class TabsManager {
     _loadTabs() {
         const savedTabs = storageService.get(STORAGE_KEYS.TABS);
         if (savedTabs && Array.isArray(savedTabs)) {
-            this.tabs = savedTabs;
+        this.tabs = savedTabs;
         }
     }
 
@@ -103,7 +103,7 @@ class TabsManager {
         // Listen for content changes to mark tab dirty
         this.subscriptions = this.subscriptions || new Subscriptions();
         this.subscriptions.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
-            this.updateActiveTabContent(content);
+        this.updateActiveTabContent(content);
         });
     }
 
@@ -115,19 +115,19 @@ class TabsManager {
      */
     createTab(name = 'Untitled', content = '') {
         if (this.tabs.length >= this.maxTabs) {
-            eventBus.emit(EVENTS.ERROR, {
-                message: `Maximum ${this.maxTabs} tabs allowed`
-            });
-            return null;
+        eventBus.emit(EVENTS.ERROR, {
+        message: `Maximum ${this.maxTabs} tabs allowed`
+        });
+        return null;
         }
 
         const tab = {
-            id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            name: this._getUniqueName(name),
-            content,
-            isDirty: false,
-            createdAt: Date.now(),
-            updatedAt: Date.now()
+        id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: this._getUniqueName(name),
+        content,
+        isDirty: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
         };
 
         this.tabs.push(tab);
@@ -153,8 +153,8 @@ class TabsManager {
         let counter = 1;
         let newName = `${baseName} (${counter})`;
         while (existingNames.includes(newName)) {
-            counter++;
-            newName = `${baseName} (${counter})`;
+        counter++;
+        newName = `${baseName} (${counter})`;
         }
         return newName;
     }
@@ -169,10 +169,10 @@ class TabsManager {
 
         // Save current content before switching
         if (this.activeTabId) {
-            const currentTab = this.tabs.find(t => t.id === this.activeTabId);
-            if (currentTab) {
-                currentTab.content = editorService.getValue();
-            }
+        const currentTab = this.tabs.find(t => t.id === this.activeTabId);
+        if (currentTab) {
+        currentTab.content = editorService.getValue();
+        }
         }
 
         this.activeTabId = tabId;
@@ -199,12 +199,12 @@ class TabsManager {
 
         // Check if tab has unsaved changes
         if (tab.isDirty && !force) {
-            eventBus.emit(EVENTS.CONFIRM_REQUIRED, {
-                title: 'Unsaved Changes',
-                message: `"${tab.name}" has unsaved changes. Close anyway?`,
-                onConfirm: () => this.closeTab(tabId, true)
-            });
-            return;
+        eventBus.emit(EVENTS.CONFIRM_REQUIRED, {
+        title: 'Unsaved Changes',
+        message: `"${tab.name}" has unsaved changes. Close anyway?`,
+        onConfirm: () => this.closeTab(tabId, true)
+        });
+        return;
         }
 
         // Remove tab
@@ -212,14 +212,14 @@ class TabsManager {
 
         // If closing active tab, activate another
         if (this.activeTabId === tabId) {
-            if (this.tabs.length > 0) {
-                // Activate previous or next tab
-                const newIndex = Math.min(tabIndex, this.tabs.length - 1);
-                this.activateTab(this.tabs[newIndex].id);
-            } else {
-                // Create new tab if last one was closed
-                this.createTab('Untitled', DEFAULT_CONTENT);
-            }
+        if (this.tabs.length > 0) {
+        // Activate previous or next tab
+        const newIndex = Math.min(tabIndex, this.tabs.length - 1);
+        this.activateTab(this.tabs[newIndex].id);
+        } else {
+        // Create new tab if last one was closed
+        this.createTab('Untitled', DEFAULT_CONTENT);
+        }
         }
 
         this._saveTabs();
@@ -269,10 +269,10 @@ class TabsManager {
      */
     _debouncedSave() {
         if (this._saveTimeout) {
-            clearTimeout(this._saveTimeout);
+        clearTimeout(this._saveTimeout);
         }
         this._saveTimeout = setTimeout(() => {
-            this._saveTabs();
+        this._saveTabs();
         }, 1000);
     }
 
@@ -323,18 +323,18 @@ class TabsManager {
 
         // Create tabs
         this.tabs.forEach(tab => {
-            const tabEl = this._createTabElement(tab);
-            this.container.appendChild(tabEl);
+        const tabEl = this._createTabElement(tab);
+        this.container.appendChild(tabEl);
         });
 
         // Add "new tab" button
         const addBtn = document.createElement('button');
         addBtn.className = 'tab-add-btn';
         addBtn.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
         `;
         addBtn.setAttribute('aria-label', 'New tab');
         addBtn.addEventListener('click', () => this.createTab());
@@ -355,41 +355,41 @@ class TabsManager {
         tabEl.setAttribute('aria-selected', tab.id === this.activeTabId);
 
         tabEl.innerHTML = `
-            <span class="tab-name">${tab.name}</span>
-            ${tab.isDirty ? '<span class="tab-dirty">•</span>' : ''}
-            <button class="tab-close" aria-label="Close tab">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
+        <span class="tab-name">${tab.name}</span>
+        ${tab.isDirty ? '<span class="tab-dirty">•</span>' : ''}
+        <button class="tab-close" aria-label="Close tab">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        </button>
         `;
 
         // Click to activate
         tabEl.addEventListener('click', (e) => {
-            if (!e.target.closest('.tab-close')) {
-                this.activateTab(tab.id);
-            }
+        if (!e.target.closest('.tab-close')) {
+        this.activateTab(tab.id);
+        }
         });
 
         // Double-click to rename
         tabEl.addEventListener('dblclick', () => {
-            this._showRenameInput(tabEl, tab);
+        this._showRenameInput(tabEl, tab);
         });
 
         // Close button
         const closeBtn = tabEl.querySelector('.tab-close');
         closeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.closeTab(tab.id);
+        e.stopPropagation();
+        this.closeTab(tab.id);
         });
 
         // Middle-click to close
         tabEl.addEventListener('mousedown', (e) => {
-            if (e.button === 1) {
-                e.preventDefault();
-                this.closeTab(tab.id);
-            }
+        if (e.button === 1) {
+        e.preventDefault();
+        this.closeTab(tab.id);
+        }
         });
 
         return tabEl;
@@ -415,18 +415,18 @@ class TabsManager {
         input.select();
 
         const finishRename = () => {
-            const newName = input.value.trim() || 'Untitled';
-            this.renameTab(tab.id, newName);
+        const newName = input.value.trim() || 'Untitled';
+        this.renameTab(tab.id, newName);
         };
 
         input.addEventListener('blur', finishRename);
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                finishRename();
-            } else if (e.key === 'Escape') {
-                input.value = currentName;
-                finishRename();
-            }
+        if (e.key === 'Enter') {
+        finishRename();
+        } else if (e.key === 'Escape') {
+        input.value = currentName;
+        finishRename();
+        }
         });
     }
 
@@ -447,15 +447,15 @@ class TabsManager {
      */
     dispose() {
         if (this._saveTimeout) {
-            clearTimeout(this._saveTimeout);
-        if (this.subscriptions) this.subscriptions.dispose();
+        clearTimeout(this._saveTimeout);
         }
+        if (this.subscriptions) this.subscriptions.dispose();
         this._saveTabs();
         this.tabs = [];
         this.activeTabId = null;
         this.initialized = false;
         TabsManager.instance = null;
-    }
+        }
 }
 
 // Export singleton instance

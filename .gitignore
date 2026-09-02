@@ -9,6 +9,8 @@ dist/
 .idea/
 *.swp
 *.swo
+*.backup
+*.pre-*-backup
 
 # OS
 .DS_Store

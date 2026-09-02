@@ -17,16 +17,16 @@ class StatsManager {
 
     constructor() {
         if (StatsManager.instance) {
-            return StatsManager.instance;
+        return StatsManager.instance;
         }
 
         this.stats = {
-            words: 0,
-            characters: 0,
-            charactersNoSpaces: 0,
-            lines: 0,
-            paragraphs: 0,
-            readingTime: 0
+        words: 0,
+        characters: 0,
+        charactersNoSpaces: 0,
+        lines: 0,
+        paragraphs: 0,
+        readingTime: 0
         };
 
         this.container = null;
@@ -43,9 +43,9 @@ class StatsManager {
         if (this.initialized) return;
 
         if (container) {
-            this.container = typeof container === 'string'
-                ? document.querySelector(container)
-                : container;
+        this.container = typeof container === 'string'
+        ? document.querySelector(container)
+        : container;
         }
 
         // Setup event listeners
@@ -61,12 +61,12 @@ class StatsManager {
     _setupEventListeners() {
         // Debounced update on content change
         const debouncedUpdate = debounce((content) => {
-            this.update(content);
+        this.update(content);
         }, 300);
 
         this.subscriptions = this.subscriptions || new Subscriptions();
         this.subscriptions.on(EVENTS.CONTENT_CHANGED, ({ content }) => {
-            debouncedUpdate(content);
+        debouncedUpdate(content);
         });
     }
 
@@ -104,28 +104,28 @@ class StatsManager {
         if (!this.container) return;
 
         this.container.innerHTML = `
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <span class="stat-value">${this.stats.words.toLocaleString()}</span>
-                    <span class="stat-label">Words</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value">${this.stats.characters.toLocaleString()}</span>
-                    <span class="stat-label">Characters</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value">${this.stats.lines.toLocaleString()}</span>
-                    <span class="stat-label">Lines</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value">${this.stats.paragraphs.toLocaleString()}</span>
-                    <span class="stat-label">Paragraphs</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value">${this.stats.readingTime}</span>
-                    <span class="stat-label">Min Read</span>
-                </div>
-            </div>
+        <div class="stats-grid">
+        <div class="stat-item">
+        <span class="stat-value">${this.stats.words.toLocaleString()}</span>
+        <span class="stat-label">Words</span>
+        </div>
+        <div class="stat-item">
+        <span class="stat-value">${this.stats.characters.toLocaleString()}</span>
+        <span class="stat-label">Characters</span>
+        </div>
+        <div class="stat-item">
+        <span class="stat-value">${this.stats.lines.toLocaleString()}</span>
+        <span class="stat-label">Lines</span>
+        </div>
+        <div class="stat-item">
+        <span class="stat-value">${this.stats.paragraphs.toLocaleString()}</span>
+        <span class="stat-label">Paragraphs</span>
+        </div>
+        <div class="stat-item">
+        <span class="stat-value">${this.stats.readingTime}</span>
+        <span class="stat-label">Min Read</span>
+        </div>
+        </div>
         `;
     }
 
@@ -137,11 +137,11 @@ class StatsManager {
         if (!element) return;
 
         element.innerHTML = `
-            <span class="stat-compact">${this.stats.words} words</span>
-            <span class="stat-divider">|</span>
-            <span class="stat-compact">${this.stats.characters} chars</span>
-            <span class="stat-divider">|</span>
-            <span class="stat-compact">${this.stats.readingTime} min</span>
+        <span class="stat-compact">${this.stats.words} words</span>
+        <span class="stat-divider">|</span>
+        <span class="stat-compact">${this.stats.characters} chars</span>
+        <span class="stat-divider">|</span>
+        <span class="stat-compact">${this.stats.readingTime} min</span>
         `;
     }
 
@@ -150,14 +150,14 @@ class StatsManager {
      */
     dispose() {
         this.stats = {
-            words: 0,
-            characters: 0,
-            charactersNoSpaces: 0,
-            lines: 0,
-            paragraphs: 0,
-            readingTime: 0
-        if (this.subscriptions) this.subscriptions.dispose();
+        words: 0,
+        characters: 0,
+        charactersNoSpaces: 0,
+        lines: 0,
+        paragraphs: 0,
+        readingTime: 0
         };
+        if (this.subscriptions) this.subscriptions.dispose();
         this.initialized = false;
         StatsManager.instance = null;
     }

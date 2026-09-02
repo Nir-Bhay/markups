@@ -16,7 +16,7 @@ class TypewriterManager {
 
     constructor() {
         if (TypewriterManager.instance) {
-            return TypewriterManager.instance;
+        return TypewriterManager.instance;
         }
 
         this.isEnabled = false;
@@ -32,14 +32,14 @@ class TypewriterManager {
      */
     initialize(button) {
         this.button = typeof button === 'string'
-            ? document.querySelector(button)
-            : button;
+        ? document.querySelector(button)
+        : button;
 
         if (this.button) {
-            this.button.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.toggle();
-            });
+        this.button.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.toggle();
+        });
         }
 
         // Subscribe to events
@@ -52,9 +52,9 @@ class TypewriterManager {
      */
     toggle() {
         if (this.isEnabled) {
-            this.disable();
+        this.disable();
         } else {
-            this.enable();
+        this.enable();
         }
     }
 
@@ -66,29 +66,29 @@ class TypewriterManager {
 
         const editor = editorService.getEditor();
         if (editor) {
-            // Set up cursor position listener
-            this.cursorListener = editor.onDidChangeCursorPosition((e) => {
-                if (this.isEnabled) {
-                    editor.revealLineInCenter(e.position.lineNumber);
-                }
-            });
+        // Set up cursor position listener
+        this.cursorListener = editor.onDidChangeCursorPosition((e) => {
+        if (this.isEnabled) {
+        editor.revealLineInCenter(e.position.lineNumber);
+        }
+        });
 
-            // Center current line immediately
-            const position = editor.getPosition();
-            if (position) {
-                editor.revealLineInCenter(position.lineNumber);
-            }
+        // Center current line immediately
+        const position = editor.getPosition();
+        if (position) {
+        editor.revealLineInCenter(position.lineNumber);
+        }
         }
 
         if (this.button) {
-            this.button.classList.add('active');
+        this.button.classList.add('active');
         }
 
         eventBus.emit(EVENTS.TYPEWRITER_MODE_CHANGED, { enabled: true });
         eventBus.emit(EVENTS.TOAST_SHOW, {
-            message: 'Typewriter Mode Enabled',
-            type: 'success',
-            duration: 1500
+        message: 'Typewriter Mode Enabled',
+        type: 'success',
+        duration: 1500
         });
     }
 
@@ -99,19 +99,19 @@ class TypewriterManager {
         this.isEnabled = false;
 
         if (this.cursorListener) {
-            this.cursorListener.dispose();
-            this.cursorListener = null;
+        this.cursorListener.dispose();
+        this.cursorListener = null;
         }
 
         if (this.button) {
-            this.button.classList.remove('active');
+        this.button.classList.remove('active');
         }
 
         eventBus.emit(EVENTS.TYPEWRITER_MODE_CHANGED, { enabled: false });
         eventBus.emit(EVENTS.TOAST_SHOW, {
-            message: 'Typewriter Mode Disabled',
-            type: 'info',
-            duration: 1500
+        message: 'Typewriter Mode Disabled',
+        type: 'info',
+        duration: 1500
         });
     }
 
@@ -128,9 +128,9 @@ class TypewriterManager {
      */
     dispose() {
         if (this.cursorListener) {
-            this.cursorListener.dispose();
-        if (this.subscriptions) this.subscriptions.dispose();
+        this.cursorListener.dispose();
         }
+        if (this.subscriptions) this.subscriptions.dispose();
         this.isEnabled = false;
         TypewriterManager.instance = null;
     }
