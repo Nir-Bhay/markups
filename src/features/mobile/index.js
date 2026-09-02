@@ -550,6 +550,7 @@ class MobileUIManager {
         [btnCode, btnSplit, btnPreview].forEach(b => b?.classList.remove('active'));
         if (view === 'editor' && btnCode) btnCode.classList.add('active');
         if (view === 'preview' && btnPreview) btnPreview.classList.add('active');
+        if (view === 'editor' && btnSplit) btnSplit.classList.remove('active');
 
         // Trigger Monaco relayout (two passes for reliability)
         setTimeout(() => {

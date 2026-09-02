@@ -46,13 +46,17 @@ test.describe('core editor runtime smoke tests', () => {
     });
 
     test('mobile preview switch shows rendered preview mode', async ({ page }) => {
+        // Set mobile viewport BEFORE app loads so mobile module bootstraps in mobile state
         await page.setViewportSize({ width: 390, height: 844 });
         await waitForApp(page);
+        // Wait for mobile module lazy-load to finish (it exposes window.mobileUIManager)
+        await page.waitForFunction(() => Boolean(window.mobileUIManager), { timeout: 15_000 });
 
         await setMarkdown(page, '# Mobile preview');
+        // Click mobile view switcher preview button
         await page.locator('.mobile-view-btn[data-view="preview"]').click();
-
-        await expect(page.locator('body')).toHaveClass(/view-preview/);
+        // Mobile module is async; give the setView() a tick to apply classes
+        await expect(page.locator('body')).toHaveClass(/view-preview/, { timeout: 5000 });
         await expect(page.locator('.mobile-view-btn[data-view="preview"]')).toHaveClass(/active/);
         await expect(page.locator('#output h1')).toHaveText('Mobile preview');
     });

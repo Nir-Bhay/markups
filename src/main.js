@@ -6795,6 +6795,10 @@ const setupMobileUI = () => {
     // Import and initialize mobile module
     import('./features/mobile/index.js').then(({ mobileUIManager }) => {
         mobileUIManager.initialize();
+        // Expose for E2E tests and debug only — no runtime dependency
+        if (typeof window !== 'undefined') {
+            window.mobileUIManager = mobileUIManager;
+        }
 
         // Apply mobile-specific Monaco settings
         if (mobileUIManager.isMobile() && editor) {

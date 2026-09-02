@@ -1,6 +1,7 @@
 export async function waitForApp(page) {
     await page.goto('/');
-    await page.waitForSelector('#output');
+    // #output may be hidden in mobile view, so use 'attached' state
+    await page.waitForSelector('#output', { state: 'attached' });
     await page.waitForFunction(() => {
         return Boolean(
             window.editor?.setValue ||
