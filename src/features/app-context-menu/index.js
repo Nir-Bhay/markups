@@ -366,5 +366,6 @@ class AppContextMenuManager {
     }
 }
 
+export { AppContextMenuManager };
 export const appContextMenuManager = new AppContextMenuManager();
 export default appContextMenuManager;

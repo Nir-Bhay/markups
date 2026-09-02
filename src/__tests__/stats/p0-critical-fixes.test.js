@@ -4,6 +4,28 @@
 //  3. goals, fullscreen, typewriter, tabs — memory leak in dispose()
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Mock Monaco + editor service before any feature module imports them.
+vi.mock('monaco-editor/esm/vs/editor/editor.api', () => ({
+    default: {
+        editor: {
+            create: vi.fn(() => ({})),
+            setTheme: vi.fn(),
+            setModelMarkers: vi.fn(),
+            MarkerSeverity: { Hint: 1, Info: 2, Warning: 4, Error: 8 }
+        },
+        MarkerSeverity: { Hint: 1, Info: 2, Warning: 4, Error: 8 },
+        languages: { register: vi.fn() }
+    },
+    editor: {
+        create: vi.fn(() => ({})),
+        setTheme: vi.fn(),
+        setModelMarkers: vi.fn(),
+        MarkerSeverity: { Hint: 1, Info: 2, Warning: 4, Error: 8 }
+    },
+    MarkerSeverity: { Hint: 1, Info: 2, Warning: 4, Error: 8 }
+}));
+vi.mock('monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution', () => ({}));
+
 // Stub global.fetch so any leftover debug fetch would be caught by these tests.
 const fetchSpy = vi.fn(() => Promise.resolve({ ok: true }));
 global.fetch = fetchSpy;
@@ -59,8 +81,7 @@ describe('P0-2: no debug fetch() calls in production code', () => {
         expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    it.skip('linter module does not call fetch on import', async () => {
-        // TODO: needs Monaco/markdownService mock setup — skip for now
+    it('linter module does not call fetch on import', async () => {
         await import('../../features/linter/index.js');
         expect(fetchSpy).not.toHaveBeenCalled();
     });
@@ -96,8 +117,7 @@ describe('P0-3: dispose() always detaches subscriptions (memory-leak fix)', () =
         }
     });
 
-    it.skip('typewriter: subscriptions.dispose() runs even when cursorListener is null', async () => {
-        // TODO: needs Monaco/markdownService mock setup — skip for now
+    it('typewriter: subscriptions.dispose() runs even when cursorListener is null', async () => {
         const mod = await import('../../features/typewriter/index.js');
         const inst = mod.typewriterManager || mod.default;
         if (!inst) throw new Error('typewriterManager not exported');
@@ -110,8 +130,7 @@ describe('P0-3: dispose() always detaches subscriptions (memory-leak fix)', () =
         }
     });
 
-    it.skip('tabs: subscriptions.dispose() runs even when _saveTimeout is null', async () => {
-        // TODO: needs Monaco/markdownService mock setup — skip for now
+    it('tabs: subscriptions.dispose() runs even when _saveTimeout is null', async () => {
         const mod = await import('../../features/tabs/index.js');
         const inst = mod.tabsManager || mod.default;
         if (!inst) throw new Error('tabsManager not exported');
