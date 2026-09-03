@@ -59,4 +59,19 @@ describe('MarkdownService', () => {
             expect(html).toContain('Name');
         }
     });
+
+    it('highlights INI sections, keys, and values (Issue #44)', () => {
+        const html = markdownService.parse(
+            '```ini\n[DEFAULT]\nhost = localhost\nport = 8080\n# comment line\n```'
+        );
+
+        expect(html).toMatch(/class="language-ini"/i);
+        // Prism INI grammar: section-name → selector, key → attr-name, value → attr-value
+        // Actual rendered classes: token section-name selector, token key attr-name, token value attr-value
+        expect(html).toContain('token section-name selector'); // [DEFAULT] section header
+        expect(html).toContain('token key attr-name');         // host / port keys
+        expect(html).toContain('token value attr-value');      // values
+        expect(html).toContain('DEFAULT');
+        expect(html).toContain('localhost');
+    });
 });

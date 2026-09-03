@@ -233,6 +233,37 @@ describe('video embed helpers', () => {
         expect(againV.querySelector('iframe')).toBe(originalV);
     });
 
+    it('keeps plain image URLs (.png/.jpg/.gif) as images — never "Open video" (Issue #40 reporter follow-up)', () => {
+        // The reporter's follow-up screenshot showed an image link rendering as
+        // "Open video" instead of the picture. Defensive test: any URL that is NOT
+        // an embeddable video must NOT be touched by processPreviewVideos, no
+        // matter how it appears in the rendered preview.
+        const cases = [
+            'https://example.com/photo.png',
+            'https://example.com/picture.jpg',
+            'https://example.com/animated.gif',
+            'https://example.com/svg-image.svg'
+        ];
+
+        for (const src of cases) {
+            // Image-only preview (img element directly in preview)
+            const imgOnly = document.createElement('div');
+            imgOnly.innerHTML = `<p><img src="${src}" alt="picture"></p>`;
+            processPreviewVideos(imgOnly);
+            expect(imgOnly.querySelector('video')).toBeNull();
+            expect(imgOnly.querySelector('iframe')).toBeNull();
+            expect(imgOnly.querySelector('img')?.getAttribute('src')).toBe(src);
+
+            // Image wrapped in an anchor (markdown ![](url) wraps in <a>)
+            const wrapped = document.createElement('div');
+            wrapped.innerHTML = `<p><a href="${src}"><img src="${src}" alt="picture"></a></p>`;
+            processPreviewVideos(wrapped);
+            expect(wrapped.querySelector('video')).toBeNull();
+            expect(wrapped.querySelector('iframe')).toBeNull();
+            expect(wrapped.querySelector('img')?.getAttribute('src')).toBe(src);
+        }
+    });
+
     it('leaves reused <iframe> src + sandbox + allow attrs untouched (provider stays loaded)', () => {
         // When we reuse an iframe we MUST NOT rewrite src/allow/sandbox, because any of
         // those attribute changes force the provider to reload the embed (and the user
