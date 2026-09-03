@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "ports": {"preview": 3000, "additional": {}},
+  "scripts": {
+    "setup": {"enabled": true, "command": "npm install --no-audit --no-fund"},
+    "run": {"enabled": true, "command": "npm run dev -- --port 3000 --strictPort"},
+    "archive": {"enabled": true, "command": null},
+    "check": {"enabled": true, "command": null}
+  },
+  "mcpServers": []
+}
