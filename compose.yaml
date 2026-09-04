@@ -1,0 +1,12 @@
+services:
+  markups:
+    networks:
+      - markups_net
+
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  markups_net:
+    driver: bridge
+    internal: false

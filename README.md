@@ -105,6 +105,40 @@ npm run preview
 
 The build output will be in the `dist/` folder.
 
+## 📦 Containerized Development
+
+Node.js and the project tooling can run entirely inside the development container.
+The host only needs a Compose-compatible container runtime such as Podman.
+
+### Development
+
+```bash
+podman compose -f compose.yaml -f compose.dev.yaml up --build
+```
+
+Open [http://localhost:5173](http://localhost:5173). Source changes are mounted into the
+container and Vite provides hot reload. The development image includes npm, linting,
+Vitest, Playwright, and the complete dependency tree.
+
+The Vite cache and `node_modules` are kept in container volumes so the bind mount does
+not create host permission conflicts on Podman or SELinux-enabled systems. Vite may emit
+a non-blocking source-map warning for Monaco's bundled dependency; the published Monaco
+package does not include that optional map, and it does not affect runtime or production.
+
+### Production-like runtime
+
+```bash
+podman compose -f compose.yaml -f compose.prod.yaml up --build -d
+```
+
+Open [http://localhost:8080](http://localhost:8080). The final image contains only the
+compiled `dist/` output and Nginx; Node.js, npm, source files, and development tools remain
+in the build stage.
+
+`compose.yaml` contains shared configuration. `compose.dev.yaml` and `compose.prod.yaml`
+are independent overlays on that base. The `:Z` bind-mount suffix is understood by Podman
+on SELinux-enabled hosts and can be removed when using a runtime without SELinux labeling.
+
 ---
 
 ## 🚀 Deployment

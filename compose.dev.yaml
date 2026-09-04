@@ -1,0 +1,28 @@
+services:
+  markups:
+    build:
+      context: .
+      dockerfile: Containerfile.dev
+    image: localhost/markups-dev:local
+    command: npm run dev -- --host 0.0.0.0
+    ports:
+      - "${MARKUPS_DEV_PORT:-5173}:5173"
+    volumes:
+      - .:/app:Z
+      - markups_node_modules:/app/node_modules
+      - markups_vite_cache:/app/.vite
+    environment:
+      NODE_ENV: development
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'node -e "fetch(\"http://127.0.0.1:5173/\").then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"'
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: "no"
+
+volumes:
+  markups_node_modules:
+  markups_vite_cache:
