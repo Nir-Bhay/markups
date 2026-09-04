@@ -4,12 +4,13 @@
 
 **A powerful, free online markdown editor with real-time preview**
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNir-Bhay%2Fmarkdown-live-preview)
+[![CI](https://img.shields.io/github/actions/workflow/status/Nir-Bhay/markups/ci.yml?branch=main)](https://github.com/Nir-Bhay/markups/actions/workflows/ci.yml)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
+[![npm version](https://img.shields.io/npm/v/markups.svg)](https://www.npmjs.com/package/markups)
 [![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Monaco Editor](https://img.shields.io/badge/Monaco%20Editor-0.52-007ACC?logo=visual-studio-code&logoColor=white)](https://microsoft.github.io/monaco-editor/)
 
-[🌐 Live Demo](https://markups.vercel.app) • [🐛 Report Bug](https://github.com/Nir-Bhay/markdown-live-preview/issues) • [💡 Request Feature](https://github.com/Nir-Bhay/markdown-live-preview/issues)
+[🌐 Live Demo](https://markups.vercel.app) • [🐛 Report Bug](https://github.com/Nir-Bhay/markups/issues) • [💡 Request Feature](https://github.com/Nir-Bhay/markups/issues)
 
 ![Markups Screenshot](public/image/og-image.svg)
 
@@ -60,9 +61,18 @@
 
 ---
 
+## 🆕 Recent improvements
+
+- **Accessibility** — Modal and popover roles added for screen-reader support
+- **Memory leak registry** — Long-running sessions no longer accumulate leaks
+- **XSS escaping** — Safer rendering in headings, TOC, and image renderer
+- **Unified word count** — Consistent statistics across editor and preview
+
+---
+
 ## 🖥️ Demo
 
-Try it live at **[markdownlivepreview.com](https://markdownlivepreview.com)**
+Try it live at **[markups.dev](https://markups.dev)**
 
 ---
 
@@ -77,10 +87,10 @@ Try it live at **[markdownlivepreview.com](https://markdownlivepreview.com)**
 
 ```bash
 # Clone the repository
-git clone https://github.com/Nir-Bhay/markdown-live-preview.git
+git clone https://github.com/Nir-Bhay/markups.git
 
 # Navigate to directory
-cd markdown-live-preview
+cd markups
 
 # Install dependencies
 npm install
@@ -111,7 +121,7 @@ The build output will be in the `dist/` folder.
 
 ### Deploy to Vercel (Recommended)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNir-Bhay%2Fmarkdown-live-preview)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNir-Bhay%2Fmarkups)
 
 Or manually:
 
@@ -188,7 +198,7 @@ npx gh-pages -d dist
 ## 📁 Project Structure
 
 ```
-markdown-live-preview/
+markups/
 ├── index.html              # Main HTML entry
 ├── package.json            # Dependencies
 ├── vite.config.js          # Vite configuration

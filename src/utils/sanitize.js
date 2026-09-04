@@ -162,11 +162,38 @@ export function sanitizePreviewHtml(html, overrides = {}) {
     return fallbackSanitizeHtml(sanitized, config);
 }
 
+/**
+ * Minimal HTML content / attribute escaper.
+ * @param {string} str
+ * @returns {string}
+ */
+export function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
+ * Escape characters that would break inline markdown image alt text.
+ * @param {string} str
+ * @returns {string}
+ */
+export function sanitizeMarkdownAlt(str) {
+    return String(str || '')
+        .replace(/[\\\[\]()]/g, '\\$&')
+        .replace(/[\u0000-\u001F\u007F]/g, '');
+}
+
 export default {
     PREVIEW_SANITIZE_CONFIG,
     shouldOpenPreviewLinkInNewTab,
     applyPreviewLinkTarget,
     ensurePreviewLinksOpenInNewTab,
     fallbackSanitizeHtml,
-    sanitizePreviewHtml
+    sanitizePreviewHtml,
+    escapeHtml,
+    sanitizeMarkdownAlt
 };
