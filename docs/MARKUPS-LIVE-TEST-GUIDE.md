@@ -8,11 +8,11 @@
 **Live URL:** https://markups.dev
 
 **Quick health snapshot (verified before writing this doc):**
-- 207 / 208 unit tests pass (1 unrelated pre-existing flaky stats import test)
-- `npm run lint` → 0 errors, 55 cosmetic warnings
-- `npm run build` → clean, ~1m 39s
+- 212 / 212 unit tests pass
+- `npm run lint` → 0 errors
+- `npm run build` → clean
 - 0 npm vulnerabilities
-- All 5 community bugs fixed, 2 a11y gaps closed in this audit pass
+- All 5 community bugs fixed, 2 a11y gaps closed, split-resize bug fixed in this audit pass
 
 ---
 
@@ -498,8 +498,65 @@ https://example.com/clip.mp4 {video mode=embed width=80% align=center captions=h
 | #45 — emoji shortcodes | gemoji + marked-emoji | ✅ Fix `aa8b24f` |
 | a11y M1 — reduced-motion | CSS media query | ✅ already on main |
 | a11y M2 — focus return | `_returnFocusTo` on Escape | ✅ already on main |
-| a11y L1 — `<track>` captions | No captions support | ✅ **FIXED this audit pass** |
-| a11y L2 — emoji aria-label | Renderer returned raw char | ✅ **FIXED this audit pass** |
+|| a11y L1 — `<track>` captions | No captions support | ✅ **FIXED this audit pass** |
+|| a11y L2 — emoji aria-label | Renderer returned raw char | ✅ **FIXED this audit pass** |
+|| Resize — split-view divider | Drag math was double-counting explorer offset; ratio was local and reset on reload; touch events missing | ✅ **FIXED this audit pass** |
+
+---
+
+## Live test — split-view resize behavior
+
+**Why this matters:** The UI claims "Split-view with a resizable divider" in marketing text. If dragging the divider does nothing, that claim is broken.
+
+**Test steps on `markups.dev`:**
+
+1. Ensure you are in **Split view** (not Editor-only / Preview-only).
+2. Locate the vertical divider between the editor pane and the preview pane.
+3. **Drag test (mouse):**
+   - Hover over the divider — cursor should become `col-resize`.
+   - Click and drag the divider left and right.
+   - Both panes should resize immediately as you drag.
+   - Release — panes should stay at the new widths.
+4. **Double-click test:**
+   - Double-click the divider — panes should snap back to 50/50.
+5. **Window resize test:**
+   - Resize the browser window narrower and wider — the split should preserve its ratio, not snap back to 50/50.
+6. **Touch test (tablet / mobile):**
+   - If you have a touch device, touch-drag the divider — same behavior as mouse.
+7. **Explorer drawer test:**
+   - Open the file explorer drawer (if available).
+   - Drag the divider — it should still reach the same extremes as before.
+
+**Expected result:** All 7 checks above pass. The divider is wired to `setupDivider()` in `src/main.js`, which uses the corrected `getAvailableWidth()` (no longer double-counts explorer offset), adds touch support, and persists the final ratio back to `modesManager` on drag end.
+
+---
+
+## Live test — code vs preview mismatch in split view
+
+**Why this matters:** In split view the code pane and the preview pane must render the same document state. If they diverge (e.g., scroll position, edits not reflected, overflow hidden), the editor is effectively broken.
+
+**Test steps on `markups.dev`:**
+
+1. Start in **Split view** with default welcome content.
+2. **Edit sync:**
+   - Type new markdown in the code pane.
+   - The preview pane must update immediately with the new content.
+3. **Scroll sync:**
+   - Scroll the code pane to the middle of the document.
+   - Preview should scroll to the corresponding rendered section.
+   - Scroll the preview pane — code should scroll to the corresponding markdown.
+4. **Overflow test:**
+   - Paste a very long markdown document (100+ lines, tables, headings).
+   - Both panes must show their own scrollbars independently.
+   - Neither pane should hide content behind the divider.
+5. **Resize during long document:**
+   - Drag the divider to a very narrow width (e.g., 200px).
+   - The narrow pane must still show all its content via scrollbar, not clip it.
+6. **Mode switch test:**
+   - Switch to **Preview-only** — preview should fill the full width.
+   - Switch back to **Split view** — divider should restore to the previous ratio, not snap to 50/50.
+
+**Expected result:** All 6 checks pass. Code and preview stay in sync in every scenario.
 
 ---
 
