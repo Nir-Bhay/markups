@@ -2,7 +2,7 @@
 
 > **Purpose**: Help AI models (Claude, Copilot, Gemini, etc.) quickly understand and navigate the Markups codebase without reading all files.
 
-**Last Updated**: 2026-04-04  
+**Last Updated**: 2026-09-04
 **Codebase Version**: 2.0.0  
 **Total Files**: ~160 JavaScript/CSS/HTML files  
 **Total Lines of Code**: ~10,000+
@@ -12,7 +12,7 @@
 ## 🎯 Quick Navigation
 
 | What You Need | Go To |
-|---------------|-------|
+| --------------- | ------- |
 | **Add new feature** | [Modification Guides](#modification-guides) → `AI-DOCS/modification-guides/` |
 | **Modify UI element** | [UI Components Map](#ui-components-map) |
 | **Change export functionality** | [Services Map](#services-map) → `src/services/export/` |
@@ -86,6 +86,25 @@ markups/
     └── manifest.json         # PWA manifest
 ```
 
+## 📦 Containerized Development
+
+The project supports an OCI/Compose-compatible workflow with Podman as the local runtime.
+Node.js and all project tooling run inside the development container; nothing is required
+on the host beyond the container runtime and Compose provider.
+
+| File | Purpose |
+|------|---------|
+| `compose.yaml` | Neutral shared service and network configuration |
+| `compose.dev.yaml` | Vite development server, hot reload, source bind mount, tooling volumes |
+| `compose.prod.yaml` | Minimal production-like Nginx runtime |
+| `Containerfile.dev` | Node 20 development image with complete dependencies |
+| `Containerfile` | Multi-stage build; final image contains only `dist/` and Nginx |
+| `.dockerignore` | Keeps build context free of caches, dependencies, and local artifacts |
+
+Run development with `podman compose -f compose.yaml -f compose.dev.yaml up --build`.
+Run the production-like runtime with `podman compose -f compose.yaml -f compose.prod.yaml up --build -d`.
+The `:Z` bind-mount suffix is the Podman/SELinux-specific compatibility point.
+
 ---
 
 ## 🎨 UI Components Map
@@ -93,7 +112,7 @@ markups/
 ### 📍 **index.html Structure** (1980 lines)
 
 | Section | Lines | DOM ID/Class | Purpose |
-|---------|-------|--------------|---------|
+| --------- | ------- | -------------- | --------- |
 | **Header** | 134-320 | `.premium-header` | Top navigation bar |
 | - Brand | 136-139 | `.header-brand` | Logo & title |
 | - Tabs | 142-157 | `#tabs-list` | Document tabs |
@@ -149,18 +168,20 @@ markups/
 ### 🖊️ **Editor** (`src/core/editor/`)
 
 | File | Lines | Purpose |
-|------|-------|---------|
+| ------ | ------- | --------- |
 | `index.js` | ~400 | Monaco editor initialization, config, API |
 | `themes.js` | ~200 | Editor themes (VS Light/Dark, Dracula, etc.) |
 | `workers.js` | ~50 | Web worker setup for Monaco |
 
 **Key Functions**:
+
 - `createEditor()` - Lines 50-150 - Initialize Monaco
 - `updateEditorValue()` - Lines 200-220 - Set content
 - `getEditorValue()` - Lines 230-240 - Get content
 - `changeTheme()` - Lines 300-320 - Switch editor theme
 
 **Modification Points**:
+
 - Add new theme: `themes.js` lines 80-180
 - Change font: `index.js` lines 60-70 (Monaco options)
 - Add keybinding: `index.js` lines 250-350
@@ -170,10 +191,11 @@ markups/
 ### 📝 **Markdown** (`src/core/markdown/`)
 
 | File | Lines | Purpose |
-|------|-------|---------|
+| ------ | ------- | --------- |
 | `index.js` | ~600 | Parser config, rendering pipeline |
 
 **Key Functions**:
+
 - `initMarkdown()` - Lines 1-100 - Setup marked + extensions
 - `renderMarkdown()` - Lines 150-250 - Parse & render
 - `sanitizeHTML()` - Lines 300-320 - DOMPurify sanitization
@@ -181,6 +203,7 @@ markups/
 - `renderKaTeX()` - Lines 500-550 - Math equations
 
 **Extensions Loaded**:
+
 - Lines 20-40: `marked-highlight` (Prism.js)
 - Lines 50-60: `marked-katex-extension`
 - Lines 70-80: `marked-gfm-heading-id`
@@ -188,6 +211,7 @@ markups/
 - Lines 110-120: `marked-alert`
 
 **Modification Points**:
+
 - Add markdown extension: Lines 1-100
 - Change sanitization: Lines 300-350
 - Modify code highlighting: Lines 200-250
@@ -197,19 +221,21 @@ markups/
 ### 💾 **Storage** (`src/core/storage/`)
 
 | File | Lines | Purpose |
-|------|-------|---------|
+| ------ | ------- | --------- |
 | `database.js` | ~200 | Dexie IndexedDB setup |
 | `noteStorage.js` | ~400 | CRUD operations for notes |
 | `migration.js` | ~150 | Data migration logic |
 | `keys.js` | ~50 | Storage key constants |
 
 **Key Functions**:
+
 - `saveNote()` - `noteStorage.js` lines 50-100
 - `loadNote()` - `noteStorage.js` lines 150-200
 - `deleteNote()` - `noteStorage.js` lines 250-280
 - `getAllNotes()` - `noteStorage.js` lines 300-350
 
 **Database Schema**:
+
 ```javascript
 // database.js lines 30-60
 notes: 'id, title, content, createdAt, updatedAt, tags'
@@ -226,7 +252,7 @@ history: 'noteId, timestamp, content'
 **File**: `index.js` (~500 lines)
 
 | Function | Lines | Purpose |
-|----------|-------|---------|
+| ---------- | ------- | --------- |
 | `initTabs()` | 1-50 | Initialize tab system |
 | `createNewTab()` | 100-150 | Create new document tab |
 | `switchTab()` | 200-250 | Switch active tab |
@@ -234,6 +260,7 @@ history: 'noteId, timestamp, content'
 | `updateTabTitle()` | 400-430 | Update tab name |
 
 **DOM Elements**:
+
 - `#tabs-list` - Tab container
 - `.header-tab` - Individual tabs
 - `#new-tab-button` - New tab button
@@ -245,13 +272,14 @@ history: 'noteId, timestamp, content'
 ### 🎯 **AI Writer** (`src/features/ai-writer/`)
 
 | File | Lines | Purpose |
-|------|-------|---------|
+| ------ | ------- | --------- |
 | `index.js` | ~300 | Main AI feature logic |
 | `ui.js` | ~400 | Modal UI & interactions |
 | `service.js` | ~200 | API integration |
 | `system-prompt.js` | ~100 | AI prompts |
 
 **Key Functions**:
+
 - `initAIWriter()` - `index.js` lines 1-50
 - `generateText()` - `service.js` lines 50-150
 - `insertAIContent()` - `index.js` lines 200-250
@@ -265,7 +293,7 @@ history: 'noteId, timestamp, content'
 **File**: `index.js` (~300 lines)
 
 | Function | Lines | Purpose |
-|----------|-------|---------|
+| ---------- | ------- | --------- |
 | `updateStats()` | 50-150 | Calculate word/char count |
 | `calculateReadingTime()` | 200-230 | Estimate reading time |
 | `displayStats()` | 250-290 | Update UI |
@@ -281,7 +309,7 @@ history: 'noteId, timestamp, content'
 **File**: `index.js` (~250 lines)
 
 | Function | Lines | Purpose |
-|----------|-------|---------|
+| ---------- | ------- | --------- |
 | `setGoal()` | 50-100 | Set word count goal |
 | `trackProgress()` | 150-200 | Calculate % complete |
 | `displayGoal()` | 220-250 | Update UI |
@@ -304,6 +332,7 @@ history: 'noteId, timestamp, content'
 | `applyTemplate()` | 150-180 | Insert template |
 
 **Templates Available**:
+
 - `templates.js` lines 10-80: Blank
 - Lines 90-150: README
 - Lines 160-230: Blog Post
@@ -325,6 +354,7 @@ history: 'noteId, timestamp, content'
 | `loadSnippets()` | 120-140 | Load from config |
 
 **Snippets Available** (`snippets.js`):
+
 - Lines 10-50: Table snippet
 - Lines 60-90: Code block
 - Lines 100-130: Math equation
@@ -338,7 +368,7 @@ history: 'noteId, timestamp, content'
 ### 📤 **Export** (`src/services/export/`)
 
 | File | Lines | Purpose |
-|------|-------|---------|
+| ------ | ------- | --------- |
 | `index.js` | ~200 | Export manager, modal control |
 | `pdf.js` | ~300 | PDF export (html2pdf.js) |
 | `html.js` | ~250 | HTML export with styles |
@@ -348,18 +378,21 @@ history: 'noteId, timestamp, content'
 **Key Functions**:
 
 #### PDF Export (`pdf.js`)
+
 - `exportToPDF()` - Lines 50-200
   - Uses html2pdf.js
   - Configurable margins, header, footer
   - Page breaks handling
 
 #### HTML Export (`html.js`)
+
 - `exportToHTML()` - Lines 50-180
   - Standalone HTML with CSS
   - Embedded GitHub markdown styles
   - Syntax highlighting included
 
 #### Markdown Export (`markdown.js`)
+
 - `downloadMarkdown()` - Lines 20-60
   - Plain text download
   - Filename from tab title
@@ -367,6 +400,7 @@ history: 'noteId, timestamp, content'
 **Modal**: `#export-modal` (index.html lines 1260-1450)
 
 **Modification Points**:
+
 - Add export format: Create new file in `src/services/export/`
 - Modify PDF style: `pdf.js` lines 100-150
 - Change export modal: index.html lines 1260-1450
@@ -378,7 +412,7 @@ history: 'noteId, timestamp, content'
 **File**: `index.js` (~400 lines)
 
 | Shortcut | Lines | Action | Handler |
-|----------|-------|--------|---------|
+| ---------- | ------- | -------- | --------- |
 | Ctrl+S | 50-70 | Save as Markdown | Export service |
 | Ctrl+P | 80-100 | Export to PDF | PDF export |
 | Ctrl+O | 110-130 | Import file | Import feature |
@@ -399,7 +433,7 @@ history: 'noteId, timestamp, content'
 ### 📄 **CSS Files**
 
 | File | Lines | Purpose |
-|------|-------|---------|
+| ------ | ------- | --------- |
 | `public/css/premium-ui.css` | ~5000 | Main UI styles |
 | `public/css/style.css` | ~500 | Base styles |
 | `public/css/github-markdown-light.css` | ~1000 | Markdown preview |
@@ -407,7 +441,7 @@ history: 'noteId, timestamp, content'
 ### 🎨 **premium-ui.css Structure**
 
 | Section | Lines | What It Styles |
-|---------|-------|----------------|
+| --------- | ------- | ---------------- |
 | CSS Variables | 1-100 | Color scheme, spacing |
 | Reset & Base | 101-200 | Normalize styles |
 | Header | 201-500 | Top navigation bar |
@@ -423,6 +457,7 @@ history: 'noteId, timestamp, content'
 | Themes | 4501-5000 | Dark mode overrides |
 
 **CSS Custom Properties** (Lines 10-90):
+
 ```css
 --primary-color: #5865f2;
 --bg-color: #ffffff;
@@ -440,11 +475,13 @@ history: 'noteId, timestamp, content'
 ### ➕ Add a New UI Button
 
 **Files to modify**:
+
 1. **index.html** (lines 350-550) - Add button HTML
 2. **src/features/toolbar/index.js** (lines 50-300) - Add event handler
 3. **public/css/premium-ui.css** (lines 2501-2800) - Style button (optional)
 
 **Example**:
+
 ```javascript
 // toolbar/index.js line ~280
 document.getElementById('my-new-btn').addEventListener('click', () => {
@@ -457,12 +494,14 @@ document.getElementById('my-new-btn').addEventListener('click', () => {
 ### ➕ Add a New Feature Module
 
 **Steps**:
+
 1. Create folder: `src/features/my-feature/`
 2. Create `index.js` with `initMyFeature()` function
 3. Import in `src/features/index.js`
 4. Call in `src/main.js` initialization section
 
 **Template**:
+
 ```javascript
 // src/features/my-feature/index.js
 export function initMyFeature() {
@@ -481,11 +520,13 @@ export default { initMyFeature };
 ### ➕ Add a New Export Format
 
 **Files to create/modify**:
+
 1. Create `src/services/export/myformat.js`
 2. Import in `src/services/export/index.js`
 3. Add button in export modal (index.html lines 1260-1450)
 
 **Template**:
+
 ```javascript
 // src/services/export/myformat.js
 export async function exportToMyFormat(content, title) {
@@ -538,13 +579,16 @@ marked.use(myExtension({
 ## 🧪 Testing
 
 **Test Files**: `src/__tests__/`
+
 - `database.test.js` - Database operations
 - `noteStorage.test.js` - Storage CRUD
 - `migration.test.js` - Data migration
 - `setup.js` - Test environment setup
+- `storehouse-compat.test.js` - Storehouse compatibility and MD5 key hashing
 
 **Test Framework**: Vitest
 **Commands**:
+
 - `npm run test` - Run tests
 - `npm run test:watch` - Watch mode
 - `npm run test:coverage` - Coverage report
@@ -554,6 +598,7 @@ marked.use(myExtension({
 ## 📦 Dependencies Quick Reference
 
 **Core Libraries**:
+
 - `monaco-editor` - Code editor (src/core/editor/)
 - `marked` - Markdown parser (src/core/markdown/)
 - `dompurify` - XSS sanitization (src/core/markdown/)
@@ -594,18 +639,25 @@ marked.use(myExtension({
    - Mobile responsiveness
 7. **Lines 900-1000**: Event listeners & final setup
 
+If many controls appear inert, inspect initialization errors before debugging each control.
+The Storehouse compatibility shim is used by view, theme, document, and sidebar persistence;
+an exception there prevents later handlers from registering. Keep DOM IDs unique, especially
+when desktop and mobile controls delegate to one another.
+
 ---
 
 ## 🎯 AI Agent Best Practices
 
-### ✅ DO:
+### ✅ DO
+
 1. **Always check this memory file first** before exploring code
 2. **Use line ranges** provided to jump directly to relevant code
 3. **Check feature maps** to understand module boundaries
 4. **Follow modification guides** for common changes
 5. **Use code-review-graph tools** for impact analysis
 
-### ❌ DON'T:
+### ❌ DON'T
+
 1. **Read entire files** when line ranges are provided
 2. **Modify unrelated modules** - stay within feature boundaries
 3. **Ignore existing patterns** - follow established code style

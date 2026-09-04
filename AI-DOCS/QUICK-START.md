@@ -177,7 +177,28 @@ AI-DOCS/
 
 ---
 
-**Last Updated**: 2026-04-04
+**Last Updated**: 2026-09-04
+
+## 📦 Containerized Workflow
+
+Use the Compose file overlays below when Node.js and project tools must remain inside
+containers. The base Compose file is neutral; development and production are independent
+overlays and do not inherit from one another.
+
+```bash
+# Development: Vite, hot reload, tests, linting, and Playwright
+podman compose -f compose.yaml -f compose.dev.yaml up --build
+
+# Production-like: build stage plus minimal Nginx runtime
+podman compose -f compose.yaml -f compose.prod.yaml up --build -d
+```
+
+Development is available at `http://localhost:5173`; production-like runtime at
+`http://localhost:8080`. The development overlay keeps `node_modules` and the Vite cache
+in container volumes. `:Z` is used on the source bind mount for Podman hosts with SELinux.
+
+For a broad UI failure, check the browser console for an initialization exception first.
+Shared persistence adapters can prevent all later button handlers from being registered.
 
 ---
 

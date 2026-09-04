@@ -465,6 +465,22 @@ eventBus.on('DOCUMENT_SAVED', (data) => {
 
 ---
 
+## 📦 Container Architecture
+
+The container workflow has one neutral base and two parallel Compose file overlays:
+
+```text
+compose.yaml
+├── compose.dev.yaml  -> Containerfile.dev -> Node 20 + Vite + full tooling
+└── compose.prod.yaml -> Containerfile     -> build stage -> Nginx + dist only
+```
+
+`compose.dev.yaml` bind mounts the source and uses separate container volumes for
+`/app/node_modules` and `/app/.vite`. This preserves hot reload without mixing host
+dependencies or Vite cache permissions into the container. The `:Z` suffix is retained as
+the only explicit Podman/SELinux adaptation. Production has no source bind mount,
+development volume, Node runtime, or test tooling in its final image.
+
 ## 🧪 Testing Architecture
 
 **Framework**: Vitest
@@ -474,6 +490,7 @@ eventBus.on('DOCUMENT_SAVED', (data) => {
 - `noteStorage.test.js` - CRUD tests
 - `migration.test.js` - Data migration
 - `setup.js` - Test environment
+- `storehouse-compat.test.js` - Storehouse compatibility shim
 
 **Coverage**: Run `npm run test:coverage`
 
@@ -517,6 +534,12 @@ eventBus.on('DOCUMENT_SAVED', (data) => {
 | `vitest.config.js` | Test configuration |
 | `vercel.json` | Deployment settings |
 | `package.json` | Dependencies & scripts |
+| `compose.yaml` | Neutral shared container configuration |
+| `compose.dev.yaml` | Development overlay |
+| `compose.prod.yaml` | Production overlay |
+| `Containerfile.dev` | Development image |
+| `Containerfile` | Multi-stage production image |
+| `.dockerignore` | Container build context exclusions |
 
 ---
 
@@ -528,4 +551,4 @@ eventBus.on('DOCUMENT_SAVED', (data) => {
 
 ---
 
-**Last Updated**: 2026-04-04
+**Last Updated**: 2026-09-04
