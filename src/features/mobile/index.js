@@ -240,7 +240,7 @@ class MobileUIManager {
         }
 
         // Theme toggle button — delegates to the desktop dark-mode toggle
-        const themeBtn = document.getElementById('mobile-theme-btn');
+        const themeBtn = document.getElementById('mobile-drawer-theme-btn');
         if (themeBtn) {
             themeBtn.addEventListener('click', () => {
                 const desktopThemeBtn = document.getElementById('dark-mode-toggle');
