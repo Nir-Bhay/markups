@@ -15,11 +15,13 @@
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
 import { editorService } from '../../core/editor/index.js';
 import { APP_CONFIG } from '../../config/app.config.js';
+import { sanitizeMarkdownAlt } from '../../utils/sanitize.js';
 import {
     readFileAsText,
     readFileAsArrayBuffer,
     validateImageSignature,
-    sanitizeSvgToDataUrl
+    sanitizeSvgToDataUrl,
+    safeBase64FromArrayBuffer
 } from '../../utils/file.js';
 
 /**
@@ -198,9 +200,16 @@ class ImageUploadManager {
                     });
                     return;
                 }
-                const uint8Array = new Uint8Array(buffer);
-                const binary = Array.from(uint8Array).map((b) => String.fromCharCode(b)).join('');
-                dataUrl = `data:${file.type};base64,${btoa(binary)}`;
+                try {
+                    dataUrl = await safeBase64FromArrayBuffer(buffer, file.type);
+                } catch (err) {
+                    console.error('Image upload failed:', err);
+                    eventBus.emit(EVENTS.TOAST_SHOW, {
+                        message: 'Failed to process image',
+                        type: 'error'
+                    });
+                    return;
+                }
             }
 
             this._insertImage(file.name, dataUrl);
@@ -220,8 +229,8 @@ class ImageUploadManager {
      * @private
      */
     _insertImage(filename, dataUrl) {
-        // Remove file extension for alt text
-        const altText = filename.replace(/\.[^/.]+$/, '');
+        // Remove file extension for alt text and escape markdown-breaking chars
+        const altText = sanitizeMarkdownAlt(filename.replace(/\.[^/.]+$/, ''));
         const markdown = `![${altText}](${dataUrl})`;
 
         editorService.insertText(markdown);

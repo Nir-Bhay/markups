@@ -6,7 +6,7 @@
 
 import { debounce } from '../../utils/debounce.js';
 import { positionMediaPopover } from '../../utils/media-popover-position.js';
-import { normalizeVideoUrl } from '../../utils/video-embed.js';
+import { normalizeVideoUrl, extractCaptionsUrl } from '../../utils/video-embed.js';
 
 const VIDEO_ATTR_RE = /\{\s*(?:video\s+)?([^}]*)\}/i;
 const WIDTH_RE = /(?:^|\s)width\s*=\s*([\w.%/-]+)/i;
@@ -78,7 +78,8 @@ function formatCaptionToken(caption) {
 function hasStyleAttrs(attrs = {}) {
     return Boolean(
         attrs.mode || attrs.width || attrs.align || attrs.date || attrs.caption ||
-        attrs.flip || attrs.shadow || attrs.rotate || attrs.radius
+        attrs.flip || attrs.shadow || attrs.rotate || attrs.radius ||
+        attrs.captionsUrl
     );
 }
 
@@ -109,6 +110,10 @@ export function parseVideoAttributeText(text = '') {
     if (rotate) attrs.rotate = rotate;
     const radius = normalizeRadius(source.match(RADIUS_RE)?.[1] || 0);
     if (radius) attrs.radius = radius;
+    // Captions URL (.vtt) for <track kind="captions"> — accessibility (a11y L1).
+    // Accepted only for direct / GitHub attachment videos (not YouTube / Vimeo iframes).
+    const captionsUrl = extractCaptionsUrl(text);
+    if (captionsUrl) attrs.captionsUrl = captionsUrl;
     return attrs;
 }
 

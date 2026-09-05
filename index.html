@@ -1193,9 +1193,9 @@
     <input type="file" id="image-input" accept="image/*" style="display: none;">
 
     <!-- Search Input (Hidden by default, toggled by search button) -->
-    <div class="search-overlay hidden" id="search-overlay">
+    <div class="search-overlay hidden" id="search-overlay" role="dialog" aria-modal="true" aria-label="Search in document">
         <div class="search-container">
-            <input type="text" id="search-input" class="search-input" placeholder="Search in document...">
+            <input type="text" id="search-input" class="search-input" placeholder="Search in document..." aria-label="Search preview">
             <span class="search-match-count" id="search-match-count"></span>
             <button class="search-nav-btn" id="search-prev" aria-label="Previous match">↑</button>
             <button class="search-nav-btn" id="search-next" aria-label="Next match">↓</button>

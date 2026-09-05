@@ -97,12 +97,25 @@ export function stripVideoAttributeBlocks(markdown = '') {
 }
 
 /**
+ * Extract the captions URL from a `{video caption=...}` attribute block, if any.
+ * Accepts both `caption=` and `captions=` for author ergonomics.
+ * Only accepts WebVTT URLs that end in `.vtt` or `.webvtt`.
+ * @param {string} text
+ * @returns {string} captions URL (vtt/webvtt) or empty string
+ */
+export function extractCaptionsUrl(text = '') {
+    const source = String(text || '').replace(/^video\s+/i, '').trim();
+    const match = source.match(/(?:^|\s)caption(?:s)?\s*=\s*((?:https?:\/\/|\/\/)[^\s}]+\.(?:vtt|webvtt))(?:[\s}]|$)/i);
+    return match ? match[1].trim() : '';
+}
+
+/**
  * Build an HTML5 <video> element for direct / GitHub asset URLs.
  * @param {string} url
- * @param {{ reuseVideoEl?: HTMLVideoElement|null }} [opts] - when provided, re-insert
- *   the SAME (already-loaded) video DOM node instead of building a fresh one. Moving a
- *   live element back into the new wrapper preserves its loaded/preloaded state, so
- *   typing elsewhere does NOT re-fetch metadata or re-create the player each render.
+ * @param {{ reuseVideoEl?: HTMLVideoElement|null, captionsUrl?: string }} [opts]
+ *   - reuseVideoEl: when provided, re-insert the SAME (already-loaded) video DOM node
+ *     instead of building a fresh one.
+ *   - captionsUrl: when provided, attach a <track kind="captions"> child for accessibility.
  * @returns {HTMLElement}
  */
 function createHtml5Video(url, opts = {}) {
@@ -126,6 +139,20 @@ function createHtml5Video(url, opts = {}) {
         // GitHub video attachments (no file extension) need a type hint
         if (isGitHubVideoAttachment(url)) {
             video.setAttribute('type', 'video/mp4');
+        }
+
+        // Attach a <track kind="captions"> when the author provided a caption URL.
+        // Only added on fresh creation — reusing the live <video> preserves its
+        // existing track list, so typing elsewhere never re-parses the captions.
+        const captionsUrl = String(opts.captionsUrl || '').trim();
+        if (captionsUrl) {
+            const track = document.createElement('track');
+            track.kind = 'captions';
+            track.src = captionsUrl;
+            track.srclang = 'en';
+            track.label = 'English';
+            track.setAttribute('default', '');
+            video.appendChild(track);
         }
 
         // If playback fails (e.g. wrong content-type), fall back to a link.
@@ -302,7 +329,10 @@ function tryReplaceWithVideo(el, behavior = 'smart', attrsByUrl = null, reuseVid
         // Reuse the live (already-loaded) video node for this source line (URL as
         // fallback) so typing elsewhere never re-creates + reloads the player.
         const reused = reuseVideos?.get?.(sourceLine) || reuseVideos?.get?.(url);
-        player = createHtml5Video(url, { reuseVideoEl: reused });
+        // Captions URL travels in attrsByUrl.captionsUrl (separate from the
+        // text `caption` display attribute). Empty string → no <track> added.
+        const captionsUrl = String(attrsByUrl?.get?.(url)?.captionsUrl || '').trim();
+        player = createHtml5Video(url, { reuseVideoEl: reused, captionsUrl });
     }
 
     if (sourceLine) {
@@ -353,5 +383,6 @@ export default {
     isGitHubVideoAttachment,
     parseHostedVideo,
     isEmbeddableVideoUrl,
-    processPreviewVideos
+    processPreviewVideos,
+    extractCaptionsUrl
 };

@@ -288,6 +288,28 @@ export function selectImageFiles(multiple = false) {
     return selectFiles({ accept: 'image/*', multiple });
 }
 
+/**
+ * Safely convert an ArrayBuffer / Uint8Array to a base64 data URL without
+ * hitting btoa()'s ~2 MB string-length limit on some browsers.
+ * Splits the input into 3-byte-aligned chunks so each btoa() call stays small.
+ * @param {ArrayBuffer|Uint8Array} buffer
+ * @param {string} mimeType
+ * @returns {string} data:${mimeType};base64,...
+ */
+export function safeBase64FromArrayBuffer(buffer, mimeType) {
+    const uint8Array = buffer instanceof ArrayBuffer
+        ? new Uint8Array(buffer)
+        : new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    const bytesPerChunk = 30000; // multiple of 3; safe for String.fromCharCode.apply
+    let base64 = '';
+    for (let i = 0; i < uint8Array.length; i += bytesPerChunk) {
+        const chunk = uint8Array.subarray(i, i + bytesPerChunk);
+        const binary = String.fromCharCode.apply(null, chunk);
+        base64 += btoa(binary);
+    }
+    return `data:${mimeType};base64,${base64}`;
+}
+
 export default {
     downloadFile,
     downloadMarkdown,
@@ -307,5 +329,6 @@ export default {
     sanitizeSvgToDataUrl,
     selectFiles,
     selectMarkdownFile,
-    selectImageFiles
+    selectImageFiles,
+    safeBase64FromArrayBuffer
 };

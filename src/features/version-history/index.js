@@ -5,6 +5,7 @@
  */
 
 import { showToast } from '../../ui/toast/index.js';
+import { trackedAddEventListener } from '../../utils/listener-registry.js';
 import { createFocusTrap } from '../../utils/dom.js';
 import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
@@ -183,7 +184,7 @@ export function initVersionHistory(options = {}) {
     }
 
     // Keyboard shortcut Ctrl+Shift+V
-    document.addEventListener('keydown', (e) => {
+    trackedAddEventListener(document, 'keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') {
             e.preventDefault();
             openModal();

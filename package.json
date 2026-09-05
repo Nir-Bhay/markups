@@ -1,5 +1,5 @@
 {
-  "name": "markdown-live-preview",
+  "name": "markups",
   "version": "2.0.0",
   "description": "A powerful, feature-rich markdown editor with live preview, Monaco editor, and premium UI",
   "type": "module",
@@ -21,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Nir-Bhay/markdown-live-preview.git"
+    "url": "git+https://github.com/Nir-Bhay/markups.git"
   },
   "keywords": [
     "markdown",
@@ -36,9 +36,9 @@
   "author": "Nir-Bhay",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Nir-Bhay/markdown-live-preview/issues"
+    "url": "https://github.com/Nir-Bhay/markups/issues"
   },
-  "homepage": "https://markdownlivepreview.com",
+  "homepage": "https://markups.dev",
   "engines": {
     "node": ">=18.0.0"
   },

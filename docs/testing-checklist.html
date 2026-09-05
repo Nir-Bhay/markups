@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markups Testing Checklist — Full</title>
+<style>
+:root {
+    --bg: #ffffff;
+    --bg-code: #f6f8fa;
+    --bg-section: #eef3ff;
+    --border: #d0d7de;
+    --text: #1f2328;
+    --text-muted: #656d76;
+    --accent: #0969da;
+    --issue-42: #cf222e;
+    --issue-44: #8250df;
+    --issue-40: #1f883d;
+    --issue-45: #fb8500;
+    --issue-39: #0969da;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+h1 { font-size: 28px; border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-top: 32px; }
+h2 { font-size: 22px; margin-top: 28px; padding: 8px 12px; background: var(--bg-section); border-radius: 6px; border-left: 4px solid var(--accent); }
+h3 { font-size: 18px; margin-top: 24px; color: var(--text-muted); }
+h4 { font-size: 15px; margin-top: 20px; font-weight: 600; }
+p, li { font-size: 14px; }
+.issue-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    margin-right: 8px;
+}
+.tag-42 { background: var(--issue-42); }
+.tag-44 { background: var(--issue-44); }
+.tag-40 { background: var(--issue-40); }
+.tag-45 { background: var(--issue-45); }
+.tag-39 { background: var(--issue-39); }
+pre {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.45;
+    position: relative;
+}
+code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+:not(pre) > code { background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+.copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+.copy-btn:hover { background: #f6f8fa; color: var(--text); }
+.copy-btn.copied { background: #dafbe1; color: var(--issue-40); border-color: #1f883d; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+th { background: var(--bg-code); }
+hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+blockquote { border-left: 4px solid var(--border); margin: 12px 0; padding: 6px 14px; color: var(--text-muted); }
+.toolbar { position: sticky; top: 0; background: white; padding: 12px; border-bottom: 1px solid var(--border); margin: -24px -24px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); z-index: 10; display: flex; gap: 8px; align-items: center; }
+.toolbar button { padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; background: white; cursor: pointer; font-size: 13px; }
+.toolbar button:hover { background: var(--bg-code); }
+.toolbar .badge { margin-left: auto; padding: 4px 10px; background: var(--bg-section); border-radius: 12px; font-size: 12px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="toolbar">
+    <strong>Markups Testing Checklist</strong>
+    <button onclick="expandAll()">Expand All</button>
+    <button onclick="collapseAll()">Collapse All</button>
+    <button onclick="copyAll()">Copy All Tests</button>
+    <span class="badge" id="testCount"></span>
+</div>
+<div id="content"></div>
+<script>
+async function load() {
+    const md = await fetch('testing-checklist-FULL.md').then(r => r.text());
+    document.getElementById('content').innerHTML = renderMd(md);
+    addCopyButtons();
+    countTests();
+}
+function renderMd(md) {
+    // Escape HTML first
+    let html = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Code fences
+    html = html.replace(/```(\w*)?\n([\s\S]*?)```/g, (m, lang, code) => {
+        return `<pre data-code="${encodeURIComponent(code)}"><button class="copy-btn" onclick="copyPre(this)">Copy</button><code>${code}</code></pre>`;
+    });
+    // Headings
+    html = html.replace(/^#### (.*)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^### (.*)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.*)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.*)$/gm, '<h1>$1</h1>');
+    // Horizontal rules
+    html = html.replace(/^---+$/gm, '<hr>');
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Bold
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // Paragraphs (lines)
+    html = html.split('\n\n').map(p => {
+        if (p.startsWith('<h') || p.startsWith('<hr') || p.startsWith('<pre') || p.startsWith('<ul') || p.startsWith('<ol')) return p;
+        return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+    }).join('\n');
+    // Tags on headings
+    html = html.replace(/<h2>(Issue \#42)/g, '<h2><span class="issue-tag tag-42">#42</span>$1');
+    html = html.replace(/<h2>(Issue \#44)/g, '<h2><span class="issue-tag tag-44">#44</span>$1');
+    html = html.replace(/<h2>(Issue \#40)/g, '<h2><span class="issue-tag tag-40">#40</span>$1');
+    html = html.replace(/<h2>(Issue \#45)/g, '<h2><span class="issue-tag tag-45">#45</span>$1');
+    html = html.replace(/<h2>(Issue \#39)/g, '<h2><span class="issue-tag tag-39">#39</span>$1');
+    return html;
+}
+function addCopyButtons() {
+    document.querySelectorAll('pre').forEach(pre => {
+        if (pre.querySelector('.copy-btn')) return;
+        const code = pre.querySelector('code')?.textContent ?? '';
+        const btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.textContent = 'Copy';
+        btn.onclick = () => copyPre(btn);
+        pre.prepend(btn);
+    });
+}
+async function copyPre(btn) {
+    const pre = btn.closest('pre');
+    const code = pre.querySelector('code')?.textContent ?? '';
+    try {
+        await navigator.clipboard.writeText(code);
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    } catch (e) {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    }
+}
+function expandAll() {
+    document.querySelectorAll('details').forEach(d => d.open = true);
+}
+function collapseAll() {
+    document.querySelectorAll('details').forEach(d => d.open = false);
+}
+async function copyAll() {
+    const codes = Array.from(document.querySelectorAll('pre code')).map(c => c.textContent);
+    const all = codes.join('\n\n---\n\n');
+    try {
+        await navigator.clipboard.writeText(all);
+        alert('Copied ' + codes.length + ' test cases to clipboard');
+    } catch (e) {
+        alert('Copy failed — select code blocks individually');
+    }
+}
+function countTests() {
+    const tests = document.querySelectorAll('pre').length;
+    document.getElementById('testCount').textContent = tests + ' test cases';
+}
+load();
+</script>
+</body>
+</html>

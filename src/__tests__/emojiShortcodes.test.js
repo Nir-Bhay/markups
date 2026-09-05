@@ -17,7 +17,10 @@ describe('emoji shortcodes (Issue #45)', () => {
         expect(m.skull).toBe('💀');
     });
 
-    it('renderer returns the raw emoji for a token', () => {
-        expect(emojiMarkedOptions.renderer({ emoji: '😄', name: 'smile' })).toBe('😄');
+    it('renderer returns an accessible span with role="img" and aria-label for screen readers (a11y L2)', () => {
+        const out = emojiMarkedOptions.renderer({ emoji: '😄', name: 'smile' });
+        expect(out).toContain('role="img"');
+        expect(out).toContain('aria-label="smile"');
+        expect(out).toContain('😄');
     });
 });

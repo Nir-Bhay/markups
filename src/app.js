@@ -5,6 +5,7 @@
  */
 
 import { eventBus, EVENTS } from './utils/eventBus.js';
+import { removeAllTrackedListeners } from './utils/listener-registry.js';
 import { storageService } from './core/storage/index.js';
 import { STORAGE_KEYS } from './core/storage/keys.js';
 import { editorService } from './core/editor/index.js';
@@ -638,6 +639,8 @@ class App {
             _aiWriterManager.dispose();
             _aiWriterManager = null;
         }
+
+        removeAllTrackedListeners();
 
         this.initialized = false;
         App.instance = null;
