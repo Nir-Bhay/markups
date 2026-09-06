@@ -427,7 +427,16 @@ const initTabs = async () => {
     }
     documents = loadedDocs;
     await ensureAtLeastOneDocument();
-    activeDocId = documents[0]?.id || null;
+
+    // Restore last-active tab if it still exists; otherwise default to first
+    let restoredTabId = null;
+    try {
+        restoredTabId = localStorage.getItem('markups_last_active_tab');
+    } catch (_e) { /* ignore */ }
+    const restoredDoc = restoredTabId
+        ? documents.find((d) => d.id === restoredTabId)
+        : null;
+    activeDocId = restoredDoc?.id || documents[0]?.id || null;
 
     explorerManager = createExplorerManager({
         onOpenFile: (nodeId) => switchTab(nodeId),
@@ -579,6 +588,11 @@ const switchTab = (id) => {
     } catch {
         // ignore sync/save failures during tab switch
     }
+
+    // Persist last-active tab so we can restore it on next page load
+    try {
+        localStorage.setItem('markups_last_active_tab', id);
+    } catch (_e) { /* ignore quota errors */ }
 
     activeDocId = id;
     window.__markups_activeDocId = activeDocId;
@@ -7304,6 +7318,16 @@ const initializeApp = async () => {
     import('./features/image-resize/index.js')
         .then(({ initImageResize }) => initImageResize({ editor }))
         .catch((err) => console.warn('Image resize module load error:', err));
+
+    // Auto-focus the editor so users can start typing immediately on load.
+    // Skip on touch devices where the on-screen keyboard would jump up
+    // and steal viewport space.
+    if (editor && !('ontouchstart' in window)) {
+        // Defer focus to next tick so layout settles first
+        setTimeout(() => {
+            try { editor.focus(); } catch (_e) { /* ignore */ }
+        }, 0);
+    }
 };
 
 // ----- PWA Support -----
