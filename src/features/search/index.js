@@ -6,6 +6,7 @@
 
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
 import { editorService } from '../../core/editor/index.js';
+import { escapeHtml } from '../../utils/escape-html.js';
 
 /**
  * Search match structure
@@ -427,7 +428,7 @@ class SearchManager {
                         <input type="text" 
                                class="search-input" 
                                placeholder="Search..."
-                               value="${this.searchTerm}">
+                               value="${escapeHtml(this.searchTerm)}">
                         <span class="search-count"></span>
                     </div>
                     <div class="search-options">
@@ -458,7 +459,7 @@ class SearchManager {
                     <input type="text" 
                            class="replace-input" 
                            placeholder="Replace with..."
-                           value="${this.replaceTerm}">
+                           value="${escapeHtml(this.replaceTerm)}">
                     <button class="replace-btn" data-action="replace">Replace</button>
                     <button class="replace-btn" data-action="replaceAll">All</button>
                 </div>

@@ -82,7 +82,6 @@ import mermaid from 'mermaid';
 mermaid.initialize({ startOnLoad: false, theme: 'default', suppressErrors: true });
 
 // KaTeX for math
-import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import markedKatex from 'marked-katex-extension';
 
@@ -449,7 +448,7 @@ const initTabs = async () => {
 };
 
 // Mouse wheel horizontal scroll for tabs
-const setupTabsWheelScroll = () => {
+const _setupTabsWheelScroll = () => {
     const tabsList = document.getElementById('tabs-list');
     if (!tabsList) return;
 
@@ -898,7 +897,7 @@ const setupEditor = () => {
             isShowingWelcome = false;
         }
 
-        const changed = editor?.getValue() != defaultInput;
+        const changed = editor?.getValue() !== defaultInput;
         if (changed) {
             hasEdited = true;
             setHasEdited(true);
@@ -1257,7 +1256,7 @@ const updateActiveOutlineItem = () => {
     const headings = outputElement.querySelectorAll('h1, h2, h3, h4, h5, h6');
     if (headings.length === 0) return;
 
-    const scrollTop = previewElement.scrollTop;
+    const _scrollTop = previewElement.scrollTop;
     const threshold = 100; // Offset from top
 
     let activeHeading = null;
@@ -2393,7 +2392,7 @@ const addCodeCopyButtons = () => {
 
 // Reset input text
 const reset = () => {
-    const changed = editor?.getValue() != defaultInput;
+    const changed = editor?.getValue() !== defaultInput;
     if (hasEdited || changed) {
         const confirmed = window.confirm(confirmationMessage);
         if (!confirmed) {
@@ -2456,12 +2455,12 @@ const initCursorSync = (settings) => {
     });
 };
 
-const enableScrollBarSync = () => {
+const _enableScrollBarSync = () => {
     scrollBarSync = true;
     scrollSync.setEnabled(true);
 };
 
-const disableScrollBarSync = () => {
+const _disableScrollBarSync = () => {
     scrollBarSync = false;
     scrollSync.setEnabled(false);
 };
@@ -6868,10 +6867,10 @@ const setupMobileUI = () => {
 };
 
 // Handle mobile drawer actions - now handled by mobile module
-const handleMobileDrawerAction = (action) => { };
+const handleMobileDrawerAction = (_action) => { };
 
 // Handle FAB actions - now handled by mobile module
-const handleFabAction = (action) => { };
+const handleFabAction = (_action) => { };
 
 const setupDivider = () => {
     let lastLeftRatio = 0.5;
@@ -7231,20 +7230,16 @@ const initializeApp = async () => {
 
 // ----- PWA Support -----
 
-let deferredPrompt;
-
 // Capture the install prompt event
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
-    deferredPrompt = e;
     // Show install button/prompt if needed
-    if (import.meta.env.DEV) console.log('PWA install prompt available');
+
 });
 
 // Handle app installed
 window.addEventListener('appinstalled', () => {
-    if (import.meta.env.DEV) console.log('PWA installed successfully');
-    deferredPrompt = null;
+
 });
 
 // Register service worker
@@ -7252,7 +7247,6 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
-                if (import.meta.env.DEV) console.log('ServiceWorker registered:', registration.scope);
 
                 // Check for updates periodically (every 30 minutes)
                 setInterval(() => {
@@ -7260,7 +7254,6 @@ if ('serviceWorker' in navigator) {
                 }, APP_CONFIG.SERVICE_WORKER_UPDATE_INTERVAL_MS);
             })
             .catch((error) => {
-                if (import.meta.env.DEV) console.log('ServiceWorker registration failed:', error);
             });
     });
 }

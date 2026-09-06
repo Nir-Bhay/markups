@@ -179,7 +179,7 @@ class HTMLExporter {
     export(markdown, options = {}) {
         const {
             title = 'Document',
-            includeStyles = true,
+            includeStyles: _includeStyles = true,
             customStyles = '',
             head = '',
             scripts = ''

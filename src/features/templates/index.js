@@ -9,6 +9,7 @@ import { editorService } from '../../core/editor/index.js';
 import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { TEMPLATES } from '../../config/templates.js';
+import { escapeHtml } from '../../utils/escape-html.js';
 
 /**
  * TemplatesManager class
@@ -271,8 +272,8 @@ class TemplatesManager {
                                     <div class="template-card" data-id="${template.id}">
                                         <div class="template-icon">${this._getCategoryIcon(category)}</div>
                                         <div class="template-info">
-                                            <span class="template-name">${template.name}</span>
-                                            <span class="template-desc">${template.description || ''}</span>
+                                            <span class="template-name">${escapeHtml(template.name)}</span>
+                                            <span class="template-desc">${escapeHtml(template.description || '')}</span>
                                         </div>
                                         ${template.isCustom ? `
                                             <button class="template-delete" data-id="${template.id}" title="Delete">
