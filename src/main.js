@@ -112,7 +112,7 @@ import {
 import { appContextMenuManager } from './features/app-context-menu/index.js';
 import { createFocusTrap } from './utils/dom.js';
 import { validateImageSignature, sanitizeSvgToDataUrl } from './utils/file.js';
-import { initVersionHistory, setHasEdited } from './features/version-history/index.js';
+import { initVersionHistory, setHasEdited, stopVersionHistoryPolling } from './features/version-history/index.js';
 import { trackedAddEventListener } from './utils/listener-registry.js';
 
 // GFM Extensions
@@ -7283,6 +7283,7 @@ window.addEventListener("load", () => {
     window.addEventListener('pagehide', () => {
         try {
             appContextMenuManager.dispose();
+            stopVersionHistoryPolling();
         } catch {
             // ignore cleanup errors
         }
