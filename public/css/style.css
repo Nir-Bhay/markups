@@ -11323,3 +11323,101 @@ header input[type='text']::placeholder {
         height: 0;
     }
 }
+
+/* ===== Recent tabs dropdown ===== */
+.recent-tabs-dropdown {
+    position: relative;
+    display: inline-flex;
+}
+
+.recent-tabs-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--bg-elevated, #1e1e1e);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    min-width: 220px;
+    max-width: 280px;
+    z-index: 900;
+    padding: 6px 0;
+    font-size: 13px;
+}
+
+.recent-tabs-header {
+    padding: 6px 14px 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary, rgba(255,255,255,0.55));
+}
+
+.recent-tabs-list {
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.recent-tabs-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 14px;
+    background: transparent;
+    border: none;
+    color: var(--text-primary, #fff);
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.recent-tabs-item:hover,
+.recent-tabs-item:focus {
+    background: rgba(255,255,255,0.06);
+    outline: none;
+}
+
+.recent-tabs-item.active {
+    color: var(--accent-color, #7aa2f7);
+    font-weight: 600;
+}
+
+.recent-tabs-item-icon {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.recent-tabs-item-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.recent-tabs-divider {
+    height: 1px;
+    background: var(--border-color, rgba(255,255,255,0.08));
+    margin: 4px 10px;
+}
+
+.recent-tabs-new {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: calc(100% - 14px);
+    margin: 2px 7px 4px;
+    padding: 7px 10px;
+    background: transparent;
+    border: 1px dashed var(--border-color, rgba(255,255,255,0.18));
+    border-radius: 6px;
+    color: var(--text-secondary, rgba(255,255,255,0.7));
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.recent-tabs-new:hover {
+    background: rgba(255,255,255,0.04);
+    color: var(--text-primary, #fff);
+}

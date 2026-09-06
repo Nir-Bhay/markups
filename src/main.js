@@ -2941,6 +2941,79 @@ async function getAiWriterManager() {
     return _aiWriterManager;
 }
 
+// Recent tabs dropdown — shows last 3 active docs + New File shortcut
+const setupRecentTabs = () => {
+    const btn = document.querySelector('#recent-tabs-btn');
+    const menu = document.querySelector('#recent-tabs-menu');
+    const list = document.querySelector('#recent-tabs-list');
+    const newBtn = document.querySelector('#recent-tabs-new-btn');
+    if (!btn || !menu || !list) return;
+
+    const MAX_RECENT = 3;
+
+    const renderRecent = () => {
+        if (!list) return;
+        list.innerHTML = '';
+
+        const recent = documents
+            .slice()
+            .sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0))
+            .slice(0, MAX_RECENT);
+
+        recent.forEach((doc) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = `recent-tabs-item${doc.id === activeDocId ? ' active' : ''}`;
+            item.title = doc.title;
+            item.innerHTML = `
+                <svg class="recent-tabs-item-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+                </svg>
+                <span class="recent-tabs-item-label">${escapeHtml(doc.title || 'Untitled')}.md</span>
+            `;
+            item.addEventListener('click', () => {
+                switchTab(doc.id);
+                menu.style.display = 'none';
+                btn.setAttribute('aria-expanded', 'false');
+            });
+            list.appendChild(item);
+        });
+
+        if (recent.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'recent-tabs-item';
+            empty.textContent = 'No recent files';
+            list.appendChild(empty);
+        }
+    };
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = menu.style.display === 'block';
+        menu.style.display = isOpen ? 'none' : 'block';
+        btn.setAttribute('aria-expanded', String(!isOpen));
+        if (!isOpen) renderRecent();
+    });
+
+    newBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.style.display = 'none';
+        btn.setAttribute('aria-expanded', 'false');
+        createFileInSelectedFolder();
+    });
+
+    // Refresh dropdown when a tab is clicked; we hook into the
+    // existing renderTabs cycle so the list stays in sync without
+    // reassigning the function (which breaks later overrides).
+    document.addEventListener('click', (e) => {
+        const tab = e.target.closest('.header-tab');
+        if (!tab) return;
+        setTimeout(() => {
+            if (menu && menu.style.display === 'block') renderRecent();
+        }, 0);
+    });
+};
+
 const setupAiWriterButton = () => {
     const aiWriterBtn = document.querySelector("#ai-writer-button");
     if (!aiWriterBtn) return;
@@ -7395,6 +7468,9 @@ const initializeApp = async () => {
 
     // AI Writer — lazy-loaded module, same pattern as image-resize
     setupAiWriterButton();
+
+    // Recent tabs dropdown in header (shows last 3 + New File)
+    setupRecentTabs();
 
     // Custom context menu
     appContextMenuManager.initialize();
