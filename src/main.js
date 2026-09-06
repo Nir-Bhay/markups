@@ -2891,6 +2891,40 @@ const setupSnippetsButton = () => {
     }
 };
 
+// AI Writer — lazy-loaded on first click, same pattern as app.js:52-58.
+// The button and panel are present in index.html but main.js had no handler.
+let _aiWriterManager = null;
+async function getAiWriterManager() {
+    if (!_aiWriterManager) {
+        try {
+            const mod = await import('./features/ai-writer/index.js');
+            _aiWriterManager = mod.aiWriterManager;
+            _aiWriterManager.initialize();
+        } catch (err) {
+            console.warn('AI Writer load error:', err);
+            showToast('AI Writer failed to load', 'error', 3000);
+        }
+    }
+    return _aiWriterManager;
+}
+
+const setupAiWriterButton = () => {
+    const aiWriterBtn = document.querySelector("#ai-writer-button");
+    if (!aiWriterBtn) return;
+
+    aiWriterBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await getAiWriterManager();
+        // Toggle panel visibility; aiWriterUI.renderPanel already called by initialize()
+        const panel = document.querySelector("#ai-writer-panel");
+        if (panel) {
+            const isHidden = panel.style.display === "none";
+            panel.style.display = isHidden ? "block" : "none";
+            showToast(isHidden ? "AI Writer Opened" : "AI Writer Closed", "info", 1500);
+        }
+    });
+};
+
 const positionToolbarDropdown = (sheet, trigger) => {
     const rect = trigger.getBoundingClientRect();
     sheet.style.top = `${Math.round(rect.bottom + 8)}px`;
@@ -5738,24 +5772,49 @@ const setupFocusMode = () => {
 // ----- Typewriter Mode -----
 
 let isTypewriterMode = false;
+let typewriterCursorListener = null;
+
+const enterTypewriterMode = () => {
+    const typewriterBtn = document.querySelector("#typewriter-button");
+    if (typewriterBtn) typewriterBtn.classList.add('active');
+
+    // Center current line immediately
+    const position = editor?.getPosition();
+    if (position) {
+        editor?.revealLineInCenter(position.lineNumber);
+    }
+
+    // Track cursor and re-center on every move (module parity, better UX
+    // than centering once at enable time)
+    if (editor && !typewriterCursorListener) {
+        typewriterCursorListener = editor.onDidChangeCursorPosition((e) => {
+            if (isTypewriterMode) {
+                editor?.revealLineInCenter(e.position.lineNumber);
+            }
+        });
+    }
+
+    showToast('Typewriter Mode Enabled', 'success', 1500);
+};
+
+const exitTypewriterMode = () => {
+    const typewriterBtn = document.querySelector("#typewriter-button");
+    if (typewriterBtn) typewriterBtn.classList.remove('active');
+
+    if (typewriterCursorListener) {
+        typewriterCursorListener.dispose();
+        typewriterCursorListener = null;
+    }
+
+    showToast('Typewriter Mode Disabled', 'info', 1500);
+};
 
 const toggleTypewriterMode = () => {
-    const typewriterBtn = document.querySelector("#typewriter-button");
     isTypewriterMode = !isTypewriterMode;
-
     if (isTypewriterMode) {
-        if (typewriterBtn) typewriterBtn.classList.add('active');
-
-        // Center current line immediately
-        const position = editor?.getPosition();
-        if (position) {
-            editor?.revealLineInCenter(position.lineNumber);
-        }
-
-        showToast('Typewriter Mode Enabled', 'success', 1500);
+        enterTypewriterMode();
     } else {
-        if (typewriterBtn) typewriterBtn.classList.remove('active');
-        showToast('Typewriter Mode Disabled', 'info', 1500);
+        exitTypewriterMode();
     }
 };
 
@@ -7234,6 +7293,9 @@ const initializeApp = async () => {
 
     // Initialize stats with current content
     updateStats(editor?.getValue());
+
+    // AI Writer — lazy-loaded module, same pattern as image-resize
+    setupAiWriterButton();
 
     // Custom context menu
     appContextMenuManager.initialize();
