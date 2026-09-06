@@ -119,7 +119,7 @@ export class ExplorerManager {
 
     getSavedWidth() {
         const stored = storageService.getNumber(STORAGE_KEYS.EXPLORER_DRAWER_WIDTH);
-        let value = Number.isFinite(stored) ? stored : Number(localStorage.getItem(this.drawerWidthKey));
+        const value = Number.isFinite(stored) ? stored : Number(localStorage.getItem(this.drawerWidthKey));
         return Number.isFinite(value) ? this.clampWidth(value) : this.defaultDrawerWidth;
     }
 

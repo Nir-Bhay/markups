@@ -55,8 +55,8 @@ const MD5_hash = (rawData) => {
     const x = new Array(16);
     const s = new Array(4);
     let len = data.length;
-    let index = len & 0x3f;
-    let padLen = (index < 56) ? (56 - index) : (120 - index);
+    const index = len & 0x3f;
+    const padLen = (index < 56) ? (56 - index) : (120 - index);
     if (padLen > 0) {
         data += '\x80';
         for (let i = 0; i < padLen - 1; i++) data += '\x00';
