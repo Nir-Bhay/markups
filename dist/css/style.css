@@ -11246,3 +11246,80 @@ header input[type='text'] {
 header input[type='text']::placeholder {
   color: rgba(255, 255, 255, 0.5);
 }
+/* ===== Print-friendly styles =====
+   When users trigger window.print() (or the browser's print dialog), hide
+   chrome and show only the rendered preview, sized for paper. */
+@media print {
+    /* Hide all UI chrome */
+    header,
+    .premium-toolbar,
+    .tab-bar-container,
+    .footer-stats,
+    .ai-writer-panel,
+    .toc-sidebar,
+    .explorer-sidebar,
+    .split-divider,
+    .modals,
+    .toast-container,
+    .modal-overlay,
+    .modal {
+        display: none !important;
+    }
+
+    /* Show only the preview, full width, white background */
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    #container {
+        display: block !important;
+        height: auto !important;
+    }
+
+    .editor-pane {
+        display: none !important;
+    }
+
+    .preview-pane {
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .preview-wrapper,
+    .preview-content {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .markdown-body {
+        color: #000 !important;
+        background: #fff !important;
+        font-size: 11pt;
+        line-height: 1.5;
+        max-width: 100%;
+    }
+
+    /* Ensure code blocks don't break across pages badly */
+    pre, blockquote, table {
+        page-break-inside: avoid;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+        color: #000 !important;
+    }
+
+    a {
+        color: #000 !important;
+        text-decoration: underline;
+    }
+
+    /* Avoid blank pages at end */
+    .preview-pane::after {
+        content: '';
+        display: block;
+        height: 0;
+    }
+}

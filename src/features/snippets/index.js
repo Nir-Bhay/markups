@@ -9,6 +9,7 @@ import { editorService } from '../../core/editor/index.js';
 import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { SNIPPETS } from '../../config/snippets.js';
+import { escapeHtml } from '../../utils/escape-html.js';
 
 /**
  * SnippetsManager class
@@ -287,12 +288,12 @@ class SnippetsManager {
                                 ${snippets.map(snippet => `
                                     <div class="snippet-item" data-id="${snippet.id}">
                                         <div class="snippet-info">
-                                            <span class="snippet-name">${snippet.name}</span>
+                                            <span class="snippet-name">${escapeHtml(snippet.name)}</span>
                                             ${snippet.shortcut ? `
-                                                <kbd class="snippet-shortcut">${snippet.shortcut}</kbd>
+                                                <kbd class="snippet-shortcut">${escapeHtml(snippet.shortcut)}</kbd>
                                             ` : ''}
                                         </div>
-                                        <span class="snippet-desc">${snippet.description || ''}</span>
+                                        <span class="snippet-desc">${escapeHtml(snippet.description || '')}</span>
                                         ${snippet.isCustom ? `
                                             <button class="snippet-delete" data-id="${snippet.id}" title="Delete">
                                                 ×

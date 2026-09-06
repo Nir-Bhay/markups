@@ -134,7 +134,7 @@ class ImportManager {
                 message: 'Content imported successfully!',
                 type: 'success'
             });
-        } catch (error) {
+        } catch (_error) {
             eventBus.emit(EVENTS.TOAST_SHOW, {
                 message: 'Failed to import from URL',
                 type: 'error'

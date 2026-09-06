@@ -89,21 +89,21 @@ export function updateImageAttributesInMarkdown(markdown, url, attrs = {}) {
     const source = String(markdown || '');
     let replaced = false;
 
-    const replaceIfMatch = (full, foundUrl, existingAttrs = '') => {
+    const replaceIfMatch = (full, foundUrl, _existingAttrs = '') => {
         if (replaced || String(foundUrl || '').trim() !== normalizedTarget) return full;
         replaced = true;
-        return full.replace(existingAttrs || '', '').trimEnd() + replacementSuffix;
+        return full.replace(_existingAttrs || '', '').trimEnd() + replacementSuffix;
     };
 
-    const linked = source.replace(/(!?\[[^\]]*\]\(([^)\s]+)\))(\s*\{[^}\n]*\})?/g, (full, linkPart, foundUrl, existingAttrs = '') => {
+    const linked = source.replace(/(!?\[[^\]]*\]\(([^)\s]+)\))(\s*\{[^}\n]*\})?/g, (full, linkPart, foundUrl, _existingAttrs = '') => {
         if (replaced || String(foundUrl || '').trim() !== normalizedTarget) return full;
         replaced = true;
         return `${linkPart}${replacementSuffix}`;
     });
     if (replaced) return linked;
 
-    const bare = source.replace(/(https?:\/\/[^\s<>()]+)(\s*\{[^}\n]*\})?/g, (full, foundUrl, existingAttrs = '') =>
-        replaceIfMatch(full, foundUrl, existingAttrs)
+    const bare = source.replace(/(https?:\/\/[^\s<>()]+)(\s*\{[^}\n]*\})?/g, (full, foundUrl, _existingAttrs = '') =>
+        replaceIfMatch(full, foundUrl, _existingAttrs)
     );
     if (replaced) return bare;
 

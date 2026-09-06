@@ -37,50 +37,108 @@ export class ExplorerManager {
         this.sortSelect = document.getElementById('explorer-sort-select');
         this.contextMenu = document.getElementById('explorer-context-menu');
 
-        this.toggleBtn?.addEventListener('click', () => this.toggleDrawer());
-        this.newFileBtn?.addEventListener('click', () => this.config.onCreateFile?.(this.selectedFolderId));
-        // New Folder behavior:
-        // - Click: create at root (safe default)
-        // - Shift+Click: create inside selected folder (intentional nesting)
-        this.newFolderBtn?.addEventListener('click', (event) => {
+        this._boundToggle = () => this.toggleDrawer();
+        this._boundNewFile = () => this.config.onCreateFile?.(this.selectedFolderId);
+        this._boundNewFolder = (event) => {
             const targetFolderId = event.shiftKey ? this.getSelectedFolderId() : 'root';
             this.config.onCreateFolder?.(targetFolderId);
-        });
+        };
+        this._boundFilterInput = () => {
+            this.filterQuery = this.filterInput.value.trim().toLowerCase();
+            this.render();
+        };
+        this._boundSortChange = () => {
+            this.sortMode = this.sortSelect.value || 'manual';
+            storageService.set(STORAGE_KEYS.EXPLORER_SORT_MODE, this.sortMode);
+            this.render();
+        };
+        this._boundTreeClick = (event) => this.onTreeClick(event);
+        this._boundContextMenu = (event) => this.onContextMenu(event);
+        this._boundDragStart = (event) => this.onDragStart(event);
+        this._boundDragOver = (event) => this.onDragOver(event);
+        this._boundDragLeave = (event) => this.onDragLeave(event);
+        this._boundDrop = (event) => this.onDrop(event);
+        this._boundDragEnd = () => this.clearDragState();
+        this._boundDocumentClick = () => this.hideContextMenu();
+        this._boundKeydown = (event) => {
+            if (event.key === 'Shift') this.setFolderButtonShiftState(true);
+            this.onGlobalKeydown(event);
+        };
+        this._boundKeyup = (event) => {
+            if (event.key === 'Shift') this.setFolderButtonShiftState(false);
+        };
+
+        this.toggleBtn?.addEventListener('click', this._boundToggle);
+        this.newFileBtn?.addEventListener('click', this._boundNewFile);
+        this.newFolderBtn?.addEventListener('click', this._boundNewFolder);
         this.setFolderButtonShiftState(false);
         this.resizeHandle?.addEventListener('mousedown', (event) => this.startResize(event));
 
-        this.filterInput?.addEventListener('input', () => {
-            this.filterQuery = this.filterInput.value.trim().toLowerCase();
-            this.render();
-        });
+        this.filterInput?.addEventListener('input', this._boundFilterInput);
 
         this.sortMode = storageService.getString(STORAGE_KEYS.EXPLORER_SORT_MODE) ||
             localStorage.getItem(this.sortModeKey) || 'manual';
         if (this.sortSelect) this.sortSelect.value = this.sortMode;
-        this.sortSelect?.addEventListener('change', () => {
-            this.sortMode = this.sortSelect.value || 'manual';
-            storageService.set(STORAGE_KEYS.EXPLORER_SORT_MODE, this.sortMode);
-            this.render();
-        });
+        this.sortSelect?.addEventListener('change', this._boundSortChange);
 
-        this.container?.addEventListener('click', (event) => this.onTreeClick(event));
-        this.container?.addEventListener('contextmenu', (event) => this.onContextMenu(event));
-        this.container?.addEventListener('dragstart', (event) => this.onDragStart(event));
-        this.container?.addEventListener('dragover', (event) => this.onDragOver(event));
-        this.container?.addEventListener('dragleave', (event) => this.onDragLeave(event));
-        this.container?.addEventListener('drop', (event) => this.onDrop(event));
-        this.container?.addEventListener('dragend', () => this.clearDragState());
+        this.container?.addEventListener('click', this._boundTreeClick);
+        this.container?.addEventListener('contextmenu', this._boundContextMenu);
+        this.container?.addEventListener('dragstart', this._boundDragStart);
+        this.container?.addEventListener('dragover', this._boundDragOver);
+        this.container?.addEventListener('dragleave', this._boundDragLeave);
+        this.container?.addEventListener('drop', this._boundDrop);
+        this.container?.addEventListener('dragend', this._boundDragEnd);
 
-        document.addEventListener('click', () => this.hideContextMenu());
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Shift') this.setFolderButtonShiftState(true);
-            this.onGlobalKeydown(event);
-        });
-        document.addEventListener('keyup', (event) => {
-            if (event.key === 'Shift') this.setFolderButtonShiftState(false);
-        });
+        document.addEventListener('click', this._boundDocumentClick);
+        document.addEventListener('keydown', this._boundKeydown);
+        document.addEventListener('keyup', this._boundKeyup);
 
         this.applySavedWidth();
+    }
+
+    dispose() {
+        if (this._disposed) return;
+        this._disposed = true;
+
+        this.toggleBtn?.removeEventListener('click', this._boundToggle);
+        this.newFileBtn?.removeEventListener('click', this._boundNewFile);
+        this.newFolderBtn?.removeEventListener('click', this._boundNewFolder);
+        this.filterInput?.removeEventListener('input', this._boundFilterInput);
+        this.sortSelect?.removeEventListener('change', this._boundSortChange);
+        this.container?.removeEventListener('click', this._boundTreeClick);
+        this.container?.removeEventListener('contextmenu', this._boundContextMenu);
+        this.container?.removeEventListener('dragstart', this._boundDragStart);
+        this.container?.removeEventListener('dragover', this._boundDragOver);
+        this.container?.removeEventListener('dragleave', this._boundDragLeave);
+        this.container?.removeEventListener('drop', this._boundDrop);
+        this.container?.removeEventListener('dragend', this._boundDragEnd);
+        document.removeEventListener('click', this._boundDocumentClick);
+        document.removeEventListener('keydown', this._boundKeydown);
+        document.removeEventListener('keyup', this._boundKeyup);
+
+        if (this._boundMousemove) {
+            document.removeEventListener('mousemove', this._boundMousemove);
+            document.removeEventListener('mouseup', this._boundMouseup);
+        }
+
+        this.toggleBtn = null;
+        this.newFileBtn = null;
+        this.newFolderBtn = null;
+        this.resizeHandle = null;
+        this.filterInput = null;
+        this.sortSelect = null;
+        this.container = null;
+        this.contextMenu = null;
+        this.drawer = null;
+        this._boundResize = null;
+        this._boundMousemove = null;
+        this._boundMouseup = null;
+        this._boundKeydown = null;
+        this._boundKeyup = null;
+        this._boundDocumentClick = null;
+        this._boundOverflowOutsideClick = null;
+        this._boundOverflowResize = null;
+        this._boundBreakpointResize = null;
     }
 
     setNodes(nodes) {
@@ -119,7 +177,7 @@ export class ExplorerManager {
 
     getSavedWidth() {
         const stored = storageService.getNumber(STORAGE_KEYS.EXPLORER_DRAWER_WIDTH);
-        let value = Number.isFinite(stored) ? stored : Number(localStorage.getItem(this.drawerWidthKey));
+        const value = Number.isFinite(stored) ? stored : Number(localStorage.getItem(this.drawerWidthKey));
         return Number.isFinite(value) ? this.clampWidth(value) : this.defaultDrawerWidth;
     }
 
@@ -157,23 +215,25 @@ export class ExplorerManager {
         const startWidth = this.drawer.getBoundingClientRect().width;
         this.drawer.classList.add('resizing');
 
-        const onMouseMove = (moveEvent) => {
+        this._boundMousemove = (moveEvent) => {
             const delta = moveEvent.clientX - startX;
             this.setDrawerWidth(startWidth + delta, false);
             this.config.onLayoutChange?.();
         };
 
-        const onMouseUp = () => {
+        this._boundMouseup = () => {
             const finalWidth = this.drawer.getBoundingClientRect().width;
             this.setDrawerWidth(finalWidth, true);
             this.drawer.classList.remove('resizing');
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
+            document.removeEventListener('mousemove', this._boundMousemove);
+            document.removeEventListener('mouseup', this._boundMouseup);
+            this._boundMousemove = null;
+            this._boundMouseup = null;
             this.config.onLayoutChange?.();
         };
 
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('mousemove', this._boundMousemove);
+        document.addEventListener('mouseup', this._boundMouseup);
     }
 
     onGlobalKeydown(event) {

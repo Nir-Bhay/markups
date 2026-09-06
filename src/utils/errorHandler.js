@@ -125,7 +125,7 @@ class ErrorHandler {
      * @param {string} message
      * @private
      */
-    _showFallbackError(message) {
+    _showFallbackError(_message) {
         // Only show in DOM if the page isn't completely broken
         try {
             const existing = document.getElementById('markups-fallback-error');

@@ -5,7 +5,7 @@
  */
 
 import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
-import { storageService } from '../../core/storage/index.js';
+import { _storageService } from '../../core/storage/index.js';
 
 /**
  * FocusManager class

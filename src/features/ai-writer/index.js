@@ -282,7 +282,7 @@ class AIWriterManager {
         eventBus.emit(EVENTS.AI_GENERATION_STARTED);
 
         try {
-            const result = await aiService.streamMessage(actionPrompt, {
+            const _result = await aiService.streamMessage(actionPrompt, {
                 onChunk: (chunk, fullText) => {
                     aiWriterUI.appendChunk(chunk, fullText);
                     eventBus.emit(EVENTS.AI_GENERATION_STREAMING, { chunk, fullText });

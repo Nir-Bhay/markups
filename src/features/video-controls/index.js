@@ -8,7 +8,7 @@ import { debounce } from '../../utils/debounce.js';
 import { positionMediaPopover } from '../../utils/media-popover-position.js';
 import { normalizeVideoUrl, extractCaptionsUrl } from '../../utils/video-embed.js';
 
-const VIDEO_ATTR_RE = /\{\s*(?:video\s+)?([^}]*)\}/i;
+const _VIDEO_ATTR_RE = /\{\s*(?:video\s+)?([^}]*)\}/i;
 const WIDTH_RE = /(?:^|\s)width\s*=\s*([\w.%/-]+)/i;
 const ALIGN_RE = /(?:^|\s)align\s*=\s*(left|center|right)/i;
 const DATE_RE = /(?:^|\s)date\s*=\s*([^\s}]+)/i;
@@ -19,7 +19,7 @@ const SHADOW_RE = /(?:^|\s)shadow\s*=\s*(none|sm|md|lg)\b/i;
 const RADIUS_RE = /(?:^|\s)radius\s*=\s*(\d+)\b/i;
 const VALID_WIDTH_RE = /^(?:[1-9]\d?|100)%$|^(?:1[2-9]\d|[2-9]\d{2}|1[0-5]\d{2}|1600)px$/;
 const DEFAULT_ATTRS = { width: '100%', align: 'center' };
-const VIDEO_MODE_ATTR = 'data-video-mode';
+const _VIDEO_MODE_ATTR = 'data-video-mode';
 const VIDEO_MODE_RE = /(?:^|\s)(?:video\s+)?mode\s*=\s*(embed|link|smart)\b/i;
 const SHADOW_STEPS = ['none', 'sm', 'md', 'lg'];
 const RADIUS_STEPS = [0, 8, 16, 24];
@@ -186,7 +186,7 @@ export function updateVideoAttributesInMarkdown(markdown, url, attrs = {}) {
         return full.replace(existingAttrs || '', '').trimEnd() + replacementSuffix;
     };
 
-    const linked = source.replace(/(!?\[[^\]]*\]\(([^)\s]+)\))(\s*\{[^}\n]*\})?/g, (full, linkPart, foundUrl, existingAttrs = '') => {
+    const linked = source.replace(/(!?\[[^\]]*\]\(([^)\s]+)\))(\s*\{[^}\n]*\})?/g, (full, linkPart, foundUrl, _existingAttrs = '') => {
         if (replaced || normalizeVideoUrl(foundUrl) !== normalizedTarget) return full;
         replaced = true;
         return `${linkPart}${replacementSuffix}`;

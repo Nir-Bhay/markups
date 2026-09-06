@@ -38,10 +38,13 @@ describe('P0-1: stats module loads + dispose() works', () => {
 
     it('module imports without syntax error', async () => {
         // Increased timeout for batch runs; passes in isolation in ~4.5s
+        // Cold-cache import of stats module pulls in markdown/Prism/Mermaid/IndexedDB
+        // which can take 10-15s on first load. 25s gives comfortable headroom
+        // without hiding genuine regressions.
         const mod = await import('../../features/stats/index.js');
         expect(mod.statsManager).toBeDefined();
         expect(typeof mod.statsManager.dispose).toBe('function');
-    }, 10000);
+    }, 25000);
 
     it('dispose() does not throw and clears state', async () => {
         const mod = await import('../../features/stats/index.js');

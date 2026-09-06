@@ -1,20 +1,95 @@
 /**
- * Markdown Live Preview
- * Main entry point
- * 
- * This is the new modular version that replaces the monolithic main.js
- * @module main
+ * Markdown Live Preview — Modular entry point
+ *
+ * This file is the modular drop-in for src/main.js. It sets up the global
+ * editor/prism/mermaid/CSS environment that main.js does, then delegates the
+ * rest of the application lifecycle to src/app.js. All `marked.use(...)`
+ * calls live in src/core/markdown/index.js so we don't double-register
+ * extensions when both main.js and the modular app initialise markdown.
+ *
+ * To switch the production bundle to the modular app, change
+ * `index.html` line 141 from `/src/main.js` to `/src/main.modular.js` and
+ * set `MARKUPS_ENTRY=modular` (or `vite build --mode modular`).
+ *
+ * @module main.modular
  */
+
+// ============================================================
+// Monaco Editor Worker Setup
+// ============================================================
+import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+
+self.MonacoEnvironment = {
+    getWorker() {
+        return new editorWorker();
+    }
+};
+
+// ============================================================
+// Prism syntax highlighting
+// ============================================================
+import Prism from 'prismjs';
+
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-jsx';
+import 'prismjs/components/prism-tsx';
+import 'prismjs/components/prism-css';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-java';
+import 'prismjs/components/prism-c';
+import 'prismjs/components/prism-cpp';
+import 'prismjs/components/prism-csharp';
+import 'prismjs/components/prism-go';
+import 'prismjs/components/prism-rust';
+import 'prismjs/components/prism-ruby';
+import 'prismjs/components/prism-php';
+import 'prismjs/components/prism-sql';
+import 'prismjs/components/prism-bash';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-yaml';
+import 'prismjs/components/prism-markdown';
+import 'prismjs/components/prism-docker';
+import 'prismjs/components/prism-markup';
+import 'prismjs/components/prism-markup-templating';
+import 'prismjs/components/prism-ini';
+
+import 'prismjs/themes/prism-tomorrow.css';
+
+// Issue #42: prism-markup already covers XML; keep explicit aliases for fences.
+Prism.languages.xml = Prism.languages.markup;
+Prism.languages.XML = Prism.languages.markup;
+Prism.languages.svg = Prism.languages.svg || Prism.languages.markup;
+Prism.languages.html = Prism.languages.html || Prism.languages.markup;
+
+// ============================================================
+// Mermaid for diagrams
+// markdownService.initialize() also calls mermaid.initialize(); running it
+// here is harmless because the second call only re-applies options.
+// ============================================================
+import mermaid from 'mermaid';
+mermaid.initialize({ startOnLoad: false, theme: 'default', suppressErrors: true });
+
+// ============================================================
+// KaTeX CSS
+// ============================================================
+import 'katex/dist/katex.min.css';
+
+// ============================================================
+// Global styles
+// ============================================================
+import 'github-markdown-css/github-markdown-light.css';
+
+// ============================================================
+// Application entry
+// All marked extensions (KaTeX, alerts, footnotes, emoji, prism highlight)
+// are registered inside src/core/markdown/index.js → markdownService.initialize(),
+// which app.initialize() calls. Do NOT re-register them here.
+// ============================================================
 
 import { app } from './app.js';
 
-// Import global styles
-import 'katex/dist/katex.min.css';
-import 'prismjs/themes/prism.css';
-
-/**
- * DOM Ready handler
- */
 function onReady(callback) {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', callback);
@@ -23,9 +98,6 @@ function onReady(callback) {
     }
 }
 
-/**
- * Initialize application
- */
 onReady(async () => {
     try {
         await app.initialize({
@@ -59,7 +131,6 @@ onReady(async () => {
             };
             console.log('📚 Dev mode: Access app via window.mdPreview');
         }
-
     } catch (error) {
         console.error('Failed to initialize application:', error);
 
@@ -89,6 +160,5 @@ onReady(async () => {
     }
 });
 
-// Export for external use
 export { app };
 export default app;

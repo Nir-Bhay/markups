@@ -82,7 +82,6 @@ import mermaid from 'mermaid';
 mermaid.initialize({ startOnLoad: false, theme: 'default', suppressErrors: true });
 
 // KaTeX for math
-import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import markedKatex from 'marked-katex-extension';
 
@@ -91,10 +90,12 @@ import { CALLOUT_TYPES, toolbarManager, wrapSelection, wrapSelectionHtml, prefix
 import { noteStorage } from './core/storage/noteStorage.js';
 import { fileTreeStorage, ROOT_FOLDER_ID } from './core/storage/fileTreeStorage.js';
 import { runMigration, ensureFileTreeFromNotes } from './core/storage/migration.js';
+import { markdownService } from './core/markdown/index.js';
 import { createExplorerManager } from './features/explorer/index.js';
 
 // Import debounce utility for performance optimization
 import { debounce } from './utils/debounce.js';
+import { shouldRenderMermaid, shouldRenderKatex } from './utils/preview-gates.js';
 
 // Import UI components from modular architecture
 import { showToast } from './ui/toast/index.js';
@@ -111,7 +112,7 @@ import {
 import { appContextMenuManager } from './features/app-context-menu/index.js';
 import { createFocusTrap } from './utils/dom.js';
 import { validateImageSignature, sanitizeSvgToDataUrl } from './utils/file.js';
-import { initVersionHistory, setHasEdited } from './features/version-history/index.js';
+import { initVersionHistory, setHasEdited, stopVersionHistoryPolling } from './features/version-history/index.js';
 import { trackedAddEventListener } from './utils/listener-registry.js';
 
 // GFM Extensions
@@ -426,7 +427,16 @@ const initTabs = async () => {
     }
     documents = loadedDocs;
     await ensureAtLeastOneDocument();
-    activeDocId = documents[0]?.id || null;
+
+    // Restore last-active tab if it still exists; otherwise default to first
+    let restoredTabId = null;
+    try {
+        restoredTabId = localStorage.getItem('markups_last_active_tab');
+    } catch (_e) { /* ignore */ }
+    const restoredDoc = restoredTabId
+        ? documents.find((d) => d.id === restoredTabId)
+        : null;
+    activeDocId = restoredDoc?.id || documents[0]?.id || null;
 
     explorerManager = createExplorerManager({
         onOpenFile: (nodeId) => switchTab(nodeId),
@@ -449,7 +459,7 @@ const initTabs = async () => {
 };
 
 // Mouse wheel horizontal scroll for tabs
-const setupTabsWheelScroll = () => {
+const _setupTabsWheelScroll = () => {
     const tabsList = document.getElementById('tabs-list');
     if (!tabsList) return;
 
@@ -578,6 +588,11 @@ const switchTab = (id) => {
     } catch {
         // ignore sync/save failures during tab switch
     }
+
+    // Persist last-active tab so we can restore it on next page load
+    try {
+        localStorage.setItem('markups_last_active_tab', id);
+    } catch (_e) { /* ignore quota errors */ }
 
     activeDocId = id;
     window.__markups_activeDocId = activeDocId;
@@ -898,7 +913,7 @@ const setupEditor = () => {
             isShowingWelcome = false;
         }
 
-        const changed = editor?.getValue() != defaultInput;
+        const changed = editor?.getValue() !== defaultInput;
         if (changed) {
             hasEdited = true;
             setHasEdited(true);
@@ -1006,7 +1021,7 @@ marked.use(markedHighlight({
             const grammar = Prism.languages[language];
             if (typeof grammar !== 'object') return code;
             return Prism.highlight(code, grammar, language);
-        } catch (e) {
+        } catch (_e) {
             // Silently fall back for languages with missing dependencies
             return code;
         }
@@ -1257,7 +1272,7 @@ const updateActiveOutlineItem = () => {
     const headings = outputElement.querySelectorAll('h1, h2, h3, h4, h5, h6');
     if (headings.length === 0) return;
 
-    const scrollTop = previewElement.scrollTop;
+    const _scrollTop = previewElement.scrollTop;
     const threshold = 100; // Offset from top
 
     let activeHeading = null;
@@ -2163,6 +2178,16 @@ const convert = (markdown) => {
         });
 
         outputElement.innerHTML = sanitized;
+
+        // Gate KaTeX rendering: strip katex-rendered HTML when the setting is off.
+        // markedKatex is registered globally, so we remove its output from the
+        // preview DOM instead of unregistering the extension.
+        if (!shouldRenderKatex(currentSettings)) {
+            outputElement.querySelectorAll('.katex, .katex-display').forEach((el) => {
+                el.remove();
+            });
+        }
+
         normalizeCodeLanguageClasses(outputElement);
 
         // Issue #39: Annotate preview elements with data-source-line
@@ -2202,7 +2227,9 @@ const convert = (markdown) => {
         requestAnimationFrame(() => {
             if (token !== _convertToken) return;
 
-            const mermaidBlocks = outputElement.querySelectorAll('pre code.language-mermaid');
+            const mermaidBlocks = shouldRenderMermaid(currentSettings)
+                ? outputElement.querySelectorAll('pre code.language-mermaid')
+                : [];
             if (mermaidBlocks.length > 0) {
                 mermaidBlocks.forEach(block => {
                     const pre = block.parentElement;
@@ -2393,7 +2420,7 @@ const addCodeCopyButtons = () => {
 
 // Reset input text
 const reset = () => {
-    const changed = editor?.getValue() != defaultInput;
+    const changed = editor?.getValue() !== defaultInput;
     if (hasEdited || changed) {
         const confirmed = window.confirm(confirmationMessage);
         if (!confirmed) {
@@ -2456,12 +2483,12 @@ const initCursorSync = (settings) => {
     });
 };
 
-const enableScrollBarSync = () => {
+const _enableScrollBarSync = () => {
     scrollBarSync = true;
     scrollSync.setEnabled(true);
 };
 
-const disableScrollBarSync = () => {
+const _disableScrollBarSync = () => {
     scrollBarSync = false;
     scrollSync.setEnabled(false);
 };
@@ -2738,7 +2765,7 @@ const setupTemplatesButton = () => {
 
     // Populate grid once
     if (grid && grid.children.length === 0) {
-        Object.entries(TEMPLATES).forEach(([key, template]) => {
+        Object.entries(TEMPLATES).forEach(([_key, template]) => {
             const card = document.createElement('button');
             card.type = 'button';
             card.className = 'template-card';
@@ -2856,7 +2883,7 @@ const setupSnippetsButton = () => {
     const dropdown = document.querySelector("#snippets-dropdown");
 
     if (dropdown && dropdown.children.length === 0) {
-        Object.entries(SNIPPETS).forEach(([key, snippet]) => {
+        Object.entries(SNIPPETS).forEach(([_key, snippet]) => {
             const item = document.createElement('div');
             item.className = 'dropdown-item';
             item.innerHTML = `
@@ -2876,6 +2903,40 @@ const setupSnippetsButton = () => {
             dropdown.appendChild(item);
         });
     }
+};
+
+// AI Writer — lazy-loaded on first click, same pattern as app.js:52-58.
+// The button and panel are present in index.html but main.js had no handler.
+let _aiWriterManager = null;
+async function getAiWriterManager() {
+    if (!_aiWriterManager) {
+        try {
+            const mod = await import('./features/ai-writer/index.js');
+            _aiWriterManager = mod.aiWriterManager;
+            _aiWriterManager.initialize();
+        } catch (err) {
+            console.warn('AI Writer load error:', err);
+            showToast('AI Writer failed to load', 'error', 3000);
+        }
+    }
+    return _aiWriterManager;
+}
+
+const setupAiWriterButton = () => {
+    const aiWriterBtn = document.querySelector("#ai-writer-button");
+    if (!aiWriterBtn) return;
+
+    aiWriterBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await getAiWriterManager();
+        // Toggle panel visibility; aiWriterUI.renderPanel already called by initialize()
+        const panel = document.querySelector("#ai-writer-panel");
+        if (panel) {
+            const isHidden = panel.style.display === "none";
+            panel.style.display = isHidden ? "block" : "none";
+            showToast(isHidden ? "AI Writer Opened" : "AI Writer Closed", "info", 1500);
+        }
+    });
 };
 
 const positionToolbarDropdown = (sheet, trigger) => {
@@ -5069,6 +5130,7 @@ const setupPreviewSettings = () => {
     if (mathRenderingCheckbox) {
         mathRenderingCheckbox.addEventListener('change', (e) => {
             currentSettings.preview.mathRendering = e.target.checked;
+            markdownService.setKatexEnabled(e.target.checked);
             updatePreview();
             showToast(e.target.checked ? 'Math rendering enabled' : 'Math rendering disabled', 'info', 1500);
         });
@@ -5079,6 +5141,7 @@ const setupPreviewSettings = () => {
     if (mermaidCheckbox) {
         mermaidCheckbox.addEventListener('change', (e) => {
             currentSettings.preview.mermaid = e.target.checked;
+            markdownService.setMermaidEnabled(e.target.checked);
             updatePreview();
             showToast(e.target.checked ? 'Mermaid diagrams enabled' : 'Mermaid diagrams disabled', 'info', 1500);
         });
@@ -5258,7 +5321,7 @@ const applyTheme = (theme) => {
                 startOnLoad: false,
                 theme: isDark ? 'dark' : 'default'
             });
-        } catch (e) { /* mermaid not ready yet */ }
+        } catch (_e) { /* mermaid not ready yet */ }
     }
 };
 
@@ -5723,24 +5786,49 @@ const setupFocusMode = () => {
 // ----- Typewriter Mode -----
 
 let isTypewriterMode = false;
+let typewriterCursorListener = null;
+
+const enterTypewriterMode = () => {
+    const typewriterBtn = document.querySelector("#typewriter-button");
+    if (typewriterBtn) typewriterBtn.classList.add('active');
+
+    // Center current line immediately
+    const position = editor?.getPosition();
+    if (position) {
+        editor?.revealLineInCenter(position.lineNumber);
+    }
+
+    // Track cursor and re-center on every move (module parity, better UX
+    // than centering once at enable time)
+    if (editor && !typewriterCursorListener) {
+        typewriterCursorListener = editor.onDidChangeCursorPosition((e) => {
+            if (isTypewriterMode) {
+                editor?.revealLineInCenter(e.position.lineNumber);
+            }
+        });
+    }
+
+    showToast('Typewriter Mode Enabled', 'success', 1500);
+};
+
+const exitTypewriterMode = () => {
+    const typewriterBtn = document.querySelector("#typewriter-button");
+    if (typewriterBtn) typewriterBtn.classList.remove('active');
+
+    if (typewriterCursorListener) {
+        typewriterCursorListener.dispose();
+        typewriterCursorListener = null;
+    }
+
+    showToast('Typewriter Mode Disabled', 'info', 1500);
+};
 
 const toggleTypewriterMode = () => {
-    const typewriterBtn = document.querySelector("#typewriter-button");
     isTypewriterMode = !isTypewriterMode;
-
     if (isTypewriterMode) {
-        if (typewriterBtn) typewriterBtn.classList.add('active');
-
-        // Center current line immediately
-        const position = editor?.getPosition();
-        if (position) {
-            editor?.revealLineInCenter(position.lineNumber);
-        }
-
-        showToast('Typewriter Mode Enabled', 'success', 1500);
+        enterTypewriterMode();
     } else {
-        if (typewriterBtn) typewriterBtn.classList.remove('active');
-        showToast('Typewriter Mode Disabled', 'info', 1500);
+        exitTypewriterMode();
     }
 };
 
@@ -6267,7 +6355,7 @@ const loadLastContent = () => {
     return lastContent;
 };
 
-const saveLastContent = (content) => {
+const _saveLastContent = (content) => {
     const expiredAt = new Date(2099, 1, 1);
     Storehouse.setItem(localStorageNamespace, localStorageKey, content, expiredAt);
     showAutosaveIndicator();
@@ -6868,10 +6956,10 @@ const setupMobileUI = () => {
 };
 
 // Handle mobile drawer actions - now handled by mobile module
-const handleMobileDrawerAction = (action) => { };
+const _handleMobileDrawerAction = (_action) => { };
 
 // Handle FAB actions - now handled by mobile module
-const handleFabAction = (action) => { };
+const _handleFabAction = (_action) => { };
 
 const setupDivider = () => {
     let lastLeftRatio = 0.5;
@@ -6894,7 +6982,7 @@ const setupDivider = () => {
     };
 
     // Helper: get left sidebar offset, used only for coordinate translation.
-    const getOutlineOffset = () => {
+    const _getOutlineOffset = () => {
         const explorer = document.getElementById('explorer-drawer');
         return explorer && explorer.classList.contains('open') ? explorer.offsetWidth : 0;
     };
@@ -7220,6 +7308,9 @@ const initializeApp = async () => {
     // Initialize stats with current content
     updateStats(editor?.getValue());
 
+    // AI Writer — lazy-loaded module, same pattern as image-resize
+    setupAiWriterButton();
+
     // Custom context menu
     appContextMenuManager.initialize();
 
@@ -7227,24 +7318,30 @@ const initializeApp = async () => {
     import('./features/image-resize/index.js')
         .then(({ initImageResize }) => initImageResize({ editor }))
         .catch((err) => console.warn('Image resize module load error:', err));
+
+    // Auto-focus the editor so users can start typing immediately on load.
+    // Skip on touch devices where the on-screen keyboard would jump up
+    // and steal viewport space.
+    if (editor && !('ontouchstart' in window)) {
+        // Defer focus to next tick so layout settles first
+        setTimeout(() => {
+            try { editor.focus(); } catch (_e) { /* ignore */ }
+        }, 0);
+    }
 };
 
 // ----- PWA Support -----
 
-let deferredPrompt;
-
 // Capture the install prompt event
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
-    deferredPrompt = e;
     // Show install button/prompt if needed
-    if (import.meta.env.DEV) console.log('PWA install prompt available');
+
 });
 
 // Handle app installed
 window.addEventListener('appinstalled', () => {
-    if (import.meta.env.DEV) console.log('PWA installed successfully');
-    deferredPrompt = null;
+
 });
 
 // Register service worker
@@ -7252,15 +7349,13 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
-                if (import.meta.env.DEV) console.log('ServiceWorker registered:', registration.scope);
 
                 // Check for updates periodically (every 30 minutes)
                 setInterval(() => {
                     registration.update();
                 }, APP_CONFIG.SERVICE_WORKER_UPDATE_INTERVAL_MS);
             })
-            .catch((error) => {
-                if (import.meta.env.DEV) console.log('ServiceWorker registration failed:', error);
+            .catch((_error) => {
             });
     });
 }
@@ -7274,6 +7369,7 @@ window.addEventListener("load", () => {
     window.addEventListener('pagehide', () => {
         try {
             appContextMenuManager.dispose();
+            stopVersionHistoryPolling();
         } catch {
             // ignore cleanup errors
         }
