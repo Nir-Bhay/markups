@@ -1005,7 +1005,7 @@ marked.use(markedHighlight({
             const grammar = Prism.languages[language];
             if (typeof grammar !== 'object') return code;
             return Prism.highlight(code, grammar, language);
-        } catch (e) {
+        } catch (_e) {
             // Silently fall back for languages with missing dependencies
             return code;
         }
@@ -2737,7 +2737,7 @@ const setupTemplatesButton = () => {
 
     // Populate grid once
     if (grid && grid.children.length === 0) {
-        Object.entries(TEMPLATES).forEach(([key, template]) => {
+        Object.entries(TEMPLATES).forEach(([_key, template]) => {
             const card = document.createElement('button');
             card.type = 'button';
             card.className = 'template-card';
@@ -2855,7 +2855,7 @@ const setupSnippetsButton = () => {
     const dropdown = document.querySelector("#snippets-dropdown");
 
     if (dropdown && dropdown.children.length === 0) {
-        Object.entries(SNIPPETS).forEach(([key, snippet]) => {
+        Object.entries(SNIPPETS).forEach(([_key, snippet]) => {
             const item = document.createElement('div');
             item.className = 'dropdown-item';
             item.innerHTML = `
@@ -5257,7 +5257,7 @@ const applyTheme = (theme) => {
                 startOnLoad: false,
                 theme: isDark ? 'dark' : 'default'
             });
-        } catch (e) { /* mermaid not ready yet */ }
+        } catch (_e) { /* mermaid not ready yet */ }
     }
 };
 
@@ -6266,7 +6266,7 @@ const loadLastContent = () => {
     return lastContent;
 };
 
-const saveLastContent = (content) => {
+const _saveLastContent = (content) => {
     const expiredAt = new Date(2099, 1, 1);
     Storehouse.setItem(localStorageNamespace, localStorageKey, content, expiredAt);
     showAutosaveIndicator();
@@ -6867,10 +6867,10 @@ const setupMobileUI = () => {
 };
 
 // Handle mobile drawer actions - now handled by mobile module
-const handleMobileDrawerAction = (_action) => { };
+const _handleMobileDrawerAction = (_action) => { };
 
 // Handle FAB actions - now handled by mobile module
-const handleFabAction = (_action) => { };
+const _handleFabAction = (_action) => { };
 
 const setupDivider = () => {
     let lastLeftRatio = 0.5;
@@ -6893,7 +6893,7 @@ const setupDivider = () => {
     };
 
     // Helper: get left sidebar offset, used only for coordinate translation.
-    const getOutlineOffset = () => {
+    const _getOutlineOffset = () => {
         const explorer = document.getElementById('explorer-drawer');
         return explorer && explorer.classList.contains('open') ? explorer.offsetWidth : 0;
     };
@@ -7253,7 +7253,7 @@ if ('serviceWorker' in navigator) {
                     registration.update();
                 }, APP_CONFIG.SERVICE_WORKER_UPDATE_INTERVAL_MS);
             })
-            .catch((error) => {
+            .catch((_error) => {
             });
     });
 }
