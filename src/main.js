@@ -90,10 +90,12 @@ import { CALLOUT_TYPES, toolbarManager, wrapSelection, wrapSelectionHtml, prefix
 import { noteStorage } from './core/storage/noteStorage.js';
 import { fileTreeStorage, ROOT_FOLDER_ID } from './core/storage/fileTreeStorage.js';
 import { runMigration, ensureFileTreeFromNotes } from './core/storage/migration.js';
+import { markdownService } from './core/markdown/index.js';
 import { createExplorerManager } from './features/explorer/index.js';
 
 // Import debounce utility for performance optimization
 import { debounce } from './utils/debounce.js';
+import { shouldRenderMermaid, shouldRenderKatex } from './utils/preview-gates.js';
 
 // Import UI components from modular architecture
 import { showToast } from './ui/toast/index.js';
@@ -2162,6 +2164,16 @@ const convert = (markdown) => {
         });
 
         outputElement.innerHTML = sanitized;
+
+        // Gate KaTeX rendering: strip katex-rendered HTML when the setting is off.
+        // markedKatex is registered globally, so we remove its output from the
+        // preview DOM instead of unregistering the extension.
+        if (!shouldRenderKatex(currentSettings)) {
+            outputElement.querySelectorAll('.katex, .katex-display').forEach((el) => {
+                el.remove();
+            });
+        }
+
         normalizeCodeLanguageClasses(outputElement);
 
         // Issue #39: Annotate preview elements with data-source-line
@@ -2201,7 +2213,9 @@ const convert = (markdown) => {
         requestAnimationFrame(() => {
             if (token !== _convertToken) return;
 
-            const mermaidBlocks = outputElement.querySelectorAll('pre code.language-mermaid');
+            const mermaidBlocks = shouldRenderMermaid(currentSettings)
+                ? outputElement.querySelectorAll('pre code.language-mermaid')
+                : [];
             if (mermaidBlocks.length > 0) {
                 mermaidBlocks.forEach(block => {
                     const pre = block.parentElement;
@@ -5068,6 +5082,7 @@ const setupPreviewSettings = () => {
     if (mathRenderingCheckbox) {
         mathRenderingCheckbox.addEventListener('change', (e) => {
             currentSettings.preview.mathRendering = e.target.checked;
+            markdownService.setKatexEnabled(e.target.checked);
             updatePreview();
             showToast(e.target.checked ? 'Math rendering enabled' : 'Math rendering disabled', 'info', 1500);
         });
@@ -5078,6 +5093,7 @@ const setupPreviewSettings = () => {
     if (mermaidCheckbox) {
         mermaidCheckbox.addEventListener('change', (e) => {
             currentSettings.preview.mermaid = e.target.checked;
+            markdownService.setMermaidEnabled(e.target.checked);
             updatePreview();
             showToast(e.target.checked ? 'Mermaid diagrams enabled' : 'Mermaid diagrams disabled', 'info', 1500);
         });
