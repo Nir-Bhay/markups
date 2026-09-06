@@ -5,7 +5,7 @@
  */
 
 import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
-import { markdownService } from '../../core/markdown/index.js';
+import { _markdownService } from '../../core/markdown/index.js';
 import { editorService } from '../../core/editor/index.js';
 import { debounce } from '../../utils/debounce.js';
 
@@ -108,7 +108,7 @@ const LINTER_RULES = [
 
         lines.forEach((line, index) => {
         const matches = line.matchAll(/!\[\s*\]\([^)]+\)/g);
-        for (const match of matches) {
+        for (const _match of matches) {
         issues.push({
         line: index + 1,
         message: 'Image missing alt text for accessibility'

@@ -138,15 +138,15 @@ export function prefixLine(prefix) {
 
     // Check if all selected lines already have the prefix
     for (let i = startLine; i <= endLine; i++) {
-        const content = editor.getModel().getLineContent(i);
-        if (!content.startsWith(prefix)) {
+        const _content = editor.getModel().getLineContent(i);
+        if (!_content.startsWith(prefix)) {
             allHavePrefix = false;
             break;
         }
     }
 
     for (let i = startLine; i <= endLine; i++) {
-        const content = editor.getModel().getLineContent(i);
+        const _content = editor.getModel().getLineContent(i);
         if (allHavePrefix) {
             // Remove prefix
             edits.push({

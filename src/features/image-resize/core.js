@@ -820,7 +820,7 @@ export class ImageResizeManager {
         const preview = document.getElementById('output');
         if (!preview) return;
 
-        this._mutationObserver = new MutationObserver((mutations) => {
+        this._mutationObserver = new MutationObserver((_mutations) => {
             if (!this.activeImage) return;
 
             // Check if our active image was removed from DOM
@@ -1665,7 +1665,7 @@ export class ImageResizeManager {
        ───────────────────────────────────────────────────────────────── */
 
     /** @private */
-    _toggleInfoPanel(img, triggerBtn) {
+    _toggleInfoPanel(img, _triggerBtn) {
         const existing = this.resizeOverlay?.querySelector('.ir-info-panel');
         if (existing) {
             existing.remove();
@@ -1898,18 +1898,18 @@ export class ImageResizeManager {
                         new ClipboardItem({ 'image/png': blob })
                     ]);
                     toast.show('Image copied to clipboard', 'success');
-                } catch (err) {
+                } catch (_err) {
                     // Fallback: copy src URL
                     try {
                         await navigator.clipboard.writeText(img.src);
                         toast.show('Image URL copied', 'success');
-                    } catch (err2) {
+                    } catch (_err2) {
                         toast.show('Copy failed', 'error');
                     }
                 }
             }, 'image/png');
-        } catch (e) {
-            toast.show('Copy failed: ' + e.message, 'error');
+        } catch (_e) {
+            toast.show('Copy failed: ' + _e.message, 'error');
         }
     }
 
@@ -1927,7 +1927,7 @@ export class ImageResizeManager {
             link.href = canvas.toDataURL('image/png');
             link.click();
             toast.show('Download started', 'success');
-        } catch (e) {
+        } catch (_e) {
             // Fallback for cross-origin images
             const link = document.createElement('a');
             link.download = `image_${Date.now()}`;
@@ -2097,14 +2097,14 @@ export class ImageResizeManager {
        ───────────────────────────────────────────────────────────────── */
 
     /** @private */
-    _onMouseUp(e) {
+    _onMouseUp(_e) {
         if (this.activeHandle) {
             this._finishResize();
         }
     }
 
     /** @private */
-    _onTouchEnd(e) {
+    _onTouchEnd(_e) {
         if (this.activeHandle) {
             this._finishResize();
         }

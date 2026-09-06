@@ -270,8 +270,8 @@ class ModesManager {
         if (!handle) return;
 
         let isResizing = false;
-        let startPos = 0;
-        let startRatio = this.splitRatio;
+        let _startPos = 0;
+        let _startRatio = this.splitRatio;
 
         const onMouseMove = (e) => {
             if (!isResizing || !this.mainContainer) return;
@@ -300,10 +300,10 @@ class ModesManager {
             if (this.currentMode !== VIEW_MODES.SPLIT) return;
 
             isResizing = true;
-            startPos = this.orientation === SPLIT_ORIENTATION.HORIZONTAL
+            _startPos = this.orientation === SPLIT_ORIENTATION.HORIZONTAL
                 ? e.clientX
                 : e.clientY;
-            startRatio = this.splitRatio;
+            _startRatio = this.splitRatio;
 
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);

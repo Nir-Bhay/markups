@@ -265,7 +265,7 @@ class AIService {
                 return { success: false, message: error.message, model: config.model };
             }
 
-            const data = await response.json();
+            const _data = await response.json();
             return {
                 success: true,
                 message: 'Connection successful!',
