@@ -27,6 +27,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reduce lint warnings from 55 → 23 via `eslint --fix`, `_`-prefixed unused
   vars/catches, and `caughtErrorsIgnorePattern: '^_'`
 - Remove unused named exports and dead assignments in `src/main.js`
+- Remove dead `katex` import from `src/main.js:85` (renderer lives in
+  `src/core/markdown/index.js`)
+
+### Memory Hygiene
+- Add idempotent `dispose()` to `ExplorerManager` that removes every listener
+  added in `initialize()`, nulls DOM references, and cleans up active resize
+  handlers
+- Wire `stopVersionHistoryPolling()` into the existing `pagehide` teardown
+  handler in `src/main.js` so the version-history `setInterval` is cleared on
+  unload
+- Verify `focus` / `fullscreen` / `goals` / `typewriter` already have top-level
+  `dispose()` methods (no nesting defects found)
 
 ### Verification
 - 320/320 tests pass (47 test files, 10 new tests added in this release)
