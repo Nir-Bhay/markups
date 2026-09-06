@@ -67,6 +67,7 @@ export default defineConfig(({ mode }) => {
             assetsInlineLimit: 4096,
             rollupOptions: {
                 input,
+                external: ['monaco-vim'],
                 output: {
                     // Long-term caching: include content hash in the bundle file names.
                     entryFileNames: 'assets/[name]-[hash].js',

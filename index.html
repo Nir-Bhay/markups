@@ -1178,6 +1178,7 @@
         <div class="status-item">
             <span>Markdown</span>
         </div>
+        <div class="status-item hidden" id="vim-status"></div>
 
         <!-- Mobile Menu Toggle -->
         <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
@@ -1434,6 +1435,27 @@
                             </label>
                         </div>
                     </section>
+
+                    <div class="settings-divider"></div>
+
+                    <section class="settings-section">
+                        <h3 class="settings-section-title">
+                            <span class="material-symbols-outlined">keyboard</span>
+                            Keybindings
+                        </h3>
+                        <div class="settings-group">
+                            <div class="settings-field">
+                                <label class="settings-field-label">Editor Keybindings</label>
+                                <div class="settings-select-wrapper">
+                                    <select id="editor-keybindings-dropdown" class="settings-select">
+                                        <option value="default" selected>Default</option>
+                                        <option value="vim">Vim</option>
+                                    </select>
+                                    <span class="material-symbols-outlined">expand_more</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
                 <!-- Preview Tab -->
@@ -1484,6 +1506,19 @@
                                     <span class="settings-toggle-slider"></span>
                                 </div>
                             </label>
+                        </div>
+                    </section>
+
+                    <div class="settings-divider"></div>
+
+                    <section class="settings-section">
+                        <h3 class="settings-section-title">
+                            <span class="material-symbols-outlined">css</span>
+                            Custom CSS
+                        </h3>
+                        <div class="settings-group">
+                            <label class="settings-field-label" for="custom-css-textarea">Custom CSS (preview only)</label>
+                            <textarea id="custom-css-textarea" class="settings-textarea" placeholder="body { background: yellow; }" rows="6"></textarea>
                         </div>
                     </section>
                 </div>
@@ -2491,6 +2526,9 @@
             </button>
         </div>
     </nav>
+
+    <!-- Slash Commands Menu -->
+    <div id="slash-menu" class="slash-menu" style="display:none"></div>
 
 </body>
 

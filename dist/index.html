@@ -437,9 +437,9 @@
       ]
     }
     </script>
-  <script type="module" crossorigin src="/assets/main-D0qlEKgi.js"></script>
+  <script type="module" crossorigin src="/assets/main-w3EaHXBt.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/assets/monaco-editor-pJzejwz-.js">
+  <link rel="modulepreload" crossorigin href="/assets/monaco-editor-CHpa4OVi.js">
   <link rel="modulepreload" crossorigin href="/assets/katex-vendor-DR829_GP.js">
   <link rel="modulepreload" crossorigin href="/assets/markdown-vendor-HZtd7iGO.js">
   <link rel="modulepreload" crossorigin href="/assets/highlight-vendor-BmwFEsO-.js">
@@ -1188,6 +1188,7 @@
         <div class="status-item">
             <span>Markdown</span>
         </div>
+        <div class="status-item hidden" id="vim-status"></div>
 
         <!-- Mobile Menu Toggle -->
         <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
@@ -1444,6 +1445,27 @@
                             </label>
                         </div>
                     </section>
+
+                    <div class="settings-divider"></div>
+
+                    <section class="settings-section">
+                        <h3 class="settings-section-title">
+                            <span class="material-symbols-outlined">keyboard</span>
+                            Keybindings
+                        </h3>
+                        <div class="settings-group">
+                            <div class="settings-field">
+                                <label class="settings-field-label">Editor Keybindings</label>
+                                <div class="settings-select-wrapper">
+                                    <select id="editor-keybindings-dropdown" class="settings-select">
+                                        <option value="default" selected>Default</option>
+                                        <option value="vim">Vim</option>
+                                    </select>
+                                    <span class="material-symbols-outlined">expand_more</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
                 <!-- Preview Tab -->
@@ -1494,6 +1516,19 @@
                                     <span class="settings-toggle-slider"></span>
                                 </div>
                             </label>
+                        </div>
+                    </section>
+
+                    <div class="settings-divider"></div>
+
+                    <section class="settings-section">
+                        <h3 class="settings-section-title">
+                            <span class="material-symbols-outlined">css</span>
+                            Custom CSS
+                        </h3>
+                        <div class="settings-group">
+                            <label class="settings-field-label" for="custom-css-textarea">Custom CSS (preview only)</label>
+                            <textarea id="custom-css-textarea" class="settings-textarea" placeholder="body { background: yellow; }" rows="6"></textarea>
                         </div>
                     </section>
                 </div>
@@ -2501,6 +2536,9 @@
             </button>
         </div>
     </nav>
+
+    <!-- Slash Commands Menu -->
+    <div id="slash-menu" class="slash-menu" style="display:none"></div>
 
 </body>
 

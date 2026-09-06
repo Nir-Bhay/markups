@@ -363,6 +363,7 @@ let isShowingWelcome = false;
 let documents = [];
 let activeDocId = null;
 let explorerManager = null;
+let backlinksPanel = null;
 
 const mapNoteToDocument = (note, node) => ({
     id: node.id,
@@ -2179,6 +2180,9 @@ const convert = (markdown) => {
 
         outputElement.innerHTML = sanitized;
 
+        // Feature 2: Custom CSS injection
+        injectCustomCss(outputElement);
+
         // Gate KaTeX rendering: strip katex-rendered HTML when the setting is off.
         // markedKatex is registered globally, so we remove its output from the
         // preview DOM instead of unregistering the extension.
@@ -2280,6 +2284,21 @@ const debouncedConvert = debounce((markdown) => {
 const updatePreview = () => {
     if (!editor) return;
     convert(editor?.getValue());
+};
+
+const injectCustomCss = (outputElement) => {
+    const css = localStorage.getItem('markups_custom_css');
+    let style = outputElement.querySelector('#markups-user-css');
+    if (!css) {
+        if (style) style.remove();
+        return;
+    }
+    if (!style) {
+        style = document.createElement('style');
+        style.id = 'markups-user-css';
+        outputElement.appendChild(style);
+    }
+    style.textContent = css;
 };
 
 const applyMarkdownFromPreviewEdit = (markdown) => {
@@ -4804,7 +4823,8 @@ const getDefaultSettings = () => ({
         wordWrap: true,
         lineNumbers: true,
         minimap: false,
-        bracketMatching: true
+        bracketMatching: true,
+        keybindings: 'default'
     },
     preview: {
         livePreview: true,
@@ -4934,6 +4954,7 @@ const setupSettingsModal = () => {
         setCheckbox('line-numbers-checkbox', currentSettings.editor.lineNumbers);
         setCheckbox('minimap-checkbox', currentSettings.editor.minimap);
         setCheckbox('bracket-matching-checkbox', currentSettings.editor.bracketMatching);
+        setDropdown('editor-keybindings-dropdown', currentSettings.editor.keybindings);
 
         // Preview
         setCheckbox('live-preview-checkbox', currentSettings.preview.livePreview);
@@ -5103,6 +5124,17 @@ const setupEditorSettings = () => {
             showToast(e.target.checked ? 'Bracket matching enabled' : 'Bracket matching disabled', 'info', 1500);
         });
     }
+
+    // Keybindings
+    const keybindingsDropdown = document.getElementById('editor-keybindings-dropdown');
+    if (keybindingsDropdown) {
+        keybindingsDropdown.addEventListener('change', (e) => {
+            currentSettings.editor.keybindings = e.target.value || 'default';
+            saveSettings(currentSettings);
+            applyKeybindingsSetting();
+            showToast(`Keybindings: ${e.target.value}`, 'info', 1500);
+        });
+    }
 };
 
 const setupPreviewSettings = () => {
@@ -5217,6 +5249,41 @@ const applyAllSettings = () => {
 
     // Update preview
     updatePreview();
+};
+
+// Feature 3: Vim keybindings
+let vimMode = null;
+
+const applyKeybindingsSetting = async () => {
+    const statusEl = document.getElementById('vim-status');
+    if (vimMode) {
+        try { vimMode.dispose(); } catch (_e) { /* ignore */ }
+        vimMode = null;
+    }
+    if (!statusEl) return;
+    statusEl.textContent = '';
+    statusEl.classList.add('hidden');
+
+    if (currentSettings.editor.keybindings === 'vim' && editor) {
+        let initVimMode;
+        try {
+            const mod = await import('monaco-vim');
+            initVimMode = mod.default;
+        } catch (_e) {
+            console.warn('monaco-vim not available:', _e);
+            return;
+        }
+        try {
+            vimMode = initVimMode(editor, statusEl);
+            statusEl.classList.remove('hidden');
+        } catch (_e) {
+            console.warn('Failed to init vim mode:', _e);
+        }
+    }
+};
+
+const setupVimKeybindings = () => {
+    applyKeybindingsSetting().catch((_e) => { /* ignore */ });
 };
 
 // ----- theme switching -----
@@ -5915,10 +5982,19 @@ const setupKeyboardShortcuts = () => {
             event.preventDefault();
             downloadMarkdown();
         }
-        // Ctrl/Cmd + Shift + P: Print document
-        else if (ctrlKey && event.shiftKey && event.key === 'p') {
+        // Ctrl/Cmd + Shift + P: Open command palette
+        else if (ctrlKey && event.shiftKey && event.key === 'P') {
             event.preventDefault();
-            printDocument();
+            const palette = document.querySelector('.command-palette-modal');
+            if (palette) {
+                palette.classList.add('active');
+                const input = palette.querySelector('.command-palette-input');
+                if (input) {
+                    input.value = '';
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.focus();
+                }
+            }
         }
         // Ctrl/Cmd + P: Export PDF
         else if (ctrlKey && event.key === 'p') {
@@ -7269,7 +7345,16 @@ const initializeApp = async () => {
     setupLinter();
     setupGoals();
     setupKeyboardShortcuts();
+    setupVimKeybindings();
     setupGlobalEscapeKey();
+
+    // Command palette — lazy-loaded module
+    import('./features/command-palette/index.js')
+        .then(({ CommandPalette }) => {
+            const palette = new CommandPalette();
+            palette.initialize();
+        })
+        .catch((err) => console.warn('Command palette module load error:', err));
 
     const themeSettings = loadThemeSettings() || 'vs';
     initThemeSelector(themeSettings);
@@ -7328,6 +7413,34 @@ const initializeApp = async () => {
             try { editor.focus(); } catch (_e) { /* ignore */ }
         }, 0);
     }
+
+    // Slash commands menu — lazy-loaded after editor init (Sprint 3.3)
+    setupSlashCommands();
+
+    // Backlinks + wikilinks panel — lazy-loaded after tabs/editor are ready
+    setupBacklinksPanel();
+};
+
+const setupSlashCommands = () => {
+    import('./features/slash-commands/index.js')
+        .then(({ slashCommandsManager }) => slashCommandsManager.initialize(editor))
+        .catch((err) => console.warn('Slash commands module load error:', err));
+};
+
+const setupBacklinksPanel = async () => {
+    try {
+        const mod = await import('./features/backlinks/index.js');
+        backlinksPanel = new mod.BacklinksPanel({
+            noteStorage,
+            getDocuments: () => documents,
+            getActiveDocId: () => activeDocId,
+            onSwitchTab: switchTab,
+            editor
+        });
+        backlinksPanel.initialize();
+    } catch (err) {
+        console.warn('Backlinks module load error:', err);
+    }
 };
 
 // ----- PWA Support -----
@@ -7370,6 +7483,7 @@ window.addEventListener("load", () => {
         try {
             appContextMenuManager.dispose();
             stopVersionHistoryPolling();
+            backlinksPanel?.dispose();
         } catch {
             // ignore cleanup errors
         }
