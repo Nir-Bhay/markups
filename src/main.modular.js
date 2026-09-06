@@ -1,15 +1,22 @@
 /**
- * Markdown Live Preview
- * Main entry point (modular)
+ * Markdown Live Preview — Modular entry point
  *
- * Feature-complete drop-in replacement for src/main.js.
- * @module main
+ * This file is the modular drop-in for src/main.js. It sets up the global
+ * editor/prism/mermaid/CSS environment that main.js does, then delegates the
+ * rest of the application lifecycle to src/app.js. All `marked.use(...)`
+ * calls live in src/core/markdown/index.js so we don't double-register
+ * extensions when both main.js and the modular app initialise markdown.
+ *
+ * To switch the production bundle to the modular app, change
+ * `index.html` line 141 from `/src/main.js` to `/src/main.modular.js` and
+ * set `MARKUPS_ENTRY=modular` (or `vite build --mode modular`).
+ *
+ * @module main.modular
  */
 
 // ============================================================
 // Monaco Editor Worker Setup
 // ============================================================
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 
@@ -22,7 +29,6 @@ self.MonacoEnvironment = {
 // ============================================================
 // Prism syntax highlighting
 // ============================================================
-import { markedHighlight } from 'marked-highlight';
 import Prism from 'prismjs';
 
 import 'prismjs/components/prism-javascript';
@@ -59,100 +65,31 @@ Prism.languages.html = Prism.languages.html || Prism.languages.markup;
 
 // ============================================================
 // Mermaid for diagrams
+// markdownService.initialize() also calls mermaid.initialize(); running it
+// here is harmless because the second call only re-applies options.
 // ============================================================
 import mermaid from 'mermaid';
 mermaid.initialize({ startOnLoad: false, theme: 'default', suppressErrors: true });
 
 // ============================================================
-// KaTeX for math
+// KaTeX CSS
 // ============================================================
 import 'katex/dist/katex.min.css';
-import markedKatex from 'marked-katex-extension';
 
 // ============================================================
 // Global styles
 // ============================================================
 import 'github-markdown-css/github-markdown-light.css';
-import exportCss from './styles/export.css?raw';
-
-// ============================================================
-// Marked extensions
-// ============================================================
-import { marked } from 'marked';
-import markedAlert from 'marked-alert';
-import markedFootnote from 'marked-footnote';
-import { markedEmoji } from 'marked-emoji';
-import { emojiMarkedOptions } from './utils/emoji-shortcodes.js';
-
-// Issue #42: normalize language ids (GitHub is case-insensitive; Prism keys are lowercase)
-const PRISM_LANG_ALIASES = {
-    htm: 'markup',
-    xhtml: 'markup',
-    xml: 'xml',
-    svg: 'svg',
-    html: 'markup',
-    mathml: 'mathml',
-    ssml: 'xml',
-    atom: 'xml',
-    rss: 'xml',
-    sh: 'bash',
-    py: 'python',
-    yml: 'yaml',
-    md: 'markdown',
-    'c#': 'csharp',
-    'c++': 'cpp',
-    dockerfile: 'docker',
-    text: 'plaintext',
-    txt: 'plaintext'
-};
-
-function resolvePrismLanguage(lang) {
-    if (!lang) return null;
-    const normalized = String(lang).trim().toLowerCase();
-    const aliased = PRISM_LANG_ALIASES[normalized] || normalized;
-    if (Prism.languages[aliased]) return aliased;
-    if (Prism.languages[normalized]) return normalized;
-    return null;
-}
-
-// Configure marked with syntax highlighting
-marked.use(markedHighlight({
-    langPrefix: 'language-',
-    highlight(code, lang) {
-        const language = resolvePrismLanguage(lang);
-        if (!language) return code;
-        try {
-            const grammar = Prism.languages[language];
-            if (typeof grammar !== 'object') return code;
-            return Prism.highlight(code, grammar, language);
-        } catch (_e) {
-            // Silently fall back for languages with missing dependencies
-            return code;
-        }
-    }
-}));
-
-// Configure marked with KaTeX
-marked.use(markedKatex({
-    throwOnError: false,
-    output: 'html' // or 'mathml'
-}));
-
-// Configure GFM Extensions
-marked.use(markedAlert());
-marked.use(markedFootnote());
-// Emoji shortcode syntax (:smile:) for the preview (Issue #45)
-marked.use(markedEmoji(emojiMarkedOptions));
 
 // ============================================================
 // Application entry
+// All marked extensions (KaTeX, alerts, footnotes, emoji, prism highlight)
+// are registered inside src/core/markdown/index.js → markdownService.initialize(),
+// which app.initialize() calls. Do NOT re-register them here.
 // ============================================================
 
 import { app } from './app.js';
 
-/**
- * DOM Ready handler
- */
 function onReady(callback) {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', callback);
@@ -194,7 +131,6 @@ onReady(async () => {
             };
             console.log('📚 Dev mode: Access app via window.mdPreview');
         }
-
     } catch (error) {
         console.error('Failed to initialize application:', error);
 
@@ -224,6 +160,5 @@ onReady(async () => {
     }
 });
 
-// Export for external use
 export { app };
 export default app;

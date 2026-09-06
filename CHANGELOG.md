@@ -46,6 +46,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Production build succeeds in ~1m4s
 - Modular build (`mode=modular`) succeeds in ~53s
 
+### Architecture (Phase 4 partial)
+- Make `src/main.modular.js` a feature-complete drop-in for `src/main.js`:
+  Monaco worker setup, prism language imports, mermaid initialization, KaTeX
+  CSS, and github-markdown-light styles. All `marked.use()` calls still
+  live in `markdownService.initialize()` to avoid double-registering
+  extensions; documented at the top of `main.modular.js`.
+- Both default (`main.js`) and modular (`main.modular.js`) entry points
+  build and lint clean. Future work (separate PR): flip
+  `index.html` to load `main.modular.js` and switch `vercel.json` /
+  `build` script to modular mode.
+
 ### Audit
 - Complete reconnaissance audit delivered at `D:\harmes\markups-audit-2026-09-06.md`
 - Sub-reports: security/a11y/UX, code health, feature inventory
