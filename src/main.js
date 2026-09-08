@@ -2575,9 +2575,9 @@ const updateStats = (text) => {
     const charCountHeader = document.querySelector('#char-count-header');
     const readingTimeHeader = document.querySelector('#reading-time-header');
 
-    if (wordCountHeader) wordCountHeader.textContent = `Words: ${wordCount}`;
-    if (charCountHeader) charCountHeader.textContent = `Chars: ${charCount}`;
-    if (readingTimeHeader) readingTimeHeader.textContent = `Reading: ${readingTime} min`;
+    if (wordCountHeader) wordCountHeader.textContent = `${wordCount} words`;
+    if (charCountHeader) charCountHeader.textContent = `${charCount} chars`;
+    if (readingTimeHeader) readingTimeHeader.textContent = `${readingTime} min read`;
 
     // Update modal stats if open
     const modal = document.getElementById('stats-modal');
@@ -2589,6 +2589,74 @@ const updateStats = (text) => {
         document.querySelector('#stat-headings').textContent = headings.toLocaleString();
         document.querySelector('#stat-reading-time').textContent = `${readingTime} min`;
     }
+};
+
+// Breadcrumb: shows current heading path in status bar
+const getHeadingBeforeLine = (markdown, lineNumber) => {
+    const lines = markdown.split('\n');
+    const stack = [];
+
+    for (let i = 0; i <= lineNumber && i < lines.length; i++) {
+        const line = lines[i];
+        const match = line.match(/^(#{1,6})\s+(.+)$/);
+        if (match) {
+            const level = match[1].length;
+            const text = match[2].trim();
+            while (stack.length && stack[stack.length - 1].level >= level) {
+                stack.pop();
+            }
+            stack.push({ level, text });
+        }
+    }
+
+    return stack;
+};
+
+const updateBreadcrumb = (editor) => {
+    const el = document.querySelector('#breadcrumb-path');
+    if (!el) return;
+
+    try {
+        const model = editor.getModel();
+        if (!model) {
+            el.textContent = '';
+            return;
+        }
+
+        const text = model.getValue();
+        const position = editor.getPosition();
+        if (!position) {
+            el.textContent = '';
+            return;
+        }
+
+        // Monaco line numbers are 1-based, but our helper uses 0-based index
+        const offset = position.lineNumber - 1;
+        const sections = getHeadingBeforeLine(text, offset);
+
+        if (sections.length === 0) {
+            el.textContent = '';
+            return;
+        }
+
+        el.textContent = sections.map(s => s.text).join(' › ');
+    } catch {
+        el.textContent = '';
+    }
+};
+
+const setupBreadcrumb = (editor) => {
+    if (!editor) return;
+
+    let debounceTimer = null;
+    const scheduleUpdate = () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => updateBreadcrumb(editor), 80);
+    };
+
+    editor.onDidChangeCursorPosition(scheduleUpdate);
+    editor.onDidChangeModelContent(scheduleUpdate);
+    updateBreadcrumb(editor);
 };
 
 const setupStatsButton = () => {
@@ -2941,76 +3009,184 @@ async function getAiWriterManager() {
     return _aiWriterManager;
 }
 
-// Recent tabs dropdown — shows last 3 active docs + New File shortcut
-const setupRecentTabs = () => {
-    const btn = document.querySelector('#recent-tabs-btn');
-    const menu = document.querySelector('#recent-tabs-menu');
-    const list = document.querySelector('#recent-tabs-list');
-    const newBtn = document.querySelector('#recent-tabs-new-btn');
-    if (!btn || !menu || !list) return;
 
-    const MAX_RECENT = 3;
+// Browser-style quick tabs in header (replaces the dropdown).
+// Shows up to 3 most-recently-modified files as inline tab chips
+// between the brand and the action buttons. Click to switch,
+// × to close, + to create a new file.
+const setupHeaderQuickTabs = () => {
+    const strip = document.querySelector('#header-quicktabs');
+    if (!strip) return;
 
-    const renderRecent = () => {
-        if (!list) return;
-        list.innerHTML = '';
+    const MAX_TABS = 3;
+    const ICON_FILE = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/></svg>`;
+    const ICON_PLUS = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+    const ICON_OPEN = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`;
+    const ICON_REFRESH = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
+
+    // File picker state (module-scoped so refresh can keep it across renders)
+    let osFilePickerEl = null;
+
+    const ensureFilePicker = () => {
+        if (osFilePickerEl) return osFilePickerEl;
+        osFilePickerEl = document.createElement('input');
+        osFilePickerEl.type = 'file';
+        osFilePickerEl.accept = '.md,.markdown,.txt,text/markdown,text/plain';
+        osFilePickerEl.multiple = true;
+        osFilePickerEl.style.cssText = 'display:none';
+        document.body.appendChild(osFilePickerEl);
+        osFilePickerEl.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files || []);
+            for (const file of files) {
+                try {
+                    const content = await file.text();
+                    const title = (file.name || 'Imported').replace(/\.(md|markdown|txt)$/i, '');
+                    const note = await noteStorage.createNote({ title, content });
+                    const tree = await fileTreeStorage.getTree();
+                    const existingFolder = tree.find((n) => n.type === 'folder' && n.parentId === ROOT_FOLDER_ID);
+                    const parentId = existingFolder ? existingFolder.id : ROOT_FOLDER_ID;
+                    const newNode = await fileTreeStorage.addNode({
+                        name: title,
+                        type: 'file',
+                        parentId,
+                        noteId: note.id
+                    });
+                    const newDoc = mapNoteToDocument(note, newNode);
+                    documents.push(newDoc);
+                    switchTab(newDoc.id);
+                    showToast(`Imported: ${file.name}`, 'success', 1500);
+                } catch (_err) {
+                    showToast(`Failed to import: ${file.name}`, 'error', 2000);
+                }
+            }
+            renderStrip();
+        });
+        return osFilePickerEl;
+    };
+
+    const openOsFilePicker = () => {
+        const picker = ensureFilePicker();
+        picker.value = '';
+        picker.click();
+    };
+
+    const refreshFromStorage = async () => {
+        try {
+            const notes = await noteStorage.getAllNotes();
+            await fileTreeStorage.initTree(notes);
+            const tree = await fileTreeStorage.getTree();
+            const fileNodes = tree
+                .filter((n) => n.type === 'file' && n.noteId)
+                .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+            const loadedDocs = [];
+            for (const node of fileNodes) {
+                const note = await noteStorage.getNote(node.noteId);
+                if (note) loadedDocs.push(mapNoteToDocument(note, node));
+            }
+            documents = loadedDocs;
+            await ensureAtLeastOneDocument();
+            if (!documents.find((d) => d.id === activeDocId)) {
+                activeDocId = documents[0]?.id || null;
+            }
+            if (typeof renderTabs === 'function') renderTabs();
+            loadActiveDocument();
+            renderStrip();
+            showToast('Refreshed from storage', 'success', 1200);
+        } catch (_err) {
+            showToast('Refresh failed', 'error', 2000);
+        }
+    };
+
+    const renderStrip = () => {
+        if (!strip) return;
+        strip.innerHTML = '';
 
         const recent = documents
             .slice()
             .sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0))
-            .slice(0, MAX_RECENT);
+            .slice(0, MAX_TABS);
 
         recent.forEach((doc) => {
-            const item = document.createElement('button');
-            item.type = 'button';
-            item.className = `recent-tabs-item${doc.id === activeDocId ? ' active' : ''}`;
-            item.title = doc.title;
-            item.innerHTML = `
-                <svg class="recent-tabs-item-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
-                </svg>
-                <span class="recent-tabs-item-label">${escapeHtml(doc.title || 'Untitled')}.md</span>
-            `;
-            item.addEventListener('click', () => {
+            const tab = document.createElement('button');
+            tab.type = 'button';
+            tab.className = `header-quicktab${doc.id === activeDocId ? ' active' : ''}`;
+            tab.title = doc.title;
+            tab.setAttribute('role', 'tab');
+            tab.setAttribute('aria-selected', String(doc.id === activeDocId));
+            tab.dataset.docId = doc.id;
+            tab.innerHTML = `<span class="header-quicktab-icon">${ICON_FILE}</span><span class="header-quicktab-label">${escapeHtml(doc.title || 'Untitled')}</span><span class="header-quicktab-close" aria-label="Close tab" title="Close tab">×</span>`;
+
+            tab.addEventListener('click', (e) => {
+                if (e.target.classList.contains('header-quicktab-close')) return;
                 switchTab(doc.id);
-                menu.style.display = 'none';
-                btn.setAttribute('aria-expanded', 'false');
             });
-            list.appendChild(item);
+            const closeBtn = tab.querySelector('.header-quicktab-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    closeTab(doc.id);
+                });
+            }
+            strip.appendChild(tab);
         });
 
-        if (recent.length === 0) {
-            const empty = document.createElement('div');
-            empty.className = 'recent-tabs-item';
-            empty.textContent = 'No recent files';
-            list.appendChild(empty);
-        }
+        // + new file
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'header-quicktab-new';
+        addBtn.title = 'New file';
+        addBtn.setAttribute('aria-label', 'New file');
+        addBtn.innerHTML = ICON_PLUS;
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            createFileInSelectedFolder();
+        });
+        strip.appendChild(addBtn);
+
+        // Open from computer (OS file picker)
+        const openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'header-quicktab-new';
+        openBtn.title = 'Open file from computer (Ctrl+O)';
+        openBtn.setAttribute('aria-label', 'Open file from computer');
+        openBtn.innerHTML = ICON_OPEN;
+        openBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openOsFilePicker();
+        });
+        strip.appendChild(openBtn);
+
+        // Refresh from storage
+        const refreshBtn = document.createElement('button');
+        refreshBtn.type = 'button';
+        refreshBtn.className = 'header-quicktab-new';
+        refreshBtn.title = 'Refresh from storage (rescan files)';
+        refreshBtn.setAttribute('aria-label', 'Refresh from storage');
+        refreshBtn.innerHTML = ICON_REFRESH;
+        refreshBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            refreshFromStorage();
+        });
+        strip.appendChild(refreshBtn);
     };
 
-    btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isOpen = menu.style.display === 'block';
-        menu.style.display = isOpen ? 'none' : 'block';
-        btn.setAttribute('aria-expanded', String(!isOpen));
-        if (!isOpen) renderRecent();
-    });
+    renderStrip();
 
-    newBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        menu.style.display = 'none';
-        btn.setAttribute('aria-expanded', 'false');
-        createFileInSelectedFolder();
-    });
+    // Keep in sync with the canonical tabs container
+    const tabsList = document.getElementById('tabs-list');
+    if (tabsList) {
+        const obs = new MutationObserver(() => renderStrip());
+        obs.observe(tabsList, { childList: true });
+    }
 
-    // Refresh dropdown when a tab is clicked; we hook into the
-    // existing renderTabs cycle so the list stays in sync without
-    // reassigning the function (which breaks later overrides).
-    document.addEventListener('click', (e) => {
-        const tab = e.target.closest('.header-tab');
-        if (!tab) return;
-        setTimeout(() => {
-            if (menu && menu.style.display === 'block') renderRecent();
-        }, 0);
+    // Global keyboard shortcut: Ctrl/Cmd+O → open OS file picker
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'o' || e.key === 'O') && !e.shiftKey && !e.altKey) {
+            // Only when not focused in editor (Monaco handles its own Ctrl+O)
+            if (document.activeElement && document.activeElement.closest('.monaco-editor')) return;
+            e.preventDefault();
+            openOsFilePicker();
+        }
     });
 };
 
@@ -7466,11 +7642,14 @@ const initializeApp = async () => {
     // Initialize stats with current content
     updateStats(editor?.getValue());
 
+    // Breadcrumb: current heading path in status bar
+    setupBreadcrumb(editor);
+
     // AI Writer — lazy-loaded module, same pattern as image-resize
     setupAiWriterButton();
 
-    // Recent tabs dropdown in header (shows last 3 + New File)
-    setupRecentTabs();
+    // Browser-style quick tabs in header (max 3 recent docs)
+    setupHeaderQuickTabs();
 
     // Custom context menu
     appContextMenuManager.initialize();

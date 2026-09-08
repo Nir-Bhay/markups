@@ -160,7 +160,7 @@ body {
 /* ==================== HEADER ==================== */
 .premium-header {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   height: var(--header-height);
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border-light);
@@ -176,7 +176,7 @@ body {
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  padding-right: 8px;
+  padding-right: 4px;
 }
 
 .brand-logo {
@@ -2232,6 +2232,22 @@ body.dark-mode .header-tab .tab-name:hover {
   width: 14px;
   height: 14px;
   opacity: 0.7;
+}
+
+#breadcrumb-path {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+#breadcrumb-path:empty::before {
+  content: '';
+  display: inline-block;
+  width: 1px;
 }
 
 .status-divider {
