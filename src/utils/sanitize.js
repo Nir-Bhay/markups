@@ -20,9 +20,90 @@ export const PREVIEW_SANITIZE_CONFIG = {
     // VIDEO_EXT_RE / YOUTUBE_RE / VIMEO_RE / GITHUB_ASSET_RE.
     ADD_ATTR: ['target', 'class', 'id', 'aria-label', 'aria-hidden', 'controls', 'preload', 'playsinline', 'controlslist', 'rel'],
     FORBID_TAGS: ['iframe', 'script', 'object', 'embed', 'form', 'video', 'source'],
-    FORBID_ATTR: ['style', 'srcdoc'],
+    FORBID_ATTR: ['srcdoc'],
     ALLOW_DATA_ATTR: false
 };
+
+const SAFE_COLOR_DECLARATION = /^(color|background(?:-color)?)\s*:\s*(#[0-9a-f]{3,8})$/i;
+
+// KaTeX layout relies on inline styles (height/vertical-align/top/…). Stripping
+// them collapses equations in preview. Keep a tight property+value allowlist.
+const SAFE_LAYOUT_PROPS = new Set([
+    'height',
+    'width',
+    'min-width',
+    'min-height',
+    'max-width',
+    'max-height',
+    'top',
+    'left',
+    'right',
+    'bottom',
+    'margin',
+    'margin-top',
+    'margin-right',
+    'margin-bottom',
+    'margin-left',
+    'padding',
+    'padding-top',
+    'padding-right',
+    'padding-bottom',
+    'padding-left',
+    'vertical-align',
+    'border-top-width',
+    'border-right-width',
+    'border-bottom-width',
+    'border-left-width',
+    'position'
+]);
+
+const SAFE_LENGTH_VALUE = /^-?\d+(\.\d+)?(em|ex|px|rem|%|pt)?$/i;
+const SAFE_POSITION_VALUE = /^relative$/i;
+const UNSAFE_STYLE_TOKEN = /url\s*\(|expression\s*\(|attr\s*\(|var\s*\(|javascript:|@import|behavior/i;
+
+/**
+ * Allow toolbar hex colors plus KaTeX layout lengths. Reject everything else
+ * (named colors, position:fixed, urls, expressions, …).
+ * @param {string} value
+ * @returns {string}
+ */
+export function sanitizeColorStyle(value) {
+    return String(value || '')
+        .split(';')
+        .map((declaration) => declaration.trim())
+        .map((declaration) => {
+            if (!declaration) return '';
+            if (SAFE_COLOR_DECLARATION.test(declaration)) {
+                return declaration.replace(/\s+/g, '');
+            }
+
+            const match = /^([a-z-]+)\s*:\s*(.+)$/i.exec(declaration);
+            if (!match) return '';
+
+            const prop = match[1].toLowerCase();
+            const rawValue = match[2].trim();
+            if (!SAFE_LAYOUT_PROPS.has(prop) || UNSAFE_STYLE_TOKEN.test(rawValue)) {
+                return '';
+            }
+            if (prop === 'position') {
+                return SAFE_POSITION_VALUE.test(rawValue) ? 'position:relative' : '';
+            }
+            if (!SAFE_LENGTH_VALUE.test(rawValue)) return '';
+            return `${prop}:${rawValue}`;
+        })
+        .filter(Boolean)
+        .join(';');
+}
+
+function sanitizeInlineColorStyles(html) {
+    return String(html || '').replace(
+        /\sstyle\s*=\s*(["'])([\s\S]*?)\1/gi,
+        (_match, quote, value) => {
+            const safeStyle = sanitizeColorStyle(value);
+            return safeStyle ? ` style=${quote}${safeStyle}${quote}` : '';
+        }
+    );
+}
 
 /**
  * Merge DOMPurify-style config arrays without losing defaults.
@@ -115,7 +196,8 @@ export function fallbackSanitizeHtml(html, config = PREVIEW_SANITIZE_CONFIG) {
             .replace(new RegExp(`<(${forbiddenTagGroup})\\b[\\s\\S]*?<\\/\\1>`, 'gi'), '')
             .replace(new RegExp(`<\\/?(?:${forbiddenTagGroup})\\b[^>]*>`, 'gi'), '')
             .replace(/\s+on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-            .replace(/\s+(?:style|srcdoc|data-[\w-]+)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+            .replace(/\s+srcdoc\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+            .replace(/\s+data-[\w-]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
     }
 
     const template = document.createElement('template');
@@ -131,13 +213,16 @@ export function fallbackSanitizeHtml(html, config = PREVIEW_SANITIZE_CONFIG) {
 
             if (
                 name.startsWith('on') ||
-                name === 'style' ||
                 name === 'srcdoc' ||
                 name.startsWith('data-') ||
                 ((name === 'href' || name === 'xlink:href') && /^(javascript|vbscript|data):/.test(normalizedValue)) ||
                 (name === 'src' && /^(javascript|vbscript):/.test(normalizedValue))
             ) {
                 node.removeAttribute(attr.name);
+            } else if (name === 'style') {
+                const safeStyle = sanitizeColorStyle(value);
+                if (safeStyle) node.setAttribute('style', safeStyle);
+                else node.removeAttribute(attr.name);
             }
         });
 
@@ -156,8 +241,8 @@ export function fallbackSanitizeHtml(html, config = PREVIEW_SANITIZE_CONFIG) {
 export function sanitizePreviewHtml(html, overrides = {}) {
     const config = buildConfig(overrides);
     const sanitized = DOMPurify.isSupported === false
-        ? String(html || '')
-        : DOMPurify.sanitize(String(html || ''), config);
+        ? sanitizeInlineColorStyles(html)
+        : DOMPurify.sanitize(sanitizeInlineColorStyles(html), config);
 
     return fallbackSanitizeHtml(sanitized, config);
 }
@@ -189,6 +274,7 @@ export function sanitizeMarkdownAlt(str) {
 
 export default {
     PREVIEW_SANITIZE_CONFIG,
+    sanitizeColorStyle,
     shouldOpenPreviewLinkInNewTab,
     applyPreviewLinkTarget,
     ensurePreviewLinksOpenInNewTab,

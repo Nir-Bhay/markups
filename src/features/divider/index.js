@@ -4,7 +4,6 @@
  * @module features/divider
  */
 
-import { eventBus, EVENTS } from '../../utils/eventBus.js';
 import { editorService } from '../../core/editor/index.js';
 
 /**
@@ -116,6 +115,17 @@ class DividerManager {
         document.body.style.userSelect = 'none';
     }
 
+    _getAvailableWidth() {
+        if (!this.container || !this.divider) return 0;
+        const totalWidth = this.container.getBoundingClientRect().width;
+        const aiPanel = document.getElementById('ai-writer-panel');
+        const aiWidth = aiPanel && getComputedStyle(aiPanel).position !== 'fixed'
+            && getComputedStyle(aiPanel).display !== 'none'
+            ? aiPanel.offsetWidth
+            : 0;
+        return Math.max(0, totalWidth - (this.divider.offsetWidth || 8) - aiWidth);
+    }
+
     /**
      * Handle mouse move during drag
      * @param {MouseEvent} e
@@ -125,18 +135,17 @@ class DividerManager {
         if (!this.isDragging) return;
 
         const containerRect = this.container.getBoundingClientRect();
-        const totalWidth = containerRect.width;
         const offsetX = e.clientX - containerRect.left;
-        const dividerWidth = this.divider.offsetWidth;
+        const availableWidth = this._getAvailableWidth();
 
         // Prevent overlap or out-of-bounds
         const minWidth = 100;
-        const maxWidth = totalWidth - minWidth - dividerWidth;
+        const maxWidth = availableWidth - minWidth;
         const leftWidth = Math.max(minWidth, Math.min(offsetX, maxWidth));
 
         this.leftPane.style.width = leftWidth + 'px';
-        this.rightPane.style.width = (totalWidth - leftWidth - dividerWidth) + 'px';
-        this.lastLeftRatio = leftWidth / (totalWidth - dividerWidth);
+        this.rightPane.style.width = (availableWidth - leftWidth) + 'px';
+        this.lastLeftRatio = availableWidth > 0 ? leftWidth / availableWidth : 0.5;
 
         // Trigger editor layout update
         editorService.layout();
@@ -153,8 +162,8 @@ class DividerManager {
             this.divider.classList.remove('hover');
             document.body.style.cursor = 'default';
             document.body.style.userSelect = '';
-
-            eventBus.emit(EVENTS.DIVIDER_CHANGED, { ratio: this.lastLeftRatio });
+            // Phase 5: DIVIDER_CHANGED emit removed — zero listeners in the
+            // tree; the channel key stays documented in eventBus.js.
         }
     }
 
@@ -165,10 +174,7 @@ class DividerManager {
     _onResize() {
         if (!this.container) return;
 
-        const containerRect = this.container.getBoundingClientRect();
-        const totalWidth = containerRect.width;
-        const dividerWidth = this.divider.offsetWidth;
-        const availableWidth = totalWidth - dividerWidth;
+        const availableWidth = this._getAvailableWidth();
 
         const newLeft = availableWidth * this.lastLeftRatio;
         const newRight = availableWidth * (1 - this.lastLeftRatio);
@@ -186,10 +192,7 @@ class DividerManager {
     reset() {
         if (!this.container) return;
 
-        const containerRect = this.container.getBoundingClientRect();
-        const totalWidth = containerRect.width;
-        const dividerWidth = this.divider.offsetWidth;
-        const halfWidth = (totalWidth - dividerWidth) / 2;
+        const halfWidth = this._getAvailableWidth() / 2;
 
         this.leftPane.style.width = halfWidth + 'px';
         this.rightPane.style.width = halfWidth + 'px';
@@ -197,8 +200,7 @@ class DividerManager {
 
         // Trigger editor layout update
         editorService.layout();
-
-        eventBus.emit(EVENTS.DIVIDER_CHANGED, { ratio: 0.5 });
+        // Phase 5: DIVIDER_CHANGED emit removed (zero listeners).
     }
 
     /**
@@ -208,10 +210,7 @@ class DividerManager {
     setRatio(ratio) {
         if (!this.container || ratio < 0 || ratio > 1) return;
 
-        const containerRect = this.container.getBoundingClientRect();
-        const totalWidth = containerRect.width;
-        const dividerWidth = this.divider.offsetWidth;
-        const availableWidth = totalWidth - dividerWidth;
+        const availableWidth = this._getAvailableWidth();
 
         this.leftPane.style.width = (availableWidth * ratio) + 'px';
         this.rightPane.style.width = (availableWidth * (1 - ratio)) + 'px';

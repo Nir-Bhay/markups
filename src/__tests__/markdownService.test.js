@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { markdownService, MarkdownService } from '../core/markdown/index.js';
+import { markdownService, MarkdownService, deriveDocumentTitle } from '../core/markdown/index.js';
 
 describe('MarkdownService', () => {
     beforeAll(() => {
@@ -73,5 +73,34 @@ describe('MarkdownService', () => {
         expect(html).toContain('token value attr-value');      // values
         expect(html).toContain('DEFAULT');
         expect(html).toContain('localhost');
+    });
+});
+
+describe('deriveDocumentTitle (Phase 2.2)', () => {
+    it('derives from the first H1 line, trimmed and capped', () => {
+        expect(deriveDocumentTitle('# Hello World\nbody')).toBe('Hello World');
+        expect(deriveDocumentTitle('#   Spaced   \nbody')).toBe('Spaced');
+        expect(deriveDocumentTitle('# 1234567890123456789012345')).toBe('12345678901234567890');
+    });
+
+    it('returns Untitled without an H1 first line', () => {
+        expect(deriveDocumentTitle('plain text')).toBe('Untitled');
+        expect(deriveDocumentTitle('## H2 only')).toBe('Untitled');
+        expect(deriveDocumentTitle('')).toBe('Untitled');
+        expect(deriveDocumentTitle('# ')).toBe('Untitled');
+        expect(deriveDocumentTitle('intro\n# Late H1')).toBe('Untitled');
+    });
+});
+
+describe('extractStats unification (Phase 3.3)', () => {
+    it('counts footer-identical words on markdown with code and links', () => {
+        const stats = markdownService.extractStats('# Hello World\n\nThis is **bold** text with `code` and [a link](url).');
+        expect(stats.words).toBe(10);
+        expect(stats.charactersNoSpaces).toBeLessThan(stats.characters);
+    });
+
+    it('treats whitespace-only lines as paragraph separators (footer parity)', () => {
+        const stats = markdownService.extractStats('one\n   \ntwo\n\nthree');
+        expect(stats.paragraphs).toBe(3);
     });
 });

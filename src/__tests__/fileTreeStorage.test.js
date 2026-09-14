@@ -54,4 +54,23 @@ describe('FileTreeStorageService', () => {
         const remaining = await storage.getTree();
         expect(remaining.find((node) => node.id === folder.id)).toBeUndefined();
     });
+
+    // Phase 2.4: reorder persists atomically via transaction.
+    it('reorderNode persists new order for all siblings', async () => {
+        const folder = await storage.createNode({ type: 'folder', name: 'Board' });
+        const a = await storage.createNode({ type: 'file', name: 'A', parentId: folder.id, noteId: 1 });
+        const b = await storage.createNode({ type: 'file', name: 'B', parentId: folder.id, noteId: 2 });
+        const c = await storage.createNode({ type: 'file', name: 'C', parentId: folder.id, noteId: 3 });
+
+        const ok = await storage.reorderNode(c.id, 0);
+        expect(ok).toBe(true);
+
+        const kids = await storage.getChildren(folder.id);
+        const ordered = [...kids].sort((x, y) => x.order - y.order).map((n) => n.id);
+        expect(ordered).toEqual([c.id, a.id, b.id]);
+    });
+
+    it('reorderNode returns false for unknown id', async () => {
+        await expect(storage.reorderNode('nope-missing', 0)).resolves.toBe(false);
+    });
 });

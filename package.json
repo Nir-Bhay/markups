@@ -45,6 +45,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.62.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9.39.5",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.6.1",
@@ -69,6 +70,7 @@
     "marked-katex-extension": "^5.1.6",
     "mermaid": "^11.12.2",
     "monaco-editor": "^0.52.2",
+    "monaco-vim": "^0.4.4",
     "prismjs": "^1.30.0"
   }
 }

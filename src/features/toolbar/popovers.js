@@ -6,6 +6,7 @@
 export class PopoverManager {
     constructor() {
         this._active = null;
+        this._id = 0;
         this._onOutsideClick = (e) => {
             if (this._active && !this._active.el.contains(e.target) &&
                 !this._active.trigger?.contains(e.target)) {
@@ -24,6 +25,9 @@ export class PopoverManager {
 
         const wrapper = document.createElement('div');
         wrapper.className = 'tb-popover';
+        wrapper.id = `toolbar-popover-${++this._id}`;
+        wrapper.setAttribute('role', options.role || 'dialog');
+        wrapper.setAttribute('aria-label', options.label || 'Toolbar options');
 
         // Position
         const rect = triggerEl.getBoundingClientRect();
@@ -54,12 +58,26 @@ export class PopoverManager {
             }
         });
 
-        this._active = { el: wrapper, trigger: triggerEl };
+        triggerEl.setAttribute('aria-expanded', 'true');
+        triggerEl.setAttribute('aria-controls', wrapper.id);
+        this._active = {
+            el: wrapper,
+            trigger: triggerEl,
+            restoreFocus: options.restoreFocus !== false,
+        };
+        requestAnimationFrame(() => {
+            wrapper.querySelector('button, input, [tabindex="0"]')?.focus();
+        });
     }
 
     close() {
         if (this._active) {
-            this._active.el.remove();
+            const { el, trigger, restoreFocus } = this._active;
+            el.remove();
+            trigger?.setAttribute('aria-expanded', 'false');
+            if (restoreFocus && trigger && document.contains(trigger)) {
+                trigger.focus({ preventScroll: true });
+            }
             this._active = null;
         }
     }

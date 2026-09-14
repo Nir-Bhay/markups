@@ -53,6 +53,8 @@ test-results/
 .agent/
 .agents/
 .claude/
+.commandcode/
+.unlazy/
 plot/
 
 # Configurations

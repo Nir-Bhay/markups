@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { parseWikilinks } from '../features/backlinks/parser.js';
+import { parseWikilinks, findUnlinkedMentions, renameWikilinkTargets } from '../features/backlinks/parser.js';
 import { BacklinksManager } from '../features/backlinks/index.js';
 
 describe('features/backlinks — parser', () => {
@@ -104,5 +104,34 @@ describe('features/backlinks — BacklinksManager', () => {
         expect(a.count).toBe(2);
         const b = backlinks.find(b => b.id === '2');
         expect(b.count).toBe(1);
+    });
+});
+
+describe('features/backlinks — unlinked mentions and rename', () => {
+    it('finds plain-text title mentions without links', () => {
+        const notes = [
+            { id: 1, title: 'Atlas', content: 'No links.' },
+            { id: 2, title: 'Guide', content: 'Read the Atlas chapter first.' }
+        ];
+        const mentions = findUnlinkedMentions(notes);
+        expect(mentions).toHaveLength(1);
+        expect(mentions[0]).toMatchObject({ targetId: '1', sourceId: '2' });
+    });
+
+    it('skips already-linked titles, code spans, and self mentions', () => {
+        const notes = [
+            { id: 1, title: 'Atlas', content: '' },
+            { id: 2, title: 'Guide', content: 'See [[Atlas]] and `Atlas` code. Atlas again.' }
+        ];
+        const mentions = findUnlinkedMentions(notes);
+        expect(mentions).toHaveLength(0);
+    });
+
+    it('rewrites link targets on rename, keeping display text', () => {
+        const { content, replaced } = renameWikilinkTargets(
+            'See [[Old]] and [[Old|click]] but not [[Other]].', 'Old', 'New'
+        );
+        expect(replaced).toBe(2);
+        expect(content).toBe('See [[New]] and [[New|click]] but not [[Other]].');
     });
 });

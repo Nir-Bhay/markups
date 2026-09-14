@@ -1,0 +1,593 @@
+/* ==================== EXPORT MODAL RESPONSIVE ==================== */
+
+/* Tablet / Mobile (768px and below) */
+@media (max-width: 768px) {
+  .export-modal {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+    top: 0;
+    left: 0;
+    transform: translateY(100%);
+  }
+
+  .export-modal.active {
+    transform: translateY(0);
+  }
+
+  .export-modal-header {
+    padding: 10px 12px;
+  }
+
+  .export-modal-title {
+    font-size: 1.0625rem;
+  }
+
+  .export-modal-content {
+    flex-direction: column;
+  }
+
+  /* Format picker: one compact horizontal scroll row */
+  .export-sidebar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px 8px;
+    gap: 4px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+    flex-shrink: 0;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .export-sidebar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .export-section-label,
+  .export-divider,
+  .export-sidebar-footer,
+  .export-recommended-tag {
+    display: none !important;
+  }
+
+  .export-format-btn {
+    flex: 0 0 auto;
+    width: auto !important;
+    min-width: 36px;
+    min-height: 32px !important;
+    height: 32px;
+    padding: 0 8px;
+    white-space: nowrap;
+    border-radius: 16px;
+    font-size: 0.6875rem;
+    gap: 4px;
+    justify-content: center;
+    background: var(--bg-tertiary);
+  }
+
+  .export-format-btn .btn-text {
+    display: none;
+  }
+
+  .export-format-btn[data-format="html"] .btn-text,
+  .export-format-btn[data-format="pdf"] .btn-text,
+  .export-format-btn[data-format="docx"] .btn-text,
+  .export-format-btn[data-format="txt"] .btn-text {
+    display: inline;
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
+
+  .export-format-btn[data-format="html"] .material-symbols-outlined,
+  .export-format-btn[data-format="pdf"] .material-symbols-outlined,
+  .export-format-btn[data-format="docx"] .material-symbols-outlined,
+  .export-format-btn[data-format="txt"] .material-symbols-outlined {
+    display: none;
+  }
+
+  .export-format-btn.active {
+    background: var(--accent-primary);
+    color: white;
+    box-shadow: none;
+  }
+
+  .export-format-btn .material-symbols-outlined {
+    font-size: 18px;
+  }
+
+  .export-preview-area {
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Options bar: compact grid instead of tall wrap stack */
+  .export-options-bar {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    padding: 8px 10px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 6px;
+    overflow: visible;
+  }
+
+  .export-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 8px;
+    width: 100%;
+    align-items: end;
+  }
+
+  .export-option-group {
+    flex: unset;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .export-option-group.checkbox-group {
+    margin-top: 0;
+    min-height: 32px;
+    padding: 0 2px;
+  }
+
+  .export-option-divider {
+    display: none;
+  }
+
+  .export-option-label {
+    font-size: 0.5625rem;
+    letter-spacing: 0.04em;
+  }
+
+  .export-select {
+    width: 100%;
+    max-width: 100%;
+    font-size: 0.8125rem;
+    padding: 6px 8px;
+  }
+
+  .export-option-group.checkbox-group label {
+    font-size: 0.75rem;
+  }
+
+  .export-preview-label-container {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 0;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-light);
+  }
+
+  .export-preview-label {
+    font-size: 0.75rem;
+  }
+
+  .export-preview-container {
+    padding: 12px;
+  }
+
+  .export-page {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: 400px;
+    padding: 24px;
+    transform: scale(1);
+    overflow: hidden;
+  }
+
+  .page-header {
+    top: 16px;
+    left: 24px;
+    right: 24px;
+  }
+
+  .page-footer {
+    bottom: 16px;
+    left: 24px;
+    right: 24px;
+  }
+
+  .browser-chrome {
+    padding: 8px 12px;
+  }
+
+  .browser-content {
+    padding: 24px;
+    min-height: 300px;
+  }
+
+  .txt-content {
+    padding: 24px;
+    min-height: 300px;
+  }
+
+  .png-container {
+    padding: 24px;
+    transform: scale(0.8);
+  }
+
+  .png-content {
+    min-width: 100%;
+  }
+
+  .png-zoom-controls {
+    display: none;
+  }
+
+  .export-modal-footer {
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .export-file-info {
+    width: 100%;
+    text-align: center;
+  }
+
+  .export-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .export-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 10px 14px;
+  }
+
+  .export-loading-overlay {
+    border-radius: 0;
+  }
+
+  .export-loading-progress-container {
+    width: 200px;
+  }
+}
+
+/* Mobile (480px and below) */
+@media (max-width: 480px) {
+  .export-modal-header {
+    padding: 8px 10px;
+  }
+
+  .export-modal-title {
+    font-size: 1rem;
+  }
+
+  .export-modal-close {
+    width: 36px;
+    height: 36px;
+  }
+
+  .export-sidebar {
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    padding: 4px 6px;
+    gap: 3px;
+  }
+
+  .export-format-btn {
+    min-width: 32px;
+    height: 28px;
+    min-height: 28px !important;
+    padding: 0 7px;
+    font-size: 0.625rem;
+  }
+
+  .export-format-btn .material-symbols-outlined {
+    font-size: 16px;
+  }
+
+  .export-options-bar {
+    padding: 6px 8px;
+    gap: 5px;
+  }
+
+  .export-options {
+    gap: 5px 6px;
+  }
+
+  .export-select {
+    font-size: 0.75rem;
+    padding: 5px 6px;
+  }
+
+  .export-option-group.checkbox-group label {
+    font-size: 0.6875rem;
+  }
+
+  .export-preview-container {
+    padding: 10px;
+  }
+
+  .export-page {
+    padding: 16px;
+    height: auto;
+    min-height: 300px;
+    overflow: hidden;
+  }
+
+  .page-content .markdown-body {
+    font-size: 12px;
+  }
+
+  .page-header {
+    top: 12px;
+    left: 16px;
+    right: 16px;
+  }
+
+  .page-footer {
+    bottom: 12px;
+    left: 16px;
+    right: 16px;
+  }
+
+  .page-filename,
+  .page-date,
+  .page-number {
+    font-size: 8px;
+  }
+
+  .browser-chrome {
+    padding: 6px 8px;
+  }
+
+  .browser-dots .dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .browser-url {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
+  .browser-content {
+    padding: 16px;
+    min-height: 250px;
+  }
+
+  .txt-content {
+    padding: 16px;
+    min-height: 250px;
+    font-size: 11px;
+  }
+
+  .png-container {
+    padding: 16px;
+    transform: scale(0.7);
+  }
+
+  .export-modal-footer {
+    padding: 8px 10px;
+  }
+
+  .export-file-info {
+    font-size: 0.75rem;
+  }
+
+  .export-btn {
+    padding: 10px 12px;
+    font-size: 0.8125rem;
+  }
+
+  .export-btn .material-symbols-outlined {
+    font-size: 16px;
+  }
+
+  .export-loading-content {
+    gap: 12px;
+  }
+
+  .export-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border-width: 3px;
+  }
+
+  .export-loading-text {
+    font-size: 1rem;
+  }
+
+  .export-loading-progress-container {
+    width: 180px;
+  }
+}
+
+/* Very small screens (320px and below) */
+@media (max-width: 320px) {
+  .export-modal-title {
+    font-size: 0.9rem;
+  }
+
+  .export-format-btn {
+    min-width: 30px;
+    height: 26px;
+    min-height: 26px !important;
+    padding: 0 6px;
+  }
+
+  .export-format-btn .btn-text {
+    font-size: 0.5625rem;
+  }
+
+  .export-format-btn .material-symbols-outlined {
+    font-size: 15px;
+  }
+
+  .export-options {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .export-option-group.checkbox-group {
+    margin-top: 0;
+  }
+
+  .export-preview-label-container {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .export-page {
+    padding: 12px;
+    min-height: 250px;
+  }
+
+  .page-header,
+  .page-footer {
+    display: none;
+  }
+
+  .export-modal-footer {
+    padding: 8px 10px;
+  }
+
+  .export-btn {
+    padding: 8px 10px;
+    font-size: 0.75rem;
+  }
+
+  .export-btn .material-symbols-outlined {
+    font-size: 14px;
+  }
+
+  .export-loading-progress-container {
+    width: 150px;
+  }
+}
+
+/* Landscape mobile: keep horizontal format strip */
+@media (max-width: 768px) and (orientation: landscape) {
+  .export-modal-content {
+    flex-direction: column;
+  }
+
+  .export-sidebar {
+    width: 100%;
+    flex-direction: row;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .export-section-label,
+  .export-divider,
+  .export-recommended-tag {
+    display: none !important;
+  }
+
+  .export-format-btn {
+    border-radius: 16px;
+    background: var(--bg-tertiary);
+  }
+
+  .export-format-btn.active {
+    background: var(--accent-primary);
+    color: white;
+  }
+
+  .export-preview-area {
+    flex: 1;
+  }
+
+  .export-options-bar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .export-options {
+    display: flex;
+    flex-wrap: wrap;
+    width: auto;
+    flex: 1;
+  }
+
+  .export-option-group {
+    width: auto;
+    min-width: 100px;
+  }
+
+  .export-preview-label-container {
+    width: auto;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+
+  .export-modal-footer {
+    flex-wrap: nowrap;
+  }
+
+  .export-file-info {
+    width: auto;
+    text-align: left;
+  }
+
+  .export-actions {
+    width: auto;
+  }
+
+  .export-btn {
+    flex: none;
+  }
+}
+
+/* Touch-friendly: keep format chips compact in the mobile strip */
+@media (hover: none) and (pointer: coarse) {
+  .export-format-btn {
+    min-height: 32px;
+  }
+
+  @media (max-width: 768px) {
+    .export-format-btn {
+      min-height: 28px !important;
+    }
+  }
+
+  .export-modal-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .export-option-group.checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+  }
+
+  .export-select {
+    min-height: 32px;
+  }
+
+  .export-btn {
+    min-height: 44px;
+  }
+
+  .export-refresh-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+

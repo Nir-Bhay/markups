@@ -4,6 +4,8 @@
  * @module features/slash-commands
  */
 
+import { EXTRA_SLASH_COMMANDS } from '../toolbar/catalog.js';
+
 /**
  * @typedef {Object} SlashCommand
  * @property {string} id - Unique command identifier
@@ -113,7 +115,8 @@ export const SLASH_COMMANDS = [
         icon: '☐',
         insert: '\n- [ ] ',
         keywords: ['task', 'list', 'checkbox', 'todo', 'check']
-    }
+    },
+    ...EXTRA_SLASH_COMMANDS,
 ];
 
 export default SLASH_COMMANDS;

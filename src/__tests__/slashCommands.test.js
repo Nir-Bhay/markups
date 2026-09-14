@@ -20,6 +20,10 @@ vi.mock('monaco-editor/esm/vs/editor/editor.api', () => ({
     }
 }));
 
+vi.mock('../features/toolbar/index.js', () => ({
+    insertText: vi.fn()
+}));
+
 import { SlashCommandsManager } from '../features/slash-commands/index.js';
 import { SLASH_COMMANDS } from '../features/slash-commands/registry.js';
 
@@ -144,7 +148,7 @@ describe('features/slash-commands — manager plumbing', () => {
         expect(SlashCommandsManager.instance).toBeNull();
     });
 
-    it('select command inserts text at cursor position', () => {
+    it('select command inserts text at cursor position', async () => {
         const insertedTexts = [];
         const mockEditor = {
             getSelection: () => ({ startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 }),
@@ -166,7 +170,7 @@ describe('features/slash-commands — manager plumbing', () => {
 
         // Directly call _selectCommand to test insertion
         const cmd = SLASH_COMMANDS[0];
-        manager._selectCommand(cmd);
+        await manager._selectCommand(cmd);
 
         // Should have inserted the command text
         expect(insertedTexts.length).toBeGreaterThanOrEqual(1);

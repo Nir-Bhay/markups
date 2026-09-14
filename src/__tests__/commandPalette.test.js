@@ -1,90 +1,28 @@
-/**
- * Command Palette tests
- */
+import { describe, it, expect } from 'vitest';
+import { fuzzyScore, filterPalette, buildPaletteItems } from '../features/command-palette/index.js';
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+const ITEMS = [
+    { id: 'cmd:focus', label: 'Focus Mode', keywords: ['focus'], kind: 'command' },
+    { id: 'file:1', label: 'Atlas Guide', keywords: ['file'], kind: 'file' }
+];
 
-// We need to mock DOM for these tests since they import DOM-modifying modules.
-// Use jsdom environment (configured in vitest.config.js).
-
-describe('Command Palette registry', () => {
-    let COMMANDS;
-
-    beforeEach(async () => {
-        vi.resetModules();
-        const mod = await import('../features/command-palette/registry.js');
-        COMMANDS = mod.COMMANDS;
+describe('features/command-palette core', () => {
+    it('scores prefix and word-boundary matches higher', () => {
+        expect(fuzzyScore('Focus Mode', 'foc')).toBeGreaterThan(fuzzyScore('Office Work', 'foc'));
+        expect(fuzzyScore('Anything', '')).toBe(0);
+        expect(fuzzyScore('Atlas', 'zzz')).toBe(-1);
     });
 
-    it('exports at least 15 commands', () => {
-        expect(Array.isArray(COMMANDS)).toBe(true);
-        expect(COMMANDS.length).toBeGreaterThanOrEqual(15);
+    it('filters best-first and caps results', () => {
+        const out = filterPalette(ITEMS, 'foc');
+        expect(out[0].id).toBe('cmd:focus');
+        expect(filterPalette(ITEMS, 'zzz')).toEqual([]);
+        expect(filterPalette(ITEMS, '', { limit: 1 })).toHaveLength(1);
     });
 
-    it('each command has required fields', () => {
-        COMMANDS.forEach((cmd) => {
-            expect(typeof cmd.id).toBe('string');
-            expect(typeof cmd.label).toBe('string');
-            expect(typeof cmd.group).toBe('string');
-            expect(typeof cmd.action).toBe('function');
-        });
-    });
-
-    it('has duplicate-free ids', () => {
-        const ids = COMMANDS.map((c) => c.id);
-        const unique = new Set(ids);
-        expect(unique.size).toBe(ids.length);
-    });
-
-    it('includes expected command labels', () => {
-        const labels = COMMANDS.map((c) => c.label.toLowerCase());
-        const expected = [
-            'export as pdf',
-            'export as html',
-            'toggle dark mode',
-            'open settings',
-            'new tab',
-            'close tab',
-            'toggle word wrap',
-            'toggle typewriter',
-            'toggle focus mode',
-            'toggle fullscreen',
-            'toggle minimap',
-            'open templates',
-            'open snippets',
-            'open search',
-            'insert date'
-        ];
-        expected.forEach((exp) => {
-            expect(labels).toContain(exp);
-        });
-    });
-});
-
-describe('Command Palette UI', () => {
-    let render, open, close, dispose, COMMANDS;
-
-    beforeEach(async () => {
-        vi.resetModules();
-        const mod = await import('../features/command-palette/ui.js');
-        render = mod.render;
-        open = mod.open;
-        close = mod.close;
-        dispose = mod.dispose;
-    });
-
-    it('renders a modal into document.body', () => {
-        render();
-        const modal = document.querySelector('.command-palette-modal');
-        expect(modal).not.toBeNull();
-        dispose();
-    });
-
-    it('opens and closes without throwing', async () => {
-        const ui = await import('../features/command-palette/ui.js');
-        ui.render();
-        expect(() => ui.open()).not.toThrow();
-        expect(() => ui.close()).not.toThrow();
-        expect(() => ui.dispose()).not.toThrow();
+    it('builds file items before commands', () => {
+        const items = buildPaletteItems([{ id: 7, title: 'Notes' }], []);
+        expect(items[0]).toMatchObject({ kind: 'file', noteId: 7 });
+        expect(items.some(i => i.kind === 'command')).toBe(true);
     });
 });

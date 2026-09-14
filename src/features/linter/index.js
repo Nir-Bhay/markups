@@ -5,7 +5,6 @@
  */
 
 import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
-import { _markdownService } from '../../core/markdown/index.js';
 import { editorService } from '../../core/editor/index.js';
 import { debounce } from '../../utils/debounce.js';
 

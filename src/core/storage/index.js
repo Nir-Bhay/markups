@@ -9,6 +9,30 @@ import { STORAGE_KEYS, NAMESPACE } from './keys.js';
 class StorageService {
     constructor(namespace = NAMESPACE) {
         this.namespace = namespace;
+        // Availability probe result; set by initialize(). Defaults true so
+        // pre-init callers keep legacy behavior.
+        this.available = true;
+        this._initialized = false;
+    }
+
+    /**
+     * Probe localStorage availability once. Synchronous and never throws —
+     * modular boot (`app.js:_initCore`) must continue on fallback even when
+     * storage is denied (private mode) or quota-exhausted.
+     * @returns {boolean} true when read/write probe succeeds
+     */
+    initialize() {
+        if (this._initialized) return this.available;
+        this._initialized = true;
+        try {
+            const probe = this._getKey('__probe__');
+            localStorage.setItem(probe, '1');
+            localStorage.removeItem(probe);
+            this.available = true;
+        } catch {
+            this.available = false;
+        }
+        return this.available;
     }
 
     /**

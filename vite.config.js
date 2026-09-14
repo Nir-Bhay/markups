@@ -67,7 +67,6 @@ export default defineConfig(({ mode }) => {
             assetsInlineLimit: 4096,
             rollupOptions: {
                 input,
-                external: ['monaco-vim'],
                 output: {
                     // Long-term caching: include content hash in the bundle file names.
                     entryFileNames: 'assets/[name]-[hash].js',
@@ -138,8 +137,54 @@ export default defineConfig(({ mode }) => {
             drop: ['debugger'],
             legalComments: 'none'
         },
+        resolve: {
+            // Prefer the ESM build. The package "browser" export is a UMD bundle
+            // that vendors an older Monaco copy and conflicts with monaco-editor 0.52.
+            alias: {
+                'monaco-vim': resolve(__dirname, 'node_modules/monaco-vim/dist/index.mjs')
+            }
+        },
         optimizeDeps: {
-            include: ['monaco-editor/esm/vs/editor/editor.api']
+            include: [
+                'monaco-editor/esm/vs/editor/editor.api',
+                'monaco-vim',
+                // Mermaid lazy-loads diagram chunks (sequence/pie/state/…). Pre-bundle
+                // the entry so first non-flowchart diagram does not hit a stale/missing
+                // deps chunk and render as a bogus "Syntax error" SVG.
+                'mermaid'
+            ]
+        },
+        server: {
+            proxy: {
+                '/api/ai-proxy/kilo': {
+                    target: 'https://api.kilo.ai',
+                    changeOrigin: true,
+                    secure: true,
+                    rewrite: (path) => path.replace(/^\/api\/ai-proxy\/kilo/, '/api/gateway')
+                },
+                '/api/ai-proxy/tokenrouter': {
+                    target: 'https://api.tokenrouter.com',
+                    changeOrigin: true,
+                    secure: true,
+                    rewrite: (path) => path.replace(/^\/api\/ai-proxy\/tokenrouter/, '/v1')
+                }
+            }
+        },
+        preview: {
+            proxy: {
+                '/api/ai-proxy/kilo': {
+                    target: 'https://api.kilo.ai',
+                    changeOrigin: true,
+                    secure: true,
+                    rewrite: (path) => path.replace(/^\/api\/ai-proxy\/kilo/, '/api/gateway')
+                },
+                '/api/ai-proxy/tokenrouter': {
+                    target: 'https://api.tokenrouter.com',
+                    changeOrigin: true,
+                    secure: true,
+                    rewrite: (path) => path.replace(/^\/api\/ai-proxy\/tokenrouter/, '/v1')
+                }
+            }
         }
     };
 });

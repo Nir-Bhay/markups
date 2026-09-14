@@ -123,17 +123,23 @@ class FileTreeStorageService {
         if (fromIndex === -1) return false;
         const [moved] = siblings.splice(fromIndex, 1);
         siblings.splice(Math.max(0, Math.min(toIndex, siblings.length)), 0, moved);
-        const outcomes = await Promise.allSettled(
-            siblings.map((item, idx) => db.file_nodes.update(item.id, { order: idx, updatedAt: Date.now() }))
-        );
-        const failures = outcomes.filter((o) => o.status === 'rejected');
-        if (failures.length > 0) {
+        // Phase 2.4: single transaction — a partial failure rolls back instead
+        // of leaving half-renumbered order. Returns false so callers can react.
+        try {
+            await db.transaction('rw', db.file_nodes, async () => {
+                const now = Date.now();
+                for (let idx = 0; idx < siblings.length; idx++) {
+                    await db.file_nodes.update(siblings[idx].id, { order: idx, updatedAt: now });
+                }
+            });
+            return true;
+        } catch (error) {
             console.error(
-                `reorderNode: failed to persist order for ${failures.length}/${siblings.length} sibling(s):`,
-                failures.map((f) => f.reason)
+                `reorderNode: transaction rolled back for ${siblings.length} sibling(s):`,
+                error
             );
+            return false;
         }
-        return true;
     }
 
     async deleteNodeRecursive(id) {

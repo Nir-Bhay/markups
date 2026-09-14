@@ -1,28 +1,36 @@
-# Gates: Markups remaining bugs — finish & land
+# Markups Verification Gates
 
-Scope: finish the leftover Markups fixes reported by Nirbhay during live testing on
-2026-08-24 (video reload-on-keystroke, preview refresh feel) plus land the already-written
-emoji regression fix. Intended for local `review/integration` branch.
+This is the current local verification checklist. Results must be recorded from
+the current commit; historical output is not evidence for a later change.
 
-- [x] G1: typing no longer recreates/reloads the same preview video every keystroke
-  CHECK: node scripts/verify-gate-video-reuse.mjs
-  EXPECT: video reuse gate passed
-  EVIDENCE: exit=0; shell=C:\WINDOWS\system32\cmd.exe; cwd=D:\harmes\projects\markups; path=c71e3d816cf3/86 entries; output=(node:19484) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated. | (Use `node --trace-deprecation ...` to show where
+## Required before handoff
 
-- [x] G2: full unit suite is green after edits
-  CHECK: node scripts/verify-gate-suite.mjs
-  EXPECT: suite gate passed
-  EVIDENCE: exit=0; shell=C:\WINDOWS\system32\cmd.exe; cwd=D:\harmes\projects\markups; path=c71e3d816cf3/86 entries; output=(node:18584) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated. | (Use `node --trace-deprecation ...` to show where
+- [ ] `npm run lint`
+- [ ] `npm test`
+- [ ] `npm run build`
+- [ ] `npm run build:modular`
+- [ ] `npm run test:coverage`
+- [ ] `npm run test:e2e`
+- [ ] `npm run verify:health`
+- [ ] `npm audit`
 
-- [x] G3: production build is clean after edits
-  CHECK: node scripts/verify-gate-build.mjs
-  EXPECT: build gate passed
-  EVIDENCE: exit=0; shell=C:\WINDOWS\system32\cmd.exe; cwd=D:\harmes\projects\markups; path=c71e3d816cf3/86 entries; output=(node:8824) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated. | (Use `node --trace-deprecation ...` to show where 
+## Required for user-facing changes
 
-- [x] G4: emoji regression fix (core/markdown emoji flatten) is committed on review/integration
-  CHECK: node scripts/verify-gate-emoji-commit.mjs
-  EXPECT: emoji commit gate passed
-  EVIDENCE: exit=0; shell=C:\WINDOWS\system32\cmd.exe; cwd=D:\harmes\projects\markups; path=c71e3d816cf3/86 entries; output=emoji commit gate passed
+- [ ] Add or update focused unit tests.
+- [ ] Run a browser smoke test for the affected workflow.
+- [ ] Check keyboard and reduced-motion behavior for UI changes.
+- [ ] Check Markdown/HTML insertion boundaries for user-controlled values.
+- [ ] Confirm generated files are not being added to Git.
 
-- [ ] G5: changes landed on review/integration and pushed (manual — Nirbhay reviews build in browser)
-  EVIDENCE: pending
+## Evidence format
+
+For each gate, record:
+
+- command
+- commit or working-tree state
+- exit code
+- relevant summary
+- known warnings or limitations
+
+Do not mark a gate complete from an older branch, an older build, or a
+different entry point.

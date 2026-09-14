@@ -97,6 +97,23 @@ export function downloadFile(content, filename, mimeType = 'text/plain') {
 }
 
 /**
+ * Download an existing Blob (Phase 1.4 — required by services/export/docx.js).
+ * Mirrors downloadFile's anchor convention.
+ * @param {Blob} blob - Blob to download
+ * @param {string} filename - File name
+ */
+export function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/**
  * Download as Markdown file
  * @param {string} content - Markdown content
  * @param {string} filename - File name (without extension)

@@ -11,6 +11,7 @@
 import { copyToClipboard, readFromClipboard } from '../../utils/clipboard.js';
 import { insertText } from '../toolbar/index.js';
 import { editorService } from '../../core/editor/index.js';
+import { eventBus, EVENTS } from '../../utils/eventBus.js';
 
 const EDITOR_MENU = 'editor';
 const PREVIEW_MENU = 'preview';
@@ -30,6 +31,7 @@ const ICONS = {
     block: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>',
     toc: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>',
     search: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
+    ai: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
     theme: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
     help: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>'
 };
@@ -214,9 +216,18 @@ class AppContextMenuManager {
     }
 
     _buildEditorMenu() {
+        const hasSelection = Boolean(editorService.getSelectedText?.()?.trim());
+        const aiItems = hasSelection ? [
+            this._separator(),
+            this._item(ICONS.ai, 'Edit with AI…', '', () => this._openAiPanel('edit-focus')),
+            this._item(ICONS.ai, 'Improve with AI', '', () => this._openAiPanel('improve')),
+            this._item(ICONS.ai, 'Summarize with AI', '', () => this._openAiPanel('summarize')),
+            this._item(ICONS.ai, 'Expand with AI', '', () => this._openAiPanel('expand')),
+        ] : [];
         return [
             this._item(ICONS.copy, 'Copy', 'Ctrl+C', () => this._editorCopy()),
             this._item(ICONS.paste, 'Paste', 'Ctrl+V', () => this._editorPaste()),
+            ...aiItems,
             this._separator(),
             this._item(ICONS.moveUp, 'Move Line Up', 'Alt+↑', () => this._triggerEditorCommand('editor.action.moveLinesUpAction')),
             this._item(ICONS.moveDown, 'Move Line Down', 'Alt+↓', () => this._triggerEditorCommand('editor.action.moveLinesDownAction')),
@@ -265,6 +276,30 @@ class AppContextMenuManager {
         } catch {
             // ignore unsupported environments
         }
+    }
+
+    /**
+     * Open the AI sidebar (lazy manager listens on the event bus,
+     * so the context menu never eagerly loads the AI module).
+     * If the AI module was never loaded, loads it via the header
+     * button first and dispatches once the panel exists.
+     * @param {string} action - AI action to run after opening
+     * @private
+     */
+    _openAiPanel(action) {
+        if (document.querySelector('#ai-writer-panel .ai-panel-inner')) {
+            eventBus.emit(EVENTS.AI_PANEL_REQUESTED, { action });
+            return;
+        }
+        document.querySelector('#ai-writer-button')?.click();
+        let attempts = 0;
+        const timer = setInterval(() => {
+            attempts += 1;
+            if (document.querySelector('#ai-writer-panel .ai-panel-inner') || attempts > 40) {
+                clearInterval(timer);
+                eventBus.emit(EVENTS.AI_PANEL_REQUESTED, { action });
+            }
+        }, 50);
     }
 
     async _editorPaste() {

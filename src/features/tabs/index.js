@@ -9,6 +9,7 @@ import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
 import { editorService } from '../../core/editor/index.js';
 import { DEFAULT_CONTENT } from '../../config/default-content.js';
+import { escapeHtml } from '../../utils/escape-html.js';
 
 /**
  * Tab data structure
@@ -355,7 +356,7 @@ class TabsManager {
         tabEl.setAttribute('aria-selected', tab.id === this.activeTabId);
 
         tabEl.innerHTML = `
-        <span class="tab-name">${tab.name}</span>
+        <span class="tab-name">${escapeHtml(tab.name || 'Untitled')}</span>
         ${tab.isDirty ? '<span class="tab-dirty">•</span>' : ''}
         <button class="tab-close" aria-label="Close tab">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

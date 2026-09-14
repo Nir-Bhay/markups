@@ -105,11 +105,13 @@ export function injectToolbarStyles() {
     }
 
     .tb-panel {
-      background: rgba(15, 23, 42, 0.96);
+      background: var(--bg-elevated, #ffffff);
+      color: var(--text-primary, #0f172a);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border-radius: 10px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+      border: 1px solid var(--border-light, rgba(15,23,42,0.14));
+      box-shadow: var(--shadow-xl, 0 12px 40px rgba(0,0,0,0.22));
       padding: 6px;
       min-width: 160px;
       max-height: 380px;
@@ -118,7 +120,7 @@ export function injectToolbarStyles() {
 
     .tb-panel::-webkit-scrollbar { width: 5px; }
     .tb-panel::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,0.12);
+      background: var(--border-light, rgba(15,23,42,0.18));
       border-radius: 4px;
     }
 
@@ -130,7 +132,7 @@ export function injectToolbarStyles() {
       padding: 6px 10px;
       border-radius: 6px;
       cursor: pointer;
-      color: #e2e8f0;
+      color: var(--text-primary, #0f172a);
       font-size: 12px;
       border: none;
       background: none;
@@ -141,7 +143,7 @@ export function injectToolbarStyles() {
     }
 
     .tb-dd-item:hover {
-      background: rgba(99, 102, 241, 0.15);
+      background: var(--bg-hover, rgba(99, 102, 241, 0.12));
     }
 
     .tb-dd-item .tb-dd-icon {
@@ -153,21 +155,21 @@ export function injectToolbarStyles() {
 
     .tb-dd-item .tb-dd-shortcut {
       margin-left: auto;
-      color: #64748b;
+      color: var(--text-tertiary, #64748b);
       font-size: 10px;
       font-family: monospace;
     }
 
     .tb-dd-sep {
       height: 1px;
-      background: rgba(255,255,255,0.06);
+      background: var(--border-light, rgba(15,23,42,0.12));
       margin: 4px 8px;
     }
 
     .tb-dd-label {
       padding: 4px 10px;
       font-size: 10px;
-      color: #64748b;
+      color: var(--text-tertiary, #64748b);
       text-transform: uppercase;
       letter-spacing: 0.05em;
       font-weight: 600;
@@ -182,23 +184,33 @@ export function injectToolbarStyles() {
     }
 
     .tb-color-swatch {
+      appearance: none;
       width: 24px;
       height: 24px;
       border-radius: 4px;
       border: 2px solid transparent;
       cursor: pointer;
+      padding: 0;
       transition: transform 0.1s, border-color 0.1s;
     }
 
     .tb-color-swatch:hover {
       transform: scale(1.2);
-      border-color: rgba(255,255,255,0.5);
+      border-color: var(--text-primary, rgba(15,23,42,0.5));
+    }
+
+    .tb-color-swatch:focus-visible,
+    .tb-emoji-btn:focus-visible,
+    .tb-emoji-tab:focus-visible,
+    .tb-char-btn:focus-visible {
+      outline: 2px solid var(--border-focus, #6366f1);
+      outline-offset: 2px;
     }
 
     .tb-color-section-label {
       padding: 6px 8px 2px;
       font-size: 10px;
-      color: #64748b;
+      color: var(--text-tertiary, #64748b);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
@@ -223,24 +235,24 @@ export function injectToolbarStyles() {
     .tb-custom-color-row input[type="text"] {
       flex: 1;
       padding: 4px 8px;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid var(--border-light, rgba(15,23,42,0.14));
       border-radius: 5px;
-      background: rgba(255,255,255,0.05);
-      color: #e2e8f0;
+      background: var(--bg-primary, #ffffff);
+      color: var(--text-primary, #0f172a);
       font-size: 12px;
       font-family: monospace;
       outline: none;
     }
 
     .tb-custom-color-row input[type="text"]:focus {
-      border-color: #6366f1;
+      border-color: var(--accent-primary, #6366f1);
     }
 
     .tb-custom-color-row button {
       padding: 4px 10px;
       border-radius: 5px;
       border: none;
-      background: #6366f1;
+      background: var(--accent-primary, #6366f1);
       color: #fff;
       font-size: 11px;
       cursor: pointer;
@@ -251,7 +263,7 @@ export function injectToolbarStyles() {
       display: flex;
       gap: 2px;
       padding: 4px 6px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid var(--border-light, rgba(15,23,42,0.12));
       overflow-x: auto;
     }
 
@@ -260,15 +272,15 @@ export function injectToolbarStyles() {
       border-radius: 5px;
       border: none;
       background: transparent;
-      color: #94a3b8;
+      color: var(--text-secondary, #64748b);
       font-size: 11px;
       cursor: pointer;
       white-space: nowrap;
       transition: background 0.1s;
     }
 
-    .tb-emoji-tab:hover { background: rgba(255,255,255,0.06); }
-    .tb-emoji-tab.active { background: rgba(99,102,241,0.2); color: #a5b4fc; }
+    .tb-emoji-tab:hover { background: var(--bg-hover, rgba(99,102,241,0.12)); }
+    .tb-emoji-tab.active { background: var(--accent-primary-light, rgba(99,102,241,0.2)); color: var(--accent-primary, #6366f1); }
 
     .tb-emoji-grid {
       display: grid;
@@ -287,6 +299,7 @@ export function injectToolbarStyles() {
       justify-content: center;
       border: none;
       background: transparent;
+      color: var(--text-primary, #0f172a);
       border-radius: 5px;
       font-size: 18px;
       cursor: pointer;
@@ -302,9 +315,9 @@ export function injectToolbarStyles() {
       width: 100%;
       padding: 6px 10px;
       border: none;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid var(--border-light, rgba(15,23,42,0.12));
       background: transparent;
-      color: #e2e8f0;
+      color: var(--text-primary, #0f172a);
       font-size: 12px;
       outline: none;
       box-sizing: border-box;
@@ -336,9 +349,9 @@ export function injectToolbarStyles() {
       gap: 1px;
     }
 
-    .tb-char-btn:hover { background: rgba(99,102,241,0.15); }
+    .tb-char-btn:hover { background: var(--bg-hover, rgba(99,102,241,0.15)); }
     .tb-char-btn .char { font-size: 16px; }
-    .tb-char-btn .name { font-size: 7px; color: #64748b; overflow: hidden; text-overflow: ellipsis; max-width: 34px; }
+    .tb-char-btn .name { font-size: 7px; color: var(--text-tertiary, #64748b); overflow: hidden; text-overflow: ellipsis; max-width: 34px; }
 
     /* ── Table Picker Grid ── */
     .tb-table-picker {
@@ -354,21 +367,21 @@ export function injectToolbarStyles() {
     .tb-table-cell {
       width: 18px;
       height: 18px;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid var(--border-light, rgba(15,23,42,0.14));
       border-radius: 2px;
       cursor: pointer;
       transition: background 0.08s, border-color 0.08s;
     }
 
     .tb-table-cell.active {
-      background: rgba(99, 102, 241, 0.4);
-      border-color: #6366f1;
+      background: var(--accent-primary-light, rgba(99, 102, 241, 0.22));
+      border-color: var(--accent-primary, #6366f1);
     }
 
     .tb-table-label {
       text-align: center;
       font-size: 11px;
-      color: #94a3b8;
+      color: var(--text-secondary, #64748b);
       padding-top: 6px;
       font-family: monospace;
     }
@@ -385,7 +398,7 @@ export function injectToolbarStyles() {
       padding: 6px 10px;
       border-radius: 6px;
       cursor: pointer;
-      color: #e2e8f0;
+      color: var(--text-primary, #0f172a);
       font-size: 12px;
       transition: background 0.1s;
     }

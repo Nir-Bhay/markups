@@ -58,16 +58,13 @@ export const APP_CONFIG = {
         }
     },
 
-    // Mermaid
-    MERMAID_CONFIG: {
-        startOnLoad: false,
-        theme: 'default',
-        securityLevel: 'loose'
-    },
-
     // AI Writer
     AI_REQUEST_TIMEOUT_MS: 30000,
     AI_MAX_CONTEXT_CHARS: 8000,
+    AI_MAX_PROMPT_CHARS: 12000,
+    AI_MAX_OUTPUT_TOKENS: 8192,
+    AI_MIN_OUTPUT_TOKENS: 128,
+    AI_DEFAULT_OUTPUT_TOKENS: 2048,
     AI_STREAMING_DEBOUNCE_MS: 50
 };
 
@@ -75,7 +72,9 @@ export const APP_CONFIG = {
  * Feature flags for enabling/disabling features
  */
 export const FEATURE_FLAGS = {
+    ENABLE_TOOLBAR: true,
     ENABLE_TABS: true,
+    ENABLE_STATS: true,
     ENABLE_GOALS: true,
     ENABLE_LINTER: true,
     ENABLE_TOC: true,
@@ -94,25 +93,6 @@ export const FEATURE_FLAGS = {
     ENABLE_FULLSCREEN: true,
     ENABLE_MOBILE_UI: true,
     ENABLE_AI_WRITER: true
-};
-
-/**
- * Breakpoints for responsive design
- */
-export const BREAKPOINTS = {
-    MOBILE: 480,
-    TABLET: 768,
-    DESKTOP: 1024,
-    WIDE: 1280
-};
-
-/**
- * Animation durations (in ms)
- */
-export const ANIMATIONS = {
-    FAST: 150,
-    NORMAL: 250,
-    SLOW: 350
 };
 
 export default APP_CONFIG;

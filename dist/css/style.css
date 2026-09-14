@@ -11324,117 +11324,54 @@ header input[type='text']::placeholder {
     }
 }
 
-/* ===== Header quick tabs (browser-style tab chips) ===== */
+/* ===== Header file tabs (browser-style, between brand and actions) ===== */
 .header-quicktabs {
     display: flex;
-    align-items: flex-end;
-    gap: 1px;
-    margin: 0 4px 0 0;
-    padding: 0;
-    flex: 0 1 auto;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 auto;
     min-width: 0;
-    max-width: 480px;
+    max-width: none;
+    height: 100%;
+    margin: 0;
+    padding: 0 4px;
+    overflow: hidden;
+    align-self: stretch;
+}
+
+.header-quicktabs-list,
+#header-quicktabs #tabs-list {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: thin;
-    align-self: flex-end;
+    scrollbar-width: none;
 }
 
-.header-quicktabs::-webkit-scrollbar {
-    height: 3px;
+.header-quicktabs-list::-webkit-scrollbar,
+#header-quicktabs #tabs-list::-webkit-scrollbar {
+    display: none;
 }
 
-.header-quicktabs::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 2px;
-}
-
-.header-quicktab {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
+#header-quicktabs .header-tab {
     height: 32px;
     padding: 0 8px 0 10px;
-    background: transparent;
-    border: none;
-    border-radius: 8px 8px 0 0;
-    color: var(--text-secondary, rgba(255, 255, 255, 0.62));
-    font-size: 12.5px;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    max-width: 170px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    position: relative;
-    transition: background 0.15s, color 0.15s;
-    line-height: 1;
-    margin-bottom: 0;
-    border-bottom: 1px solid transparent;
+    min-width: 72px;
+    max-width: 168px;
+    font-size: 0.75rem;
 }
 
-.header-quicktab:hover {
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-primary, #fff);
-}
-
-.header-quicktab.active {
-    background: var(--bg-primary, #ffffff);
-    color: var(--text-primary, #1a1a1a);
-    border-bottom: 1px solid var(--bg-primary, #ffffff);
-}
-
-/* Dark mode: keep active tab same as page bg */
-[data-theme="dark"] .header-quicktab.active,
-.dark-mode .header-quicktab.active,
-body.dark .header-quicktab.active {
-    background: #1e1e1e;
-    color: #fff;
-    border-bottom: 1px solid #1e1e1e;
-}
-
-.header-quicktab-icon {
-    flex-shrink: 0;
-    opacity: 0.65;
-}
-
-.header-quicktab.active .header-quicktab-icon {
-    opacity: 0.9;
-}
-
-.header-quicktab-label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 110px;
-}
-
-.header-quicktab-close {
-    flex-shrink: 0;
-    width: 18px;
-    height: 18px;
+#header-quicktabs .header-tab .tab-close {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    background: transparent;
-    border: none;
-    color: inherit;
-    cursor: pointer;
-    font-size: 15px;
-    line-height: 1;
-    opacity: 0.4;
-    padding: 0;
+    width: 16px;
+    height: 16px;
     margin-left: 2px;
-}
-
-.header-quicktab-close:hover {
-    background: rgba(0, 0, 0, 0.12);
-    opacity: 1;
-}
-
-.header-quicktab.active .header-quicktab-close:hover {
-    background: rgba(0, 0, 0, 0.18);
 }
 
 .header-quicktab-new {
@@ -11445,19 +11382,19 @@ body.dark .header-quicktab.active {
     align-items: center;
     justify-content: center;
     background: transparent;
-    border: none;
-    border-radius: 50%;
-    color: var(--text-secondary, rgba(255, 255, 255, 0.55));
+    border: 1px dashed var(--border-medium, rgba(0, 0, 0, 0.18));
+    border-radius: var(--radius-md, 8px);
+    color: var(--text-secondary);
     cursor: pointer;
     padding: 0;
-    margin: 0 0 0 6px;
-    margin-bottom: 2px;
-    transition: background 0.15s, color 0.15s;
+    margin: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .header-quicktab-new:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-primary, #fff);
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
 }
 
 /* Hide quicktabs on small screens (mobile has its own navigation) */

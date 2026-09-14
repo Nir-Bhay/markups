@@ -3,7 +3,7 @@
  * @module features/backlinks/index
  */
 
-import { parseWikilinks } from './parser.js';
+import { parseWikilinks, findUnlinkedMentions, renameWikilinkTargets } from './parser.js';
 import { debounce } from '../../utils/debounce.js';
 
 export class BacklinksManager {
@@ -97,6 +97,39 @@ export class BacklinksManager {
         await this.scanAll();
         this.config.onRefresh(this.config.activeDocId);
     }, 500);
+
+    /**
+     * Unlinked mentions pointing at a document (plain-text title, no link).
+     * @param {string} docId
+     * @returns {Array<{ targetId: string, targetTitle: string, sourceId: string, snippet: string }>}
+     */
+    async getUnlinkedMentionsFor(docId) {
+        if (!this.config.noteStorage) return [];
+        const notes = await this.config.noteStorage.getAllNotes();
+        return findUnlinkedMentions(notes).filter(m => m.targetId === String(docId));
+    }
+
+    /**
+     * Propagate a note rename across all wikilink targets. Returns the number
+     * of notes rewritten.
+     * @param {string} oldTitle
+     * @param {string} newTitle
+     * @returns {Promise<number>}
+     */
+    async applyRename(oldTitle, newTitle) {
+        if (!this.config.noteStorage || !oldTitle || !newTitle) return 0;
+        const notes = await this.config.noteStorage.getAllNotes();
+        let rewritten = 0;
+        for (const note of notes) {
+            const { content, replaced } = renameWikilinkTargets(note.content || '', oldTitle, newTitle);
+            if (replaced > 0) {
+                await this.config.noteStorage.updateNote(note.id, { content });
+                rewritten++;
+            }
+        }
+        if (rewritten > 0) await this.scanAll();
+        return rewritten;
+    }
 
     /** Start listening for editor content changes. */
     initialize() {

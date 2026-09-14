@@ -29,6 +29,49 @@ describe('shared preview sanitizer', () => {
         expect(sanitized).not.toContain('style=');
     });
 
+    it('preserves toolbar hex color styles but rejects other inline CSS', () => {
+        const sanitized = sanitizePreviewHtml([
+            '<span style="color:#2563eb">blue</span>',
+            '<mark style="background:#fef08a;padding:0 2px">highlight</mark>',
+            '<span style="color:red;position:fixed">unsafe</span>'
+        ].join(''));
+
+        expect(sanitized).toContain('style="color:#2563eb"');
+        expect(sanitized).toContain('style="background:#fef08a"');
+        expect(sanitized).not.toContain('position:fixed');
+        expect(sanitized).not.toContain('color:red');
+    });
+
+    it('preserves KaTeX layout styles required for math preview', () => {
+        const sanitized = sanitizePreviewHtml([
+            '<span class="katex"><span class="strut" style="height:2.9291em;vertical-align:-1.2777em;"></span>',
+            '<span class="pstrut" style="height:3.05em;"></span>',
+            '<span style="top:-1.8723em;margin-left:0em;position:relative;"></span></span>'
+        ].join(''));
+
+        expect(sanitized).toContain('height:2.9291em');
+        expect(sanitized).toContain('vertical-align:-1.2777em');
+        expect(sanitized).toContain('height:3.05em');
+        expect(sanitized).toContain('top:-1.8723em');
+        expect(sanitized).toContain('margin-left:0em');
+        expect(sanitized).toContain('position:relative');
+    });
+
+    it('rejects dangerous style values even when property names look like layout', () => {
+        const sanitized = sanitizePreviewHtml([
+            '<span style="height:expression(alert(1))"></span>',
+            '<span style="width:url(javascript:alert(1))"></span>',
+            '<span style="position:fixed;top:0"></span>'
+        ].join(''));
+
+        expect(sanitized).not.toContain('expression');
+        expect(sanitized).not.toContain('url(');
+        expect(sanitized).not.toContain('position:fixed');
+        // bare top:0 without a safe position stays allowed as a length — drop the whole
+        // fixed declaration; remaining safe length-only props may survive.
+        expect(sanitized).not.toContain('position:fixed');
+    });
+
     it('forces external links to open in a new tab', () => {
         const sanitized = sanitizePreviewHtml('<p><a href="https://example.com/docs">docs</a></p>');
         expect(sanitized).toContain('target="_blank"');

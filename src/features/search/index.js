@@ -43,6 +43,8 @@ class SearchManager {
         this.visible = false;
         this.decorations = [];
         this.initialized = false;
+        /** @type {Function|null} Stored keydown ref so dispose() removes it */
+        this._boundKeyDown = null;
 
         SearchManager.instance = this;
     }
@@ -66,26 +68,46 @@ class SearchManager {
     }
 
     /**
+     * Editor-focused context check: Ctrl+F/H hijack the browser find only
+     * when the Monaco editor owns focus (or focus is on body). Inside other
+     * inputs (settings, modals, the search panel itself) the browser and
+     * field behavior win, except Escape-to-close while the panel is open.
+     * @private
+     */
+    _isEditorContext(e) {
+        if (this.visible && this.container?.contains(e.target)) return true;
+        try {
+            if (editorService.getEditor()?.hasTextFocus?.()) return true;
+        } catch (_ignored) { /* headless tests */ }
+        const target = e.target;
+        if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return false;
+        return true;
+    }
+
+    /**
      * Setup keyboard shortcuts
      * @private
      */
     _setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + F - Find
+        this._boundKeyDown = (e) => {
+            // Escape - Close (works anywhere while open)
+            if (e.key === 'Escape' && this.visible) {
+                this.hide();
+                return;
+            }
+
+            // Ctrl/Cmd + F - Find (editor context only, else browser find wins)
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                if (!this._isEditorContext(e)) return;
                 e.preventDefault();
                 this.show();
             }
 
-            // Ctrl/Cmd + H - Replace
+            // Ctrl/Cmd + H - Replace (editor context only)
             if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+                if (!this._isEditorContext(e)) return;
                 e.preventDefault();
                 this.show(true);
-            }
-
-            // Escape - Close
-            if (e.key === 'Escape' && this.visible) {
-                this.hide();
             }
 
             // F3 or Enter in search - Next
@@ -103,7 +125,8 @@ class SearchManager {
                     this.previous();
                 }
             }
-        });
+        };
+        document.addEventListener('keydown', this._boundKeyDown);
     }
 
     /**
@@ -525,6 +548,10 @@ class SearchManager {
      * Dispose search manager
      */
     dispose() {
+        if (this._boundKeyDown) {
+            document.removeEventListener('keydown', this._boundKeyDown);
+            this._boundKeyDown = null;
+        }
         this.clear();
         this.initialized = false;
         SearchManager.instance = null;

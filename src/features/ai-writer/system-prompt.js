@@ -127,6 +127,15 @@ export const ACTION_PROMPTS = {
         return prompt;
     },
 
+    add(userPrompt, docContext) {
+        let prompt = `Add Markdown content at the current cursor based on this request:\n\n${userPrompt}`;
+        if (docContext && docContext.trim().length > 0) {
+            prompt += `\n\n---\nExisting document context (match its style and structure):\n${docContext.substring(0, 2000)}`;
+        }
+        prompt += '\n\nOutput only the new Markdown content to insert. Do not repeat surrounding content.';
+        return prompt;
+    },
+
     /**
      * Continue writing from the cursor position
      * @param {string} docContent - Full document content
@@ -190,6 +199,22 @@ export const ACTION_PROMPTS = {
      */
     improve(selectedText) {
         return `Improve the following Markdown text for better clarity, grammar, readability, and structure. Maintain the same meaning, tone, and Markdown formatting. Output ONLY the improved text.\n\nText to improve:\n${selectedText}`;
+    },
+
+    /**
+     * Review the current Markdown without changing it.
+     * @param {string} docContent - Document content
+     * @returns {string} Complete prompt
+     */
+    review(docContent) {
+        return `Review this Markdown document for correctness, clarity, structure, broken Markdown, and consistency.
+Return a concise review with these headings:
+## Findings
+## Suggested fixes
+For each finding, include an approximate line number and severity (low, medium, or high). Do not rewrite the document and do not claim to have changed anything.
+
+Document:
+${docContent}`;
     }
 };
 
