@@ -1,0 +1,534 @@
+{
+  "generatedAt": "2026-09-14T10:24:17.688Z",
+  "baseURL": "http://127.0.0.1:4173/",
+  "suites": [
+    {
+      "id": "math-thesis",
+      "title": "Thesis-grade mathematics",
+      "ok": true,
+      "checks": [
+        {
+          "name": "inline katex present",
+          "pass": true
+        },
+        {
+          "name": "display math blocks",
+          "pass": true
+        },
+        {
+          "name": "no clipped display math",
+          "pass": true
+        },
+        {
+          "name": "strut styles preserved",
+          "pass": true
+        },
+        {
+          "name": "no katex-error class",
+          "pass": true
+        },
+        {
+          "name": "aligned or matrix content rendered",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 6,
+      "total": 6,
+      "extras": {
+        "katex": 6,
+        "katexDisplay": 5,
+        "katexStyles": 175,
+        "mermaid": 0,
+        "mermaidSvg": 0,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 0,
+        "checkboxes": 0,
+        "textSample": "\n            \n                Research Methods\n                \n                    \n                \n            \n        \n            \n                Inline & display\n          "
+      }
+    },
+    {
+      "id": "tables-docs",
+      "title": "Technical doc tables",
+      "ok": true,
+      "checks": [
+        {
+          "name": "at least 2 tables",
+          "pass": true
+        },
+        {
+          "name": "table has thead/th",
+          "pass": true
+        },
+        {
+          "name": "cells present",
+          "pass": true
+        },
+        {
+          "name": "inline code in cells",
+          "pass": true
+        },
+        {
+          "name": "ordered nested lists",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 5,
+      "total": 5,
+      "extras": {
+        "katex": 0,
+        "katexDisplay": 0,
+        "katexStyles": 0,
+        "mermaid": 0,
+        "mermaidSvg": 0,
+        "mermaidErrors": 0,
+        "tables": 2,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 0,
+        "checkboxes": 0,
+        "textSample": "\n            \n                API Reference\n                \n                    \n                \n            \n        \n\n\nMethod\nPath\nAuth\nStatus\n\n\n\nGET\n/v1/notes\nBearer\n200\n\n\nPOS"
+      }
+    },
+    {
+      "id": "footnotes-cite",
+      "title": "Academic footnotes & citations",
+      "ok": true,
+      "checks": [
+        {
+          "name": "footnote refs rendered",
+          "pass": true
+        },
+        {
+          "name": "footnote section present",
+          "pass": true
+        },
+        {
+          "name": "cite key visible as text",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 3,
+      "total": 3,
+      "extras": {
+        "katex": 1,
+        "katexDisplay": 0,
+        "katexStyles": 16,
+        "mermaid": 0,
+        "mermaidSvg": 0,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 0,
+        "checkboxes": 0,
+        "textSample": "\n            \n                Literature Review\n                \n                    \n                \n            \n        Prior work established the baseline1 and later refinemen"
+      }
+    },
+    {
+      "id": "callouts-details",
+      "title": "GitHub callouts + collapsible details",
+      "ok": true,
+      "checks": [
+        {
+          "name": "5 alert variants",
+          "pass": true
+        },
+        {
+          "name": "NOTE alert",
+          "pass": true
+        },
+        {
+          "name": "WARNING alert",
+          "pass": true
+        },
+        {
+          "name": "CAUTION or IMPORTANT",
+          "pass": true
+        },
+        {
+          "name": "details/summary",
+          "pass": true
+        },
+        {
+          "name": "code inside details",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 6,
+      "total": 6,
+      "extras": {
+        "katex": 0,
+        "katexDisplay": 0,
+        "katexStyles": 0,
+        "mermaid": 0,
+        "mermaidSvg": 0,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 5,
+        "details": 2,
+        "codeBlocks": 1,
+        "checkboxes": 0,
+        "textSample": "\n            \n                Ops Runbook\n                \n                    \n                \n            \n        \nNote\nPrefer canary deploys before full rollout.\n\n\nTip\nCache d"
+      }
+    },
+    {
+      "id": "code-highlight",
+      "title": "Multi-language code blocks",
+      "ok": true,
+      "checks": [
+        {
+          "name": "5 fenced code blocks",
+          "pass": true
+        },
+        {
+          "name": "language classes",
+          "pass": true
+        },
+        {
+          "name": "token highlighting",
+          "pass": true
+        },
+        {
+          "name": "copy button(s)",
+          "pass": true
+        },
+        {
+          "name": "inline code",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 5,
+      "total": 5,
+      "extras": {
+        "katex": 0,
+        "katexDisplay": 0,
+        "katexStyles": 0,
+        "mermaid": 0,
+        "mermaidSvg": 0,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 5,
+        "checkboxes": 0,
+        "textSample": "\n            \n                Implementation Notes\n                \n                    \n                \n            \n        jsCopyexport async function fetchNote(id) {\n  const r"
+      }
+    },
+    {
+      "id": "mermaid-flow-complex",
+      "title": "Complex flowchart (architecture)",
+      "ok": true,
+      "checks": [
+        {
+          "name": "mermaid svg",
+          "pass": true
+        },
+        {
+          "name": "no syntax error",
+          "pass": true
+        },
+        {
+          "name": "height ok",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 3,
+      "total": 3,
+      "extras": {
+        "katex": 0,
+        "katexDisplay": 0,
+        "katexStyles": 0,
+        "mermaid": 1,
+        "mermaidSvg": 1,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 0,
+        "checkboxes": 0,
+        "textSample": "\n            \n                System Architecture\n                \n                    \n                \n            \n        #mermaid-1789381464934{font-family:\"trebuchet ms\",verd"
+      }
+    },
+    {
+      "id": "mermaid-sequence",
+      "title": "UML sequence (auth flow)",
+      "ok": true,
+      "checks": [
+        {
+          "name": "sequence svg",
+          "pass": true
+        },
+        {
+          "name": "no syntax error",
+          "pass": true
+        },
+        {
+          "name": "height ok",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 3,
+      "total": 3,
+      "extras": {
+        "katex": 0,
+        "katexDisplay": 0,
+        "katexStyles": 0,
+        "mermaid": 1,
+        "mermaidSvg": 1,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 0,
+        "checkboxes": 0,
+        "textSample": "\n            \n                Auth Sequence\n                \n                    \n                \n            \n        StoreGatewayEditorStoreGatewayEditor#mermaid-1789381468335{f"
+      }
+    },
+    {
+      "id": "mermaid-class-er",
+      "title": "Class + ER diagrams",
+      "ok": true,
+      "checks": [
+        {
+          "name": "2 mermaid diagrams",
+          "pass": true
+        },
+        {
+          "name": "both have svg",
+          "pass": true
+        },
+        {
+          "name": "no syntax errors",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 3,
+      "total": 3,
+      "extras": {
+        "katex": 0,
+        "katexDisplay": 0,
+        "katexStyles": 0,
+        "mermaid": 2,
+        "mermaidSvg": 2,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 0,
+        "checkboxes": 0,
+        "textSample": "\n            \n                Domain Model\n                \n                    \n                \n            \n        #mermaid-1789381471821{font-family:\"trebuchet ms\",verdana,ari"
+      }
+    },
+    {
+      "id": "mermaid-gantt-mindmap-git",
+      "title": "Gantt + mindmap + gitGraph",
+      "ok": true,
+      "checks": [
+        {
+          "name": "3 mermaid blocks",
+          "pass": true
+        },
+        {
+          "name": "3 svgs",
+          "pass": true
+        },
+        {
+          "name": "no syntax errors",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 3,
+      "total": 3,
+      "extras": {
+        "katex": 0,
+        "katexDisplay": 0,
+        "katexStyles": 0,
+        "mermaid": 3,
+        "mermaidSvg": 3,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 0,
+        "checkboxes": 0,
+        "textSample": "\n            \n                Planning Artifacts\n                \n                    \n                \n            \n        #mermaid-1789381475340{font-family:\"trebuchet ms\",verda"
+      }
+    },
+    {
+      "id": "mermaid-pie-state-xy",
+      "title": "Pie + state + xychart",
+      "ok": true,
+      "checks": [
+        {
+          "name": "3 mermaid blocks",
+          "pass": true
+        },
+        {
+          "name": "svgs rendered",
+          "pass": true
+        },
+        {
+          "name": "no syntax errors",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 3,
+      "total": 3,
+      "extras": {
+        "katex": 0,
+        "katexDisplay": 0,
+        "katexStyles": 0,
+        "mermaid": 3,
+        "mermaidSvg": 3,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 0,
+        "checkboxes": 0,
+        "textSample": "\n            \n                Results Visuals\n                \n                    \n                \n            \n        #mermaid-1789381478698{font-family:\"trebuchet ms\",verdana,"
+      }
+    },
+    {
+      "id": "tasklists-toc-emoji",
+      "title": "Task lists, emoji shortcodes, TOC headings",
+      "ok": true,
+      "checks": [
+        {
+          "name": "task checkboxes",
+          "pass": true
+        },
+        {
+          "name": "checked items",
+          "pass": true
+        },
+        {
+          "name": "emoji expanded",
+          "pass": true
+        },
+        {
+          "name": "heading hierarchy",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 4,
+      "total": 4,
+      "extras": {
+        "katex": 0,
+        "katexDisplay": 0,
+        "katexStyles": 0,
+        "mermaid": 0,
+        "mermaidSvg": 0,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 0,
+        "checkboxes": 7,
+        "textSample": "\n            \n                Project Checklist\n                \n                    \n                \n            \n        \n Proposal accepted 🎉\n Ethics review\n Data collection \ud83d"
+      }
+    },
+    {
+      "id": "colors-formatting",
+      "title": "Colors, highlight, nested formatting",
+      "ok": true,
+      "checks": [
+        {
+          "name": "blue style",
+          "pass": true
+        },
+        {
+          "name": "red style",
+          "pass": true
+        },
+        {
+          "name": "mark highlight",
+          "pass": true
+        },
+        {
+          "name": "blockquote",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 4,
+      "total": 4,
+      "extras": {
+        "katex": 0,
+        "katexDisplay": 0,
+        "katexStyles": 0,
+        "mermaid": 0,
+        "mermaidSvg": 0,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 0,
+        "checkboxes": 0,
+        "textSample": "\n            \n                Style Guide\n                \n                    \n                \n            \n        Brand blue,\nalert red, and\nhighlight yellow.\nBold with italic "
+      }
+    },
+    {
+      "id": "frontmatter-details-misc",
+      "title": "Frontmatter, HR, autolinks, images",
+      "ok": true,
+      "checks": [
+        {
+          "name": "h1 rendered",
+          "pass": true
+        },
+        {
+          "name": "hr present",
+          "pass": true
+        },
+        {
+          "name": "external link",
+          "pass": true
+        },
+        {
+          "name": "html comment stripped",
+          "pass": true
+        }
+      ],
+      "failed": [],
+      "passCount": 4,
+      "total": 4,
+      "extras": {
+        "katex": 0,
+        "katexDisplay": 0,
+        "katexStyles": 0,
+        "mermaid": 0,
+        "mermaidSvg": 0,
+        "mermaidErrors": 0,
+        "tables": 0,
+        "alerts": 0,
+        "details": 0,
+        "codeBlocks": 0,
+        "checkboxes": 0,
+        "textSample": "\n\n            \n                title: Deep Preview Fixture\ndescription: Professional document stress test\ntags: [thesis, docs, qa]\n                \n                    \n           "
+      }
+    }
+  ],
+  "summary": {
+    "totalSuites": 13,
+    "passed": 13,
+    "failed": 0,
+    "failedIds": [],
+    "totalChecks": 52,
+    "passedChecks": 52
+  }
+}

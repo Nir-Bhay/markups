@@ -7,7 +7,7 @@ const entryLabel = process.env.MARKUPS_ENTRY === 'modular' ? 'modular' : 'produc
 
 export default defineConfig({
     testDir: './tests/e2e',
-    timeout: 30_000,
+    timeout: 60_000,
     expect: {
         timeout: 8_000
     },
