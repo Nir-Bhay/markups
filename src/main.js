@@ -8,9 +8,10 @@ import { sanitizePreviewHtml, ensurePreviewLinksOpenInNewTab, escapeHtml, saniti
 import { safeBase64FromArrayBuffer } from './utils/file.js';
 import { modesManager } from './features/modes/index.js';
 
-// html2pdf / html2canvas — lazy-loaded on first export (P3-T1)
+// html2pdf / html2canvas / jspdf — lazy-loaded on first export (P3-T1)
 let _html2pdf = null;
 let _html2canvas = null;
+let _jsPDF = null;
 async function getHtml2Pdf() {
     if (!_html2pdf) {
         const mod = await import('html2pdf.js');
@@ -24,6 +25,13 @@ async function getHtml2Canvas() {
         _html2canvas = mod.default;
     }
     return _html2canvas;
+}
+async function getJsPDF() {
+    if (!_jsPDF) {
+        const mod = await import('jspdf');
+        _jsPDF = mod.jsPDF;
+    }
+    return _jsPDF;
 }
 
 // Monaco Editor Worker Setup
@@ -114,7 +122,18 @@ import { createExplorerManager } from './features/explorer/index.js';
 // Import debounce utility for performance optimization
 import { debounce } from './utils/debounce.js';
 import { shouldRenderMermaid, shouldRenderKatex } from './utils/preview-gates.js';
+import { createHeadingIdAllocator } from './utils/heading-ids.js';
 import { markdownToPlainText, TXT_WARN_BYTES, TXT_PREVIEW_WARN_BYTES } from './services/export/txt.js';
+import {
+    convertMermaidSvgsToImages,
+    createExportWorkbench,
+    destroyExportWorkbench,
+    pickExportTimeoutMs,
+    pickHtml2CanvasScale,
+    raceExportJob,
+    renderWorkbenchToPdf,
+    stripExportChrome
+} from './services/export/pdfPrep.js';
 
 // Import UI components from modular architecture
 import { showToast } from './ui/toast/index.js';
@@ -1042,6 +1061,10 @@ const setupEditor = () => {
     const originalSetValue = editor.setValue.bind(editor);
     editor.setValue = (val) => {
         isProgrammaticChange = true;
+        // Any programmatic content replace means the pristine welcome content is
+        // gone (document load, import, restore). Clear the flag so the next real
+        // keystroke does not wipe the loaded document (QA: welcome-wipe).
+        if (val !== defaultInput) isShowingWelcome = false;
         originalSetValue(val);
         isProgrammaticChange = false;
     };
@@ -1199,15 +1222,8 @@ marked.use(markedFootnote());
 // Emoji shortcode syntax (:smile:) for the preview (Issue #45)
 marked.use(markedEmoji(emojiMarkedOptions));
 
-// Slugify function for heading IDs
-const slugify = (text) => {
-    return text
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/[\s_-]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-};
+// Slugify + GFM-style duplicate uniquify for heading IDs / TOC
+let allocateHeadingId = createHeadingIdAllocator();
 
 // Track headings for TOC
 let tocItems = [];
@@ -1218,7 +1234,7 @@ renderer.heading = function (token) {
     const headingLevel = token.depth;
     // Strip markdown link syntax [text](url) → text for slug and aria-label
     const plainText = token.text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-    const slug = slugify(plainText);
+    const slug = allocateHeadingId(plainText);
     // Render inline tokens so links/bold/etc. become HTML
     const renderedContent = this.parser.parseInline(token.tokens);
 
@@ -2255,6 +2271,19 @@ function blockTypeFromElement(el) {
     return 'paragraph';
 }
 
+/** Block "family" of a rendered top-level element, in the scanner's vocabulary. */
+function elementBlockScanType(el) {
+    const tag = el.tagName.toLowerCase();
+    if (/^h[1-6]$/.test(tag)) return 'heading';
+    if (tag === 'pre') return 'code';
+    if (tag === 'table') return 'table';
+    if (tag === 'ul' || tag === 'ol') return 'list';
+    if (tag === 'blockquote' || el.classList?.contains('markdown-alert')) return 'quote';
+    if (tag === 'hr') return 'hr';
+    if (tag === 'details') return 'details';
+    return 'paragraph';
+}
+
 /**
  * Annotate preview block elements with data-source-line attributes.
  * Prefer exact heading IDs, then sequential markdown-block matching so
@@ -2301,6 +2330,23 @@ function annotateSourceLines(outputElement, markdown) {
         const tag = el.tagName.toLowerCase();
         if (/^h[1-6]$/.test(tag) && el.id && headingLineMap.has(el.id)) {
             el.setAttribute('data-source-line', String(headingLineMap.get(el.id)));
+        }
+    });
+
+    // Primary pass: pair each top-level rendered block with its scanned source
+    // block so the source line is precise instead of estimated from geometry.
+    // This is what keeps Document Mode write-back on the right range.
+    // Anything unmatched falls through to the sequential + geometry passes.
+    let scanCursor = 0;
+    Array.from(outputElement.children).forEach((el) => {
+        if (el.hasAttribute('data-source-line')) return;
+        const want = elementBlockScanType(el);
+        for (let j = scanCursor; j < mdBlocks.length; j++) {
+            if (mdBlocks[j].type === want) {
+                el.setAttribute('data-source-line', String(mdBlocks[j].line));
+                scanCursor = j + 1;
+                return;
+            }
         }
     });
 
@@ -2379,11 +2425,32 @@ function annotateSourceLines(outputElement, markdown) {
     });
 }
 
+/**
+ * Replace Mermaid's bomb/"Syntax error in text" SVG with a compact note so
+ * invalid diagrams fail locally without looking like a document crash.
+ * @param {HTMLElement} root
+ */
+const normalizeMermaidPreviewErrors = (root) => {
+    if (!root) return;
+    root.querySelectorAll('.mermaid').forEach((node) => {
+        const text = (node.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!/Syntax error in text/i.test(text) && !/Parse error on line/i.test(text)) {
+            return;
+        }
+        const note = document.createElement('div');
+        note.className = 'mermaid-error';
+        note.setAttribute('role', 'status');
+        note.textContent = 'Mermaid diagram could not be rendered (syntax error). The rest of the document is unaffected.';
+        node.replaceWith(note);
+    });
+};
+
 // Render markdown text as html
 // Parse stays sync (already behind debouncedConvert); DOM write + secondary UI use rAF
 const convert = (markdown) => {
-    // Reset TOC items
+    // Reset TOC items and heading-id allocator each render (GFM uniquify)
     tocItems = [];
+    allocateHeadingId = createHeadingIdAllocator();
 
     // Resolve image store references to actual data URLs before rendering
     const resolvedMarkdown = resolveImageReferences(markdown, true);
@@ -2507,20 +2574,23 @@ const convert = (markdown) => {
                     div.setAttribute('role', 'img');
                     div.setAttribute('aria-label', 'Diagram');
                     div.textContent = code;
+                    // Keep the diagram source so a full serialize can rebuild the
+                    // fence instead of dumping rendered SVG/CSS into Markdown.
+                    div.dataset.mermaidCode = code;
                     pre.replaceWith(div);
                 });
 
                 mermaid.run({
                     nodes: outputElement.querySelectorAll('.mermaid')
                 }).then(() => {
-                    if (token === _convertToken) {
-                        annotateSourceLines(outputElement, renderableMarkdown);
-                        scrollSync.scheduleRebuildAnchors();
-                    }
+                    if (token !== _convertToken) return;
+                    normalizeMermaidPreviewErrors(outputElement);
+                    annotateSourceLines(outputElement, renderableMarkdown);
+                    scrollSync.scheduleRebuildAnchors();
                 }).catch(() => {
-                    if (token === _convertToken) {
-                        scrollSync.scheduleRebuildAnchors();
-                    }
+                    if (token !== _convertToken) return;
+                    normalizeMermaidPreviewErrors(outputElement);
+                    scrollSync.scheduleRebuildAnchors();
                 });
             }
 
@@ -2589,7 +2659,6 @@ const applyMarkdownFromPreviewEdit = (markdown) => {
 
     hasEdited = true;
     setHasEdited(true);
-    saveCurrentDoc();
     updateStats(markdown);
 };
 
@@ -2600,7 +2669,6 @@ const setupLivePreviewEdit = () => {
         markdownToggle: '#markdown-mode-toggle',
         getSourceMarkdown: () => editor?.getValue() || '',
         onMarkdownChange: applyMarkdownFromPreviewEdit,
-        onExit: () => convert(editor?.getValue()),
         showToast
     });
 };
@@ -3663,6 +3731,8 @@ const setupAdditionalExportButtons = () => {
 
 // ==================== EXPORT MODAL ====================
 let currentExportFormat = 'pdf';
+/** Active PDF/PNG export abort controller (cancel closes this). */
+let activeExportAbort = null;
 let exportModalZoom = 0.9;
 let exportPreviewDebounceTimer = null;
 
@@ -3738,6 +3808,13 @@ const setupExportModal = () => {
     closeBtn?.addEventListener('click', closeHandler);
     cancelBtn?.addEventListener('click', closeHandler);
     overlay?.addEventListener('click', closeHandler);
+    document.getElementById('export-loading-cancel')?.addEventListener('click', () => {
+        cancelActiveExport('user-cancel');
+        updateExportProgress(
+            parseInt(document.getElementById('export-loading-progress-bar')?.style.width || '0', 10) || 0,
+            'Cancelling export...'
+        );
+    });
 
     // Escape key to close
     trackedAddEventListener(document, 'keydown', (e) => {
@@ -3929,6 +4006,9 @@ const closeExportModal = () => {
     const overlay = document.getElementById('export-modal-overlay');
     const loadingOverlay = document.getElementById('export-loading-overlay');
     const confirmBtn = document.getElementById('export-confirm-btn');
+
+    // Abort in-flight PDF/PNG so closing the modal actually stops the job.
+    cancelActiveExport('modal-closed');
 
     exportModalFocusTrap?.deactivate();
     exportModalFocusTrap = null;
@@ -4157,18 +4237,32 @@ const estimateFileSize = (format) => {
     }
 };
 
+const cancelActiveExport = (reason = 'cancelled') => {
+    if (activeExportAbort) {
+        try {
+            activeExportAbort.abort(reason);
+        } catch (_) { /* ignore */ }
+        activeExportAbort = null;
+    }
+};
+
 const showExportLoading = (text = 'Generating your file...', progress = 30) => {
     const overlay = document.getElementById('export-loading-overlay');
     const textEl = document.getElementById('export-loading-text');
     const progressEl = document.getElementById('export-loading-progress-bar');
     const spinner = overlay?.querySelector('.export-loading-spinner');
     const successIcon = overlay?.querySelector('.export-loading-success-icon');
+    const cancelBtn = document.getElementById('export-loading-cancel');
 
     if (overlay) overlay.classList.remove('hidden');
     if (textEl) textEl.textContent = text;
     if (progressEl) progressEl.style.width = `${progress}%`;
     if (spinner) spinner.style.display = '';
     if (successIcon) successIcon.style.display = 'none';
+    if (cancelBtn) {
+        cancelBtn.hidden = false;
+        cancelBtn.disabled = false;
+    }
 };
 
 const updateExportProgress = (progress, text) => {
@@ -4184,8 +4278,11 @@ const hideExportLoading = ({ success = true, text = 'Complete!', closeModal = tr
     const spinner = overlay?.querySelector('.export-loading-spinner');
     const successIcon = overlay?.querySelector('.export-loading-success-icon');
     const confirmBtn = document.getElementById('export-confirm-btn');
+    const cancelBtn = document.getElementById('export-loading-cancel');
 
     if (!overlay) return;
+
+    if (cancelBtn) cancelBtn.hidden = true;
 
     if (!success) {
         if (spinner) spinner.style.display = '';
@@ -4250,15 +4347,15 @@ const executeExport = (format) => {
     }
 };
 
-// Helper: Convert inline SVGs to canvas-based images for better html2canvas compatibility
-// Uses synchronous canvas drawing (no Image loading) to avoid blob URL / onload hangs
+/**
+ * Synchronous SVG rasterizer kept for callers that cannot await.
+ * Prefer convertMermaidSvgsToImages() for accurate Mermaid export.
+ */
 const convertSVGsToImages = (container) => {
-    // Only target top-level SVGs inside mermaid diagrams — skip KaTeX & nested SVGs
-    const mermaidSvgs = container.querySelectorAll('.mermaid-diagram > svg');
-    // Also grab standalone top-level SVGs (direct children of output), but not nested ones
-    const topLevelSvgs = container.querySelectorAll(':scope > svg');
-    // Deduplicate using a Set
-    const svgSet = new Set([...mermaidSvgs, ...topLevelSvgs]);
+    const svgSet = new Set([
+        ...container.querySelectorAll('.mermaid > svg, .mermaid-diagram > svg'),
+        ...container.querySelectorAll(':scope > svg')
+    ]);
 
     const stats = { total: svgSet.size, converted: 0, skipped: 0, errors: 0 };
     if (!svgSet.size) return stats;
@@ -4267,7 +4364,6 @@ const convertSVGsToImages = (container) => {
         try {
             if (!svg.parentNode) { stats.skipped++; continue; }
 
-            // Get dimensions from attributes or viewBox (getBoundingClientRect unreliable on clones)
             const vb = svg.getAttribute('viewBox');
             const attrW = parseFloat(svg.getAttribute('width') || '0');
             const attrH = parseFloat(svg.getAttribute('height') || '0');
@@ -4279,25 +4375,24 @@ const convertSVGsToImages = (container) => {
             width = Math.max(1, Math.round(width || 400));
             height = Math.max(1, Math.round(height || 300));
 
-            // Serialize SVG with explicit dimensions to ensure canvas draws correctly
             const svgClone = svg.cloneNode(true);
             svgClone.setAttribute('width', String(width));
             svgClone.setAttribute('height', String(height));
+            if (!svgClone.getAttribute('xmlns')) {
+                svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            }
             const svgData = new XMLSerializer().serializeToString(svgClone);
+            if (/<script[\s>]/i.test(svgData)) { stats.skipped++; continue; }
             const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
 
-            // Draw synchronously on canvas via a data-URL image (no blob/onload needed)
             const canvas = document.createElement('canvas');
             canvas.width = width * 2;
             canvas.height = height * 2;
             const ctx = canvas.getContext('2d');
             if (!ctx) { stats.skipped++; continue; }
 
-            // Use a temporary Image drawn synchronously by setting src to data URI
-            // Note: data URI images are loaded synchronously in most browsers when dimensions are known
             const tmpImg = new Image(width, height);
             tmpImg.src = svgDataUrl;
-            // If the image isn't immediately available, skip it rather than hanging
             if (!tmpImg.complete || !tmpImg.naturalWidth) {
                 stats.skipped++;
                 continue;
@@ -4323,7 +4418,10 @@ const convertSVGsToImages = (container) => {
 
 // Enhanced export functions with options
 const exportToPDFWithOptions = async () => {
-    let tempContainer = null;
+    let workbench = null;
+    const abort = new AbortController();
+    activeExportAbort = abort;
+    const { signal } = abort;
 
     try {
         const paperSize = document.getElementById('export-paper-size')?.value || 'letter';
@@ -4331,7 +4429,7 @@ const exportToPDFWithOptions = async () => {
         const pageNumbers = document.getElementById('export-page-numbers')?.checked ?? true;
         const headerFooter = document.getElementById('export-header-footer')?.checked ?? false;
 
-        showExportLoading('Preparing PDF document...', 10);
+        showExportLoading('Preparing PDF document...', 8);
         const element = document.querySelector('#output');
         if (!element) throw new Error('Output element not found');
 
@@ -4346,89 +4444,94 @@ const exportToPDFWithOptions = async () => {
             'tabloid': [11, 17]
         };
 
-        updateExportProgress(30, 'Preparing content...');
-
-        const html2pdf = await getHtml2Pdf();
-
-        // Determine what element to pass to html2pdf
-        let sourceElement = element;
+        const widthCss = orientation === 'landscape' ? '10in' : '7.5in';
+        updateExportProgress(18, 'Cloning preview for export...');
+        workbench = createExportWorkbench(element, { widthCss });
 
         if (headerFooter) {
-            // Only create a container when header/footer is needed
-            tempContainer = document.createElement('div');
-            tempContainer.className = 'markdown-body';
-            tempContainer.style.cssText = 'background:#fff; color:#24292e; padding:0; width:' +
-                (orientation === 'landscape' ? '10in' : '7.5in') + ';';
-            tempContainer.innerHTML = `
-                <div style="font-size:10pt;color:#666;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:16px;">${title} &mdash; ${today}</div>
-            `;
-            // Clone the output content into the temp container
-            const contentClone = element.cloneNode(true);
-            // Move all children from clone into our container
-            while (contentClone.firstChild) {
-                tempContainer.appendChild(contentClone.firstChild);
-            }
-            // Place it on-screen but behind the export overlay (z-index: -1)
-            tempContainer.style.position = 'fixed';
-            tempContainer.style.top = '0';
-            tempContainer.style.left = '0';
-            tempContainer.style.zIndex = '-1';
-            tempContainer.style.pointerEvents = 'none';
-            document.body.appendChild(tempContainer);
-            sourceElement = tempContainer;
+            const header = document.createElement('div');
+            header.style.cssText = 'font-size:10pt;color:#666;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:16px;';
+            header.textContent = `${title} — ${today}`;
+            workbench.insertBefore(header, workbench.firstChild);
         }
 
-        const options = {
-            margin: headerFooter ? [0.75, 0.5, 0.75, 0.5] : [0.5, 0.5, 0.5, 0.5],
-            filename: filename,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                letterRendering: true,
-                backgroundColor: '#ffffff',
-                scrollX: 0,
-                scrollY: -window.scrollY
-            },
-            jsPDF: {
-                unit: 'in',
+        if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+
+        updateExportProgress(28, 'Preparing diagrams...');
+        const svgStats = await convertMermaidSvgsToImages(workbench, {
+            signal,
+            onProgress: (done, total) => {
+                const pct = 28 + Math.round((done / Math.max(total, 1)) * 18);
+                updateExportProgress(pct, `Preparing diagrams (${done}/${total})...`);
+            }
+        });
+        if (svgStats.skipped > 0 && svgStats.converted === 0 && svgStats.total > 0) {
+            // Fallback sync pass for any leftover SVGs
+            convertSVGsToImages(workbench);
+        }
+
+        if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+
+        const contentHeight = Math.max(workbench.scrollHeight, element.scrollHeight || 0);
+        const diagramCount = workbench.querySelectorAll('img[data-export-raster="mermaid"], .mermaid > svg, .mermaid-diagram > svg').length;
+        const scale = pickHtml2CanvasScale(contentHeight, { diagramCount });
+        const timeoutMs = pickExportTimeoutMs(contentHeight);
+        const quality = contentHeight > 28000 ? 0.88 : 0.94;
+        const margin = headerFooter ? [0.75, 0.5, 0.75, 0.5] : [0.5, 0.5, 0.5, 0.5];
+
+        updateExportProgress(48, 'Rendering pages...');
+        const [html2canvas, JsPDF] = await Promise.all([getHtml2Canvas(), getJsPDF()]);
+
+        const runPdf = async () => {
+            const pdf = await renderWorkbenchToPdf(workbench, {
+                html2canvas,
+                JsPDF,
                 format: formatMap[paperSize] || 'letter',
-                orientation: orientation
-            },
-            pagebreak: { mode: ['css', 'legacy'] }
+                orientation,
+                margin,
+                scale,
+                quality,
+                pageNumbers,
+                signal,
+                onProgress: (page, totalGuess) => {
+                    const pct = 48 + Math.min(40, Math.round((page / Math.max(totalGuess, 1)) * 40));
+                    updateExportProgress(pct, `Rendering page ${page} of ~${totalGuess}...`);
+                }
+            });
+            if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+            updateExportProgress(92, 'Saving PDF...');
+            pdf.save(filename);
         };
 
-        // Generate PDF
-        if (pageNumbers) {
-            updateExportProgress(50, 'Rendering pages...');
-            await html2pdf().set(options).from(sourceElement).toPdf().get('pdf').then((pdf) => {
-                updateExportProgress(80, 'Adding page numbers...');
-                const totalPages = pdf.internal.getNumberOfPages();
-                for (let i = 1; i <= totalPages; i++) {
-                    pdf.setPage(i);
-                    pdf.setFontSize(9);
-                    pdf.setTextColor(128);
-                    const pageWidth = pdf.internal.pageSize.getWidth();
-                    const pageHeight = pdf.internal.pageSize.getHeight();
-                    pdf.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 0.3, { align: 'center' });
-                }
-            }).save();
-        } else {
-            updateExportProgress(60, 'Generating PDF file...');
-            await html2pdf().set(options).from(sourceElement).save();
-        }
+        await raceExportJob(runPdf(), {
+            signal,
+            timeoutMs,
+            label: 'PDF export'
+        });
 
-        // Clean up temp container if used
-        if (tempContainer?.parentNode) document.body.removeChild(tempContainer);
-        tempContainer = null;
+        if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+
+        destroyExportWorkbench(workbench);
+        workbench = null;
+        activeExportAbort = null;
         showToast(`PDF exported: ${filename}`, 'success');
         hideExportLoading();
     } catch (err) {
-        console.error('PDF export error:', err);
-        if (tempContainer?.parentNode) try { document.body.removeChild(tempContainer); } catch (_) { }
-        failExportLoading('Failed to export PDF');
-        showToast('Failed to export PDF', 'error');
+        destroyExportWorkbench(workbench);
+        workbench = null;
+        const cancelled = err?.name === 'AbortError' || /cancel/i.test(err?.message || '');
+        if (cancelled) {
+            failExportLoading('Export cancelled');
+            showToast('PDF export cancelled', 'info', 2000);
+        } else {
+            console.error('PDF export error:', err);
+            failExportLoading(err?.message?.slice(0, 80) || 'Failed to export PDF');
+            showToast(err?.message?.includes('timed out')
+                ? 'PDF export timed out — try HTML export for very large docs'
+                : 'Failed to export PDF', 'error');
+        }
+        activeExportAbort = null;
+        document.getElementById('export-confirm-btn')?.classList.remove('exporting');
     }
 };
 
@@ -4511,6 +4614,10 @@ const exportToPNGWithOptions = async () => {
     // Parse width value
     const width = parseInt(widthInput.replace(/[^0-9]/g, '')) || 1200;
 
+    const abort = new AbortController();
+    activeExportAbort = abort;
+    const { signal } = abort;
+
     showExportLoading('Capturing document as image...', 20);
     const element = document.querySelector('#output');
     const filename = getExportFilename('png');
@@ -4528,6 +4635,7 @@ const exportToPNGWithOptions = async () => {
 
     // Clone content
     const clone = element.cloneNode(true);
+    stripExportChrome(clone);
     clone.style.width = '100%';
     clone.style.maxWidth = 'none';
     wrapper.appendChild(clone);
@@ -4537,39 +4645,57 @@ const exportToPNGWithOptions = async () => {
     wrapper.style.left = '-9999px';
     document.body.appendChild(wrapper);
 
-    // Convert SVGs to images for reliable rendering (synchronous — never hangs)
-    updateExportProgress(40, 'Processing SVG elements...');
-    const pngSvgStats = convertSVGsToImages(wrapper);
-    if (pngSvgStats.skipped > 0) {
-        showToast(`Skipped ${pngSvgStats.skipped} SVG(s) during image prep`, 'info', 2400);
-    }
-
-    updateExportProgress(60, 'Rendering image canvas...');
     try {
+        updateExportProgress(35, 'Preparing diagrams...');
+        const pngSvgStats = await convertMermaidSvgsToImages(wrapper, { signal });
+        if (pngSvgStats.skipped > 0) {
+            convertSVGsToImages(wrapper);
+        }
+        if (pngSvgStats.skipped > 0 && pngSvgStats.converted === 0) {
+            showToast(`Skipped ${pngSvgStats.skipped} SVG(s) during image prep`, 'info', 2400);
+        }
+
+        if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+
+        updateExportProgress(60, 'Rendering image canvas...');
         const html2canvas = await getHtml2Canvas();
-        const canvas = await html2canvas(wrapper, {
-            scale: resolution,
-            useCORS: true,
-            logging: false,
-            backgroundColor: transparentBg ? null : (includeShadow ? '#f5f5f5' : '#ffffff'),
-            width: includeShadow ? width + 80 : width,
-            windowWidth: width + (includeShadow ? 80 : 0)
-        });
+        const canvas = await raceExportJob(
+            html2canvas(wrapper, {
+                scale: resolution,
+                useCORS: true,
+                logging: false,
+                backgroundColor: transparentBg ? null : (includeShadow ? '#f5f5f5' : '#ffffff'),
+                width: includeShadow ? width + 80 : width,
+                windowWidth: width + (includeShadow ? 80 : 0)
+            }),
+            { signal, timeoutMs: pickExportTimeoutMs(wrapper.scrollHeight), label: 'Image export' }
+        );
+
+        if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+
         updateExportProgress(90, 'Finalizing image...');
-        // Remove wrapper
-        document.body.removeChild(wrapper);
+        if (wrapper.parentNode) document.body.removeChild(wrapper);
 
         const link = document.createElement('a');
         link.download = filename;
         link.href = canvas.toDataURL('image/png');
         link.click();
+        activeExportAbort = null;
         showToast(`Image exported: ${filename}`, 'success');
         hideExportLoading();
     } catch (err) {
         if (wrapper.parentNode) document.body.removeChild(wrapper);
-        console.error('PNG export error:', err);
-        failExportLoading('Failed to export image');
-        showToast('Failed to export image', 'error');
+        activeExportAbort = null;
+        const cancelled = err?.name === 'AbortError' || /cancel/i.test(err?.message || '');
+        if (cancelled) {
+            failExportLoading('Export cancelled');
+            showToast('Image export cancelled', 'info', 2000);
+        } else {
+            console.error('PNG export error:', err);
+            failExportLoading('Failed to export image');
+            showToast('Failed to export image', 'error');
+        }
+        document.getElementById('export-confirm-btn')?.classList.remove('exporting');
     }
 };
 
@@ -6970,22 +7096,61 @@ const processPreviewImages = (container) => {
     // Get markdown source to parse saved image state
     const editorContent = editor ? editor?.getValue() : '';
     const imageAttrsMap = parseImageAttributes(editorContent);
-    const markdownImageSrcs = Array.from(editorContent.matchAll(/!\[([^\]]*)\]\(([^)\s]+)\)/g)).map((m) => m[2]);
+    const markdownImageSrcs = imageAttrsMap.map((entry) => entry.markdownSrc || entry.src || '');
 
-    images.forEach((img, index) => {
-        const markdownAttrs = imageAttrsMap[index] || null;
+    // Pair DOM imgs to markdown `![...](...)` indices (not raw DOM order).
+    // HTML-only <img>/<picture> nodes must not consume markdown indices.
+    const mdSrcSet = new Set(markdownImageSrcs.filter(Boolean));
+    let mdCursor = 0;
+
+    images.forEach((img) => {
+        const currentSrc = img.getAttribute('src') || '';
+        const existingOriginal = img.dataset.originalSrc || img.getAttribute('data-original-src') || '';
+
+        let mdIndex = -1;
+        for (let i = mdCursor; i < imageAttrsMap.length; i += 1) {
+            const mdSrc = markdownImageSrcs[i] || '';
+            if (!mdSrc) continue;
+            if (
+                (existingOriginal && existingOriginal === mdSrc) ||
+                currentSrc === mdSrc ||
+                (currentSrc && mdSrc && (currentSrc.endsWith(mdSrc) || mdSrc.endsWith(currentSrc)))
+            ) {
+                mdIndex = i;
+                break;
+            }
+        }
+
+        // Sequential fallback for resolved data/blob previews of markdown images
+        if (mdIndex < 0 && mdCursor < imageAttrsMap.length) {
+            const looksLikeHtmlOnly =
+                !existingOriginal &&
+                currentSrc &&
+                !currentSrc.startsWith('data:') &&
+                !currentSrc.startsWith('blob:') &&
+                !mdSrcSet.has(currentSrc) &&
+                ![...mdSrcSet].some((mdSrc) => currentSrc.endsWith(mdSrc) || mdSrc.endsWith(currentSrc));
+            if (!looksLikeHtmlOnly) {
+                mdIndex = mdCursor;
+            }
+        }
+
+        const markdownAttrs = mdIndex >= 0 ? imageAttrsMap[mdIndex] : null;
         const domState = decodeImageState(img.getAttribute('data-ir'));
         const imageState = domState || markdownAttrs;
-        const markdownSrc = markdownAttrs?.markdownSrc || markdownAttrs?.src || markdownImageSrcs[index] || '';
+        const markdownSrc = markdownAttrs?.markdownSrc || markdownAttrs?.src || '';
+
+        if (mdIndex >= 0) {
+            mdCursor = mdIndex + 1;
+            img.dataset.irIndex = String(mdIndex);
+        }
 
         // Always prefer stable Markdown refs (especially markups-img:) over the
         // resolved preview src. Document Mode serialization depends on this.
         if (markdownSrc) {
             img.dataset.originalSrc = markdownSrc;
             img.setAttribute('data-original-src', markdownSrc);
-            img.dataset.irIndex = String(index);
         } else if (!img.dataset.originalSrc) {
-            const currentSrc = img.getAttribute('src') || '';
             if (!currentSrc.startsWith('data:') && !currentSrc.startsWith('blob:')) {
                 img.dataset.originalSrc = currentSrc;
                 img.setAttribute('data-original-src', currentSrc);
@@ -7721,7 +7886,11 @@ const initializeApp = async () => {
 
     // Initialize image resize feature (lazy — keep off critical boot path)
     import('./features/image-resize/index.js')
-        .then(({ initImageResize }) => initImageResize({ editor }))
+        .then(({ initImageResize }) => initImageResize({
+            editor,
+            // Skip full preview convert so customize/resize does not blink-reload #output
+            onMarkdownChange: applyMarkdownFromPreviewEdit
+        }))
         .catch((err) => console.warn('Image resize module load error:', err));
 
     // Auto-focus the editor so users can start typing immediately on load.

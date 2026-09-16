@@ -47,9 +47,11 @@ export const APP_CONFIG = {
         filename: 'document.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
+            // Default for short docs; export path adapts scale for tall docs.
             scale: 2,
             useCORS: true,
-            logging: false
+            logging: false,
+            letterRendering: false
         },
         jsPDF: {
             unit: 'in',

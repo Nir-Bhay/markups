@@ -9,6 +9,16 @@ export { htmlExporter, HTMLExporter } from './html.js';
 export { markdownExporter, MarkdownExporter } from './markdown.js';
 export { docxExporter, DOCXExporter } from './docx.js';
 export { txtExporter, TxtExporter, markdownToPlainText } from './txt.js';
+export {
+    convertMermaidSvgsToImages,
+    createExportWorkbench,
+    destroyExportWorkbench,
+    pickExportTimeoutMs,
+    pickHtml2CanvasScale,
+    raceExportJob,
+    renderWorkbenchToPdf,
+    stripExportChrome
+} from './pdfPrep.js';
 
 /**
  * Export manager - unified interface

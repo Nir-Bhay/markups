@@ -369,6 +369,9 @@ class MarkdownService {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'mermaid-diagram';
                 wrapper.innerHTML = cleanSvg;
+                // Preserve the diagram source so Document Mode serialization can
+                // rebuild the fence instead of walking the rendered SVG.
+                wrapper.dataset.mermaidCode = code;
 
                 pre.replaceWith(wrapper);
             } catch (err) {

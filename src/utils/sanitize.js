@@ -19,7 +19,7 @@ export const PREVIEW_SANITIZE_CONFIG = {
     // are created exclusively via the DOM-based helpers which validate against
     // VIDEO_EXT_RE / YOUTUBE_RE / VIMEO_RE / GITHUB_ASSET_RE.
     ADD_ATTR: ['target', 'class', 'id', 'aria-label', 'aria-hidden', 'controls', 'preload', 'playsinline', 'controlslist', 'rel'],
-    FORBID_TAGS: ['iframe', 'script', 'object', 'embed', 'form', 'video', 'source'],
+    FORBID_TAGS: ['iframe', 'script', 'object', 'embed', 'form', 'video', 'source', 'audio'],
     FORBID_ATTR: ['srcdoc'],
     ALLOW_DATA_ATTR: false
 };

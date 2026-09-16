@@ -10,6 +10,7 @@ export { CONFIG, SIZE_PRESETS } from './constants.js';
 export { HistoryStack } from './history.js';
 export { ToastManager, SnapGuides, toast } from './ui.js';
 export { ImageResizeManager } from './core.js';
+export { applyImageStateToMarkdown, mapDomImagesToMarkdownIndices } from './markdown-sync.js';
 
 /** Singleton manager instance */
 const imageResizeManager = new ImageResizeManager();

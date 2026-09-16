@@ -1955,6 +1955,12 @@ body.dark-mode .header-tab .tab-name:hover {
   user-select: none;
 }
 
+/* Atomic blocks (code, tables, callouts, media, math) are edited as source, so
+   they must not advertise a text caret inside Document Mode. */
+.preview-content--editable [contenteditable="false"] {
+  cursor: default;
+}
+
 /* Video layout bar — light, matches image ir-toolbar */
 .video-layout-bar {
   position: fixed;
@@ -4193,6 +4199,26 @@ body.dark-mode .export-loading-overlay {
   font-weight: 600;
   color: var(--text-primary);
   font-size: 1.125rem;
+}
+
+.export-loading-cancel {
+  margin-top: 4px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #d0d7de);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.export-loading-cancel:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+body.dark-mode .export-loading-cancel:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .export-loading-success-icon {
@@ -6902,6 +6928,24 @@ body.dark-mode .markdown-body pre code[class*="language-"] .token.class-name {
   padding: 20px;
   margin: 1.5rem 0;
   text-align: center;
+}
+
+.mermaid-error {
+  margin: 1.5rem 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.925rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+body.dark-mode .mermaid-error {
+  border-color: #7f1d1d;
+  background: #450a0a;
+  color: #fecaca;
 }
 
 /* ==================== DARK MODE: MARKDOWN PREVIEW ==================== */

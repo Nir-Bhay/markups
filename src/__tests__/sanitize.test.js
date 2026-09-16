@@ -100,6 +100,15 @@ describe('shared preview sanitizer', () => {
         expect(sanitized).not.toContain('src="https://evil.com');
     });
 
+    it('strips raw <audio> husks (source already forbidden)', () => {
+        const sanitized = sanitizePreviewHtml(
+            '<p><audio controls><source src="https://evil.com/a.mp3" type="audio/mpeg"></audio></p>'
+        );
+        expect(sanitized).not.toContain('<audio');
+        expect(sanitized).not.toContain('<source');
+        expect(sanitized).not.toContain('evil.com');
+    });
+
     it('blocks entity-encoded javascript: URLs', () => {
         // B3 fix: entity-encoded schemes must still be blocked after decode
         expect(shouldOpenPreviewLinkInNewTab('java&#x09;script:alert(1)')).toBe(false);
