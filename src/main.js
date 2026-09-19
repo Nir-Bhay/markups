@@ -132,7 +132,8 @@ import {
     pickHtml2CanvasScale,
     raceExportJob,
     renderWorkbenchToPdf,
-    stripExportChrome
+    stripExportChrome,
+    captureSubtreeCanvas
 } from './services/export/pdfPrep.js';
 
 // Import UI components from modular architecture
@@ -3656,10 +3657,8 @@ const exportToPNG = async () => {
         const html2canvas = await getHtml2Canvas();
         const element = document.querySelector('#output');
 
-        const canvas = await html2canvas(element, {
+        const canvas = await captureSubtreeCanvas(html2canvas, element, {
             scale: 2,
-            useCORS: true,
-            logging: false,
             backgroundColor: '#ffffff'
         });
         const link = document.createElement('a');
@@ -4664,10 +4663,8 @@ const exportToPNGWithOptions = async () => {
         updateExportProgress(60, 'Rendering image canvas...');
         const html2canvas = await getHtml2Canvas();
         const canvas = await raceExportJob(
-            html2canvas(wrapper, {
+            captureSubtreeCanvas(html2canvas, wrapper, {
                 scale: resolution,
-                useCORS: true,
-                logging: false,
                 backgroundColor: transparentBg ? null : (includeShadow ? '#f5f5f5' : '#ffffff'),
                 width: includeShadow ? width + 80 : width,
                 windowWidth: width + (includeShadow ? 80 : 0)

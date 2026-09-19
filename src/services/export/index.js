@@ -17,7 +17,8 @@ export {
     pickHtml2CanvasScale,
     raceExportJob,
     renderWorkbenchToPdf,
-    stripExportChrome
+    stripExportChrome,
+    captureSubtreeCanvas
 } from './pdfPrep.js';
 
 /**

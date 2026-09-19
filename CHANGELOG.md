@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sibling image/GIF/video bleed during resize and layout customize
 - HTML/picture images with colliding URLs no longer steal markdown image indexes
 - Share modal no longer stacks Link/File/Paste in one smashed row when `/css/premium-ui.css` was cached immutable
+- PDF export no longer fails with "Unable to find element in cloned iframe" (html2canvas + CSP)
 
 ## [2.0.1] - 2026-09-06
 
