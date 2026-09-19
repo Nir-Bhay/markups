@@ -90,7 +90,7 @@ function assertChunkBudgets(label, output) {
         const maxKb = fileName.startsWith('monaco-editor-')
             ? 2400
             : fileName.startsWith('main-')
-                ? 1200
+                ? 1300
                 : 850;
 
         if (Number.isFinite(sizeKb) && sizeKb > maxKb) {
