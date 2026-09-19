@@ -169,25 +169,20 @@ export class ImageControlsController {
         this.output.querySelectorAll('.preview-image[data-image-url]').forEach((image) => {
             const url = String(image.dataset.imageUrl || '').trim();
             const attrs = attrsByUrl.get(url);
-            // Only apply explicit `{image width=...}` attrs. Do not force DEFAULT 100%
-            // width over pixel sizes persisted via image-resize `data-ir`.
-            if (attrs) {
+            // Pixel sizes from image-resize (`440px`) win over URL-keyed `{image}`
+            // blocks, so sibling GIFs sharing a URL stay independent.
+            const hasPixelResize = /^\d+px$/i.test(String(image.style.width || ''));
+            if (attrs && !hasPixelResize) {
                 applyImagePresentation(image, attrs);
             } else if (!image.style.width) {
                 applyImagePresentation(image, { align: DEFAULT_ATTRS.align, mode: DEFAULT_ATTRS.mode });
-            } else {
-                const align = DEFAULT_ATTRS.align;
-                image.dataset.imageAlign = align;
-                image.dataset.imageMode = DEFAULT_ATTRS.mode;
-                image.classList.remove('preview-image--align-left', 'preview-image--align-center', 'preview-image--align-right');
-                image.classList.add(`preview-image--align-${align}`);
             }
         });
     }
 
     _preparePreviewImages() {
         this.output.querySelectorAll('img[src]').forEach((img) => {
-            if (img.closest('.preview-video')) return;
+            if (img.closest('.preview-video, .mermaid, .katex')) return;
             const stableUrl = String(
                 img.dataset.originalSrc ||
                 img.getAttribute('data-original-src') ||

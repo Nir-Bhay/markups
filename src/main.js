@@ -144,6 +144,10 @@ import { initLivePreviewEdit } from './features/live-preview-edit/index.js';
 import { initVideoControls, parseVideoAttributesFromMarkdown } from './features/video-controls/index.js';
 import { initImageControls } from './features/image-controls/index.js';
 import {
+    isNonMarkdownPreviewImage,
+    mapDomImagesToMarkdownIndices,
+} from './features/image-resize/markdown-sync.js';
+import {
     enhanceLabeledVideoLinks,
     normalizeInsertVideoUrl
 } from './features/video-discoverability/index.js';
@@ -7091,58 +7095,34 @@ const applySavedImageState = (img, state) => {
 };
 
 const processPreviewImages = (container) => {
-    const images = container.querySelectorAll('img');
+    const images = [...container.querySelectorAll('img')];
 
     // Get markdown source to parse saved image state
     const editorContent = editor ? editor?.getValue() : '';
     const imageAttrsMap = parseImageAttributes(editorContent);
     const markdownImageSrcs = imageAttrsMap.map((entry) => entry.markdownSrc || entry.src || '');
 
-    // Pair DOM imgs to markdown `![...](...)` indices (not raw DOM order).
-    // HTML-only <img>/<picture> nodes must not consume markdown indices.
-    const mdSrcSet = new Set(markdownImageSrcs.filter(Boolean));
-    let mdCursor = 0;
+    const mapped = mapDomImagesToMarkdownIndices(
+        markdownImageSrcs,
+        images.map((img) => ({
+            src: img.getAttribute('src') || '',
+            originalSrc: img.dataset.originalSrc || img.getAttribute('data-original-src') || '',
+            isHtmlOnly: isNonMarkdownPreviewImage(img),
+        }))
+    );
 
-    images.forEach((img) => {
+    images.forEach((img, domIndex) => {
         const currentSrc = img.getAttribute('src') || '';
-        const existingOriginal = img.dataset.originalSrc || img.getAttribute('data-original-src') || '';
-
-        let mdIndex = -1;
-        for (let i = mdCursor; i < imageAttrsMap.length; i += 1) {
-            const mdSrc = markdownImageSrcs[i] || '';
-            if (!mdSrc) continue;
-            if (
-                (existingOriginal && existingOriginal === mdSrc) ||
-                currentSrc === mdSrc ||
-                (currentSrc && mdSrc && (currentSrc.endsWith(mdSrc) || mdSrc.endsWith(currentSrc)))
-            ) {
-                mdIndex = i;
-                break;
-            }
-        }
-
-        // Sequential fallback for resolved data/blob previews of markdown images
-        if (mdIndex < 0 && mdCursor < imageAttrsMap.length) {
-            const looksLikeHtmlOnly =
-                !existingOriginal &&
-                currentSrc &&
-                !currentSrc.startsWith('data:') &&
-                !currentSrc.startsWith('blob:') &&
-                !mdSrcSet.has(currentSrc) &&
-                ![...mdSrcSet].some((mdSrc) => currentSrc.endsWith(mdSrc) || mdSrc.endsWith(currentSrc));
-            if (!looksLikeHtmlOnly) {
-                mdIndex = mdCursor;
-            }
-        }
-
-        const markdownAttrs = mdIndex >= 0 ? imageAttrsMap[mdIndex] : null;
+        const mdIndex = mapped[domIndex];
+        const markdownAttrs = Number.isInteger(mdIndex) ? imageAttrsMap[mdIndex] : null;
         const domState = decodeImageState(img.getAttribute('data-ir'));
         const imageState = domState || markdownAttrs;
         const markdownSrc = markdownAttrs?.markdownSrc || markdownAttrs?.src || '';
 
-        if (mdIndex >= 0) {
-            mdCursor = mdIndex + 1;
+        if (Number.isInteger(mdIndex)) {
             img.dataset.irIndex = String(mdIndex);
+        } else {
+            delete img.dataset.irIndex;
         }
 
         // Always prefer stable Markdown refs (especially markups-img:) over the

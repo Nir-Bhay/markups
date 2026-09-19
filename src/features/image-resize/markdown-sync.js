@@ -77,16 +77,27 @@ export function applyImageStateToMarkdown(content, opts = {}) {
         }
     }
 
-    // Strategy 3: HTML <img>
+    // Strategy 3: HTML <img> (first unique src, or occurrenceIndex among duplicates)
     if (!found && imgSrc && !imgSrc.startsWith('data:') && !imgSrc.startsWith('blob:') && imgSrc.length < 500) {
         const escapedSrc = escapeRegexSrc(imgSrc);
         if (escapedSrc) {
             try {
-                const htmlPattern = new RegExp(`<img\\b([^>]*?)\\bsrc=["']${escapedSrc}["']([^>]*)>`, 'i');
-                if (htmlPattern.test(source)) {
+                const htmlPattern = new RegExp(`<img\\b([^>]*?)\\bsrc=["']${escapedSrc}["']([^>]*)>`, 'gi');
+                const htmlMatches = source.match(htmlPattern) || [];
+                htmlPattern.lastIndex = 0;
+                const htmlOccurrence = Number.isInteger(opts.htmlOccurrenceIndex) && opts.htmlOccurrenceIndex >= 0
+                    ? opts.htmlOccurrenceIndex
+                    : 0;
+                if (htmlMatches.length > 0 && htmlOccurrence < htmlMatches.length) {
                     found = true;
                     strategy = 'html';
+                    let htmlIdx = 0;
                     next = source.replace(htmlPattern, (match) => {
+                        if (htmlIdx !== htmlOccurrence) {
+                            htmlIdx += 1;
+                            return match;
+                        }
+                        htmlIdx += 1;
                         let result = match;
                         result = updateHtmlAttribute(result, 'width', opts.width ?? null);
                         result = updateHtmlAttribute(result, 'height', opts.height ?? null);
@@ -114,11 +125,48 @@ export function updateHtmlAttribute(html, attr, value) {
     if (value === null || value === undefined || value === '') {
         return html.replace(new RegExp(`\\s*${attr}=["'][^"']*["']`, 'gi'), '');
     }
-    const pattern = new RegExp(`${attr}=["'][^"']*["']`, 'gi');
+    const pattern = new RegExp(`${attr}=["'][^"']*["']`, 'i');
     if (pattern.test(html)) {
-        return html.replace(pattern, `${attr}="${value}"`);
+        return html.replace(new RegExp(`${attr}=["'][^"']*["']`, 'i'), `${attr}="${value}"`);
     }
     return html.replace(/<img/i, `<img ${attr}="${value}"`);
+}
+
+/**
+ * Preview images that must not consume markdown `![...](...)` indices.
+ * Video fallbacks, mermaid, and <picture> sources can share Unsplash/GIF URLs
+ * with nearby markdown images and would otherwise steal irIndex.
+ *
+ * @param {Element|null} img
+ * @returns {boolean}
+ */
+export function isNonMarkdownPreviewImage(img) {
+    if (!img || typeof img.closest !== 'function') return false;
+    if (img.closest('.preview-video, .mermaid, .katex')) return true;
+    if (img.closest('picture')) return true;
+    // Markdown image renderer only emits src/alt/title. Width/height HTML
+    // attributes mean this node came from raw HTML (or a later HTML writeback).
+    if (img.hasAttribute('width') || img.hasAttribute('height')) return true;
+    return false;
+}
+
+/**
+ * Count previous HTML-only preview images that share this src.
+ * @param {Element} img
+ * @returns {number}
+ */
+export function getHtmlImageOccurrenceIndex(img) {
+    if (!img) return 0;
+    const src = String(img.getAttribute('src') || img.dataset?.originalSrc || '').trim();
+    const root = img.closest('#output') || img.ownerDocument || document;
+    let count = 0;
+    for (const node of root.querySelectorAll('img')) {
+        if (node === img) return count;
+        if (!isNonMarkdownPreviewImage(node)) continue;
+        const nodeSrc = String(node.getAttribute('src') || node.dataset?.originalSrc || '').trim();
+        if (nodeSrc && src && nodeSrc === src) count += 1;
+    }
+    return 0;
 }
 
 /**

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyImageStateToMarkdown,
   mapDomImagesToMarkdownIndices,
+  updateHtmlAttribute,
 } from '../features/image-resize/markdown-sync.js';
 
 const ATTR = '{data-ir=%7B%22width%22%3A440%2C%22height%22%3A214%7D}';
@@ -70,6 +71,20 @@ describe('applyImageStateToMarkdown isolation', () => {
     expect(content).not.toContain('1.gif) {data-ir=');
     expect(content).not.toContain('3.gif) {data-ir=');
   });
+
+  it('updates only the selected HTML gif when two share a src', () => {
+    const html = '<img src="https://cdn.example/a.gif" width="100"><img src="https://cdn.example/a.gif" width="100">';
+    const { content, found, strategy } = applyImageStateToMarkdown(html, {
+      src: 'https://cdn.example/a.gif',
+      width: 220,
+      htmlOccurrenceIndex: 1,
+    });
+    expect(found).toBe(true);
+    expect(strategy).toBe('html');
+    expect(content).toBe(
+      '<img src="https://cdn.example/a.gif" width="100"><img src="https://cdn.example/a.gif" width="220">'
+    );
+  });
 });
 
 describe('mapDomImagesToMarkdownIndices', () => {
@@ -87,5 +102,30 @@ describe('mapDomImagesToMarkdownIndices', () => {
       { src: 'https://cdn.example/picture-fallback.png', isHtmlOnly: true },
     ];
     expect(mapDomImagesToMarkdownIndices(mdSrcs, dom)).toEqual([0, 1, 2, null, null]);
+  });
+
+  it('does not let a colliding-URL picture steal markdown irIndex', () => {
+    const mdSrcs = [
+      'https://images.unsplash.com/photo-1?w=1200',
+      'https://images.unsplash.com/photo-2?w=1600',
+      'https://images.unsplash.com/photo-3?w=1200',
+    ];
+    const dom = [
+      { src: mdSrcs[0], isHtmlOnly: true },
+      { src: mdSrcs[0] },
+      { src: mdSrcs[1] },
+      { src: mdSrcs[2] },
+      { src: mdSrcs[2], isHtmlOnly: true },
+    ];
+    expect(mapDomImagesToMarkdownIndices(mdSrcs, dom)).toEqual([null, 0, 1, 2, null]);
+  });
+});
+
+describe('updateHtmlAttribute', () => {
+  it('replaces an existing width attr even after a global regex test', () => {
+    const html = '<img width="100" src="https://cdn.example/a.gif">';
+    expect(updateHtmlAttribute(html, 'width', 200)).toBe(
+      '<img width="200" src="https://cdn.example/a.gif">'
+    );
   });
 });

@@ -20,7 +20,7 @@ import {
   throttle,
   formatBytes,
 } from './utils.js';
-import { applyImageStateToMarkdown } from './markdown-sync.js';
+import { applyImageStateToMarkdown, getHtmlImageOccurrenceIndex, isNonMarkdownPreviewImage } from './markdown-sync.js';
 
 export class ImageResizeManager {
     constructor() {
@@ -73,12 +73,12 @@ export class ImageResizeManager {
      * @param {Function} [options.onMarkdownChange] - Write markdown without full preview reload
      */
     initialize(options = {}) {
+        this.editor = options.editor || this.editor || window.editor;
+        if (typeof options.onMarkdownChange === 'function') {
+            this.onMarkdownChange = options.onMarkdownChange;
+        }
         if (this.initialized) return;
 
-        this.editor = options.editor || window.editor;
-        this.onMarkdownChange = typeof options.onMarkdownChange === 'function'
-            ? options.onMarkdownChange
-            : null;
         this._injectStyles();
         this._setupEventListeners();
         this._setupMutationObserver();
@@ -731,7 +731,7 @@ export class ImageResizeManager {
 
         preview.addEventListener('mousemove', (e) => {
             const img = e.target.closest('img[data-loaded]');
-            if (!img || this.activeImage === img) { _clearHoverTooltip(); return; }
+            if (!img || img.closest('.preview-video, .mermaid, .katex') || this.activeImage === img) { _clearHoverTooltip(); return; }
             // Re-position tooltip to follow cursor lightly
             if (_hoverTooltip) {
                 _hoverTooltip.style.left = `${e.clientX + 14}px`;
@@ -746,7 +746,7 @@ export class ImageResizeManager {
         // Click on image to select
         preview.addEventListener('click', (e) => {
             const img = e.target.closest('img[data-loaded]');
-            if (img) {
+            if (img && !img.closest('.preview-video, .mermaid, .katex')) {
                 e.preventDefault();
                 e.stopPropagation();
                 _clearHoverTooltip();
@@ -757,7 +757,7 @@ export class ImageResizeManager {
         // Double-click to open custom size dialog
         preview.addEventListener('dblclick', (e) => {
             const img = e.target.closest('img[data-loaded]');
-            if (img) {
+            if (img && !img.closest('.preview-video, .mermaid, .katex')) {
                 e.preventDefault();
                 e.stopPropagation();
                 this._selectImage(img);
@@ -768,7 +768,7 @@ export class ImageResizeManager {
         // Context menu on images
         preview.addEventListener('contextmenu', (e) => {
             const img = e.target.closest('img[data-loaded]');
-            if (img) {
+            if (img && !img.closest('.preview-video, .mermaid, .katex')) {
                 e.preventDefault();
                 e.stopPropagation();
                 _clearHoverTooltip();
@@ -2326,6 +2326,9 @@ export class ImageResizeManager {
         const parsedIndex = indexStr !== undefined && indexStr !== ''
             ? parseInt(indexStr, 10)
             : NaN;
+        const htmlOccurrenceIndex = isNonMarkdownPreviewImage(img)
+            ? getHtmlImageOccurrenceIndex(img)
+            : null;
         const state = this._collectPersistedState(img);
         const encodedState = this._encodePersistedState(state);
         const attrStr = this._buildAttrString(state);
@@ -2339,6 +2342,7 @@ export class ImageResizeManager {
             width: state.width ?? null,
             height: state.height ?? null,
             align: state.align ?? null,
+            htmlOccurrenceIndex,
         });
 
         if (found && newContent !== content) {

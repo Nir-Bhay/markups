@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '../..');
 const blinkOnly = process.argv.includes('--blink');
 
-const { applyImageStateToMarkdown } = await import(
+const { applyImageStateToMarkdown, mapDomImagesToMarkdownIndices, updateHtmlAttribute } = await import(
   pathToFileURL(path.join(root, 'src/features/image-resize/markdown-sync.js')).href
 );
 const { updateVideoAttributesInMarkdownOccurrence } = await import(
@@ -75,6 +75,23 @@ const dupUpdate = updateVideoAttributesInMarkdownOccurrence(
 );
 if (dupUpdate !== 'https://example.com/a.mp4 https://example.com/a.mp4 {video width=25%} https://example.com/b.mp4') {
   fail(`duplicate video occurrence update failed: ${dupUpdate}`);
+}
+
+const collidingMap = mapDomImagesToMarkdownIndices(
+  ['https://images.unsplash.com/a', 'https://images.unsplash.com/b'],
+  [
+    { src: 'https://images.unsplash.com/a', isHtmlOnly: true },
+    { src: 'https://images.unsplash.com/a' },
+    { src: 'https://images.unsplash.com/b' },
+  ]
+);
+if (JSON.stringify(collidingMap) !== '[null,0,1]') {
+  fail(`picture/html colliding URL stole markdown index: ${JSON.stringify(collidingMap)}`);
+}
+
+const htmlWidth = updateHtmlAttribute('<img width="100" src="https://cdn.example/a.gif">', 'width', 200);
+if (htmlWidth !== '<img width="200" src="https://cdn.example/a.gif">') {
+  fail(`html width lastIndex bug: ${htmlWidth}`);
 }
 
 console.log('media customize isolation passed');

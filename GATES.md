@@ -20,7 +20,7 @@ Scope: Resizing or customizing one preview image, GIF, or video must update only
   EVIDENCE: exit=0; shell=C:\WINDOWS\system32\cmd.exe; cwd=D:\harmes\projects\markups; path=f231c59b8bd3/75 entries; EXPECT=matched; output-sha256=3b4dffd7e4ec053b1ef2365c6d892f604f39ac9cd079f2ad53f1abc8b2982896; output-bytes=35
 
 - [x] G4: live Split preview — resize one of three sibling images; only that image changes size; no full preview blink
-  EVIDENCE: 2026-09-16 playwright tests/e2e/image-ir-update.spec.js on localhost:5173 — attrCount=1 convertBlink=0 markerSurvived=true widths=[440px,'','']
+  EVIDENCE: 2026-09-19 playwright tests/e2e/image-ir-update.spec.js — attrCount=1 convertBlink=0 markerSurvived=true widths=[440px,'','']
 
 - [x] G5: GIF and video customize never bleed attrs onto sibling media on the same line
   CHECK: node scripts/qa/check-media-customize.mjs
@@ -33,4 +33,9 @@ Scope: Resizing or customizing one preview image, GIF, or video must update only
   EVIDENCE: exit=0; shell=C:\WINDOWS\system32\cmd.exe; cwd=D:\harmes\projects\markups; output=media customize no-blink writeback passed
 
 - [x] G7: live Split preview — customize one of three sibling videos; only that video changes; no preview blink
-  EVIDENCE: 2026-09-16 playwright tests/e2e/video-customize.spec.js on localhost:5173 — videoBlocks=1 convertBlink=0 markerSurvived=true
+  EVIDENCE: 2026-09-19 playwright tests/e2e/video-customize.spec.js — videoBlocks=1 convertBlink=0 markerSurvived=true
+
+- [x] G8: leftover audit — colliding-URL picture/HTML imgs do not steal markdown irIndex; HTML width writeback survives regex lastIndex
+  CHECK: node scripts/qa/check-media-customize.mjs
+  EXPECT: media customize isolation passed
+  EVIDENCE: exit=0; shell=C:\WINDOWS\system32\cmd.exe; cwd=D:\harmes\projects\markups; output=media customize isolation passed
