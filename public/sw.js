@@ -1,6 +1,6 @@
 // Service Worker for Markdown Live Preview
 const APP_CACHE_PREFIX = 'markdown-live-preview-app';
-const APP_CACHE_VERSION = 'v2';
+const APP_CACHE_VERSION = 'v3';
 const APP_CACHE_NAME = `${APP_CACHE_PREFIX}-${APP_CACHE_VERSION}`;
 const STATIC_ASSETS = ['/', '/index.html', '/favicon.png'];
 
