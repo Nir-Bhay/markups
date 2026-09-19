@@ -9,7 +9,7 @@ import { removeAllTrackedListeners } from './utils/listener-registry.js';
 import { storageService } from './core/storage/index.js';
 import { STORAGE_KEYS } from './core/storage/keys.js';
 import { editorService } from './core/editor/index.js';
-import { markdownService } from './core/markdown/index.js';
+import { markdownService, deriveDocumentTitle } from './core/markdown/index.js';
 import { APP_CONFIG, FEATURE_FLAGS } from './config/app.config.js';
 import { DEFAULT_CONTENT } from './config/default-content.js';
 
@@ -43,6 +43,7 @@ import { imageUploadManager } from './features/image-upload/index.js';
 import { dividerManager } from './features/divider/index.js';
 import { mobileUIManager } from './features/mobile/index.js';
 import { importManager } from './features/import/index.js';
+import { shareManager, handleIncomingShare } from './services/share/ui.js';
 import { initLivePreviewEdit } from './features/live-preview-edit/index.js';
 import { initVideoControls } from './features/video-controls/index.js';
 import { appContextMenuManager } from './features/app-context-menu/index.js';
@@ -54,6 +55,11 @@ async function getAiWriterManager() {
         const mod = await import('./features/ai-writer/index.js');
         _aiWriterManager = mod.aiWriterManager;
     }
+    const button = document.querySelector('#ai-writer-button');
+    if (button && !button.dataset.aiManagerBound) {
+        button.dataset.aiManagerBound = 'true';
+        button.addEventListener('click', () => _aiWriterManager.toggle());
+    }
     return _aiWriterManager;
 }
 
@@ -61,6 +67,9 @@ async function getAiWriterManager() {
 import { shortcutsManager } from './services/shortcuts/index.js';
 import { exportManager } from './services/export/index.js';
 import { pwaService } from './services/pwa/index.js';
+import { paletteManager } from './features/command-palette/index.js';
+import { noteStorage } from './core/storage/noteStorage.js';
+import { applyVimPreference, toggleVim } from './features/vim/index.js';
 
 import { debounce } from './utils/debounce.js';
 
@@ -143,8 +152,8 @@ class App {
             toolbar: '#toolbar',           // Updated to match index.html ID
             tabs: '#tabs-list',            // Updated to match index.html ID
             stats: '#stats-button',        // Updated - stats is triggered by button
-            toc: '#toc-container',         // Updated to match index.html ID
-            search: '#search-container',    // Will need to add this ID
+            toc: '#toc-sidebar',             // Phase 1.3: real aside in index.html
+            search: '#search-overlay',          // Phase 1.3: real overlay in index.html
             linter: '#lint-button',        // Updated - linter is triggered by button
             templates: '#templates-button', // Updated - templates triggered by button
             snippets: '#snippets-button',   // Updated - snippets triggered by button
@@ -225,47 +234,47 @@ class App {
         appContextMenuManager.initialize();
 
         // Toolbar
-        if (this.containers.toolbar && FEATURE_FLAGS.TOOLBAR) {
+        if (this.containers.toolbar && FEATURE_FLAGS.ENABLE_TOOLBAR) {
             toolbarManager.initialize(this.containers.toolbar);
         }
 
         // Tabs
-        if (this.containers.tabs && FEATURE_FLAGS.TABS) {
+        if (this.containers.tabs && FEATURE_FLAGS.ENABLE_TABS) {
             tabsManager.initialize(this.containers.tabs);
         }
 
         // Stats
-        if (this.containers.stats && FEATURE_FLAGS.STATS) {
+        if (this.containers.stats && FEATURE_FLAGS.ENABLE_STATS) {
             statsManager.initialize(this.containers.stats);
         }
 
         // TOC
-        if (this.containers.toc && FEATURE_FLAGS.TOC) {
+        if (this.containers.toc && FEATURE_FLAGS.ENABLE_TOC) {
             tocManager.initialize(this.containers.toc);
         }
 
         // Linter
-        if (this.containers.linter && FEATURE_FLAGS.LINTER) {
+        if (this.containers.linter && FEATURE_FLAGS.ENABLE_LINTER) {
             linterManager.initialize(this.containers.linter);
         }
 
         // Search
-        if (this.containers.search && FEATURE_FLAGS.SEARCH) {
+        if (this.containers.search && FEATURE_FLAGS.ENABLE_SEARCH) {
             searchManager.initialize(this.containers.search);
         }
 
         // Templates
-        if (this.containers.templates && FEATURE_FLAGS.TEMPLATES) {
+        if (this.containers.templates && FEATURE_FLAGS.ENABLE_TEMPLATES) {
             templatesManager.initialize(this.containers.templates);
         }
 
         // Snippets
-        if (this.containers.snippets && FEATURE_FLAGS.SNIPPETS) {
+        if (this.containers.snippets && FEATURE_FLAGS.ENABLE_SNIPPETS) {
             snippetsManager.initialize(this.containers.snippets);
         }
 
         // Goals
-        if (this.containers.goals && FEATURE_FLAGS.GOALS) {
+        if (this.containers.goals && FEATURE_FLAGS.ENABLE_GOALS) {
             goalsManager.initialize(this.containers.goals);
         }
 
@@ -280,7 +289,7 @@ class App {
         focusManager.initialize('#focus-button');
 
         // Typewriter mode
-        typewriterManager.initialize();
+        typewriterManager.initialize('#typewriter-button');
 
         // Fullscreen mode
         fullscreenManager.initialize('#fullscreen-button');
@@ -305,6 +314,89 @@ class App {
 
         // File import
         importManager.initialize();
+
+        // No-server share (URL link + file share + opt-in paste fallback)
+        try {
+            shareManager.initialize({
+                getMarkdown: () => editorService.getValue(),
+                getTitle: () => {
+                    try {
+                        return deriveDocumentTitle(editorService.getValue()) || 'document';
+                    } catch {
+                        return 'document';
+                    }
+                },
+                onIncomingDoc: ({ markdown, title }) => {
+                    if (typeof markdown !== 'string') return;
+                    const name = String(title || deriveDocumentTitle(markdown) || 'Shared').slice(0, 80);
+                    tabsManager.createTab(name, markdown);
+                    editorService.focus();
+                }
+            });
+            handleIncomingShare();
+        } catch (error) {
+            console.warn('Share init skipped:', error);
+        }
+
+        // Command palette (Ctrl/Cmd+P): files from IndexedDB + app commands.
+        try {
+            paletteManager.initialize({
+                commands: [
+                    { id: 'new-tab', label: 'New tab', keywords: ['new', 'tab', 'document'], run: () => tabsManager.createTab() },
+                    { id: 'toggle-toc', label: 'Toggle table of contents', keywords: ['toc', 'outline'], run: () => tocManager.toggle() },
+                    { id: 'toggle-linter', label: 'Toggle linter', keywords: ['lint'], run: () => linterManager.toggle() },
+                    { id: 'toggle-snippets', label: 'Toggle snippets', keywords: ['snippet'], run: () => snippetsManager.toggle() },
+                    { id: 'toggle-focus', label: 'Toggle focus mode', keywords: ['focus'], run: () => focusManager.toggle() },
+                    { id: 'toggle-fullscreen', label: 'Toggle fullscreen', keywords: ['fullscreen'], run: () => fullscreenManager.toggle() },
+                    { id: 'toggle-vim', label: 'Toggle Vim keybindings', keywords: ['vim', 'keybindings'], run: () => toggleVim() },
+                    { id: 'export-pdf', label: 'Export PDF', keywords: ['export', 'pdf'], run: () => this.exportPDF() },
+                    { id: 'export-html', label: 'Export HTML', keywords: ['export', 'html'], run: () => this.exportHTML() },
+                    { id: 'export-markdown', label: 'Export Markdown', keywords: ['export', 'markdown'], run: () => this.exportMarkdown() }
+                ],
+                getFiles: async () => {
+                    try {
+                        const notes = await noteStorage.getAllNotes();
+                        return notes.map(n => ({ id: n.id, title: n.title }));
+                    } catch {
+                        return [];
+                    }
+                },
+                onExecute: async (item) => {
+                    if (item.kind === 'file') {
+                        const note = await noteStorage.getNote(Number(item.noteId));
+                        if (note) {
+                            // Sync YAML frontmatter into unset note fields (tags/category/title).
+                            try {
+                                const { frontmatterSyncForNote } = await import('./utils/frontmatter.js');
+                                const sync = frontmatterSyncForNote(note, note.content || '');
+                                if (Object.keys(sync).length > 0) {
+                                    await noteStorage.updateNote(note.id, sync);
+                                }
+                            } catch (_e) { /* frontmatter is best-effort */ }
+                            editorService.setValue(note.content || '');
+                            editorService.focus();
+                            toast.show(`Opened "${note.title}"`, { duration: 1600 });
+                        }
+                    } else if (item.insert) {
+                        const editor = editorService.getEditor();
+                        const selection = editor?.getSelection();
+                        if (editor && selection) {
+                            editor.executeEdits('palette', [{ range: selection, text: item.insert }]);
+                            editor.focus();
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.warn('Palette init skipped:', error);
+        }
+
+        // Vim keybindings preference (ported from legacy main.js; no-op without opt-in)
+        try {
+            void applyVimPreference(null, document.querySelector('#vim-status'));
+        } catch (error) {
+            console.warn('Vim init skipped:', error);
+        }
 
         // AI Writer — dynamic import keeps it off the critical boot path
         if (FEATURE_FLAGS.ENABLE_AI_WRITER) {
@@ -634,6 +726,7 @@ class App {
         toolbarManager.dispose();
         modesManager.dispose();
         shortcutsManager.dispose();
+        paletteManager.dispose();
         appContextMenuManager.dispose();
         if (_aiWriterManager) {
             _aiWriterManager.dispose();

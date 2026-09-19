@@ -105,15 +105,17 @@ onReady(async () => {
                 editor: '#editor',
                 preview: '#output',
                 main: '.main-container',
-                toolbar: '.toolbar-container',
-                tabs: '.tabs-container',
-                stats: '.stats-container',
-                toc: '.toc-panel',
-                search: '.search-panel',
-                linter: '.linter-panel',
-                templates: '.templates-panel',
-                snippets: '.snippets-panel',
-                goals: '.goals-container'
+                toolbar: '#toolbar',
+                tabs: '#tabs-list',
+                stats: '#stats-button',
+                toc: '#toc-sidebar',
+                search: '#search-overlay',
+                linter: '#lint-button',
+                templates: '#templates-button',
+                // NOTE: no #snippets-button in index.html (only #snippets-dropdown);
+                // manager resolves null and skips init. Toggle UX is a Phase 6 item.
+                snippets: '#snippets-dropdown',
+                goals: '#goals-button'
             }
         });
 

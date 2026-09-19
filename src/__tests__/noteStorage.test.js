@@ -1,7 +1,7 @@
 /**
  * Tests for noteStorage.js — abstraction layer CRUD operations
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { db } from '../core/storage/database.js';
 import { NoteStorageService } from '../core/storage/noteStorage.js';
 
@@ -175,6 +175,28 @@ describe('NoteStorageService', () => {
 
             const count = await storage.getNotesCount();
             expect(count).toBe(2);
+        });
+    });
+
+    describe('error surfacing (no empty-vault on failure)', () => {
+        it('records lastError with quota flag instead of silent null', async () => {
+            const quota = new Error('Quota exceeded');
+            quota.name = 'QuotaExceededError';
+            const spy = vi.spyOn(db.notes, 'add').mockRejectedValueOnce(quota);
+            try {
+                const result = await storage.createNote({ title: 'Big' });
+                expect(result).toBeNull();
+                expect(storage.getLastError()).not.toBeNull();
+                expect(storage.getLastError().quotaExceeded).toBe(true);
+            } finally {
+                spy.mockRestore();
+            }
+        });
+
+        it('clears lastError after a successful write', async () => {
+            storage.lastError = new Error('stale');
+            await storage.createNote({ title: 'OK' });
+            expect(storage.getLastError()).toBeNull();
         });
     });
 });

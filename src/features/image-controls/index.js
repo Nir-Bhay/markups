@@ -112,18 +112,22 @@ export function updateImageAttributesInMarkdown(markdown, url, attrs = {}) {
 
 export function applyImagePresentation(el, attrs = {}) {
     if (!el) return;
-    const width = normalizeWidth(attrs.width) || DEFAULT_ATTRS.width;
+    const width = normalizeWidth(attrs.width);
     const align = normalizeAlign(attrs.align) || DEFAULT_ATTRS.align;
     const mode = ['embed', 'link', 'smart'].includes(String(attrs.mode || '').toLowerCase())
         ? String(attrs.mode).toLowerCase()
         : 'smart';
 
-    el.dataset.imageWidth = width;
+    if (width) {
+        el.dataset.imageWidth = width;
+        el.style.width = width;
+    }
     el.dataset.imageAlign = align;
     el.dataset.imageMode = mode;
-    el.style.width = width;
     el.style.maxWidth = '100%';
-    el.style.height = 'auto';
+    if (width && String(width).endsWith('%')) {
+        el.style.height = 'auto';
+    }
     el.classList.remove('preview-image--align-left', 'preview-image--align-center', 'preview-image--align-right');
     el.classList.add(`preview-image--align-${align}`);
 
@@ -164,13 +168,21 @@ export class ImageControlsController {
         const attrsByUrl = parseImageAttributesFromMarkdown(this.getMarkdown?.() || '');
         this.output.querySelectorAll('.preview-image[data-image-url]').forEach((image) => {
             const url = String(image.dataset.imageUrl || '').trim();
-            applyImagePresentation(image, attrsByUrl.get(url) || DEFAULT_ATTRS);
+            const attrs = attrsByUrl.get(url);
+            // Pixel sizes from image-resize (`440px`) win over URL-keyed `{image}`
+            // blocks, so sibling GIFs sharing a URL stay independent.
+            const hasPixelResize = /^\d+px$/i.test(String(image.style.width || ''));
+            if (attrs && !hasPixelResize) {
+                applyImagePresentation(image, attrs);
+            } else if (!image.style.width) {
+                applyImagePresentation(image, { align: DEFAULT_ATTRS.align, mode: DEFAULT_ATTRS.mode });
+            }
         });
     }
 
     _preparePreviewImages() {
         this.output.querySelectorAll('img[src]').forEach((img) => {
-            if (img.closest('.preview-video')) return;
+            if (img.closest('.preview-video, .mermaid, .katex')) return;
             const stableUrl = String(
                 img.dataset.originalSrc ||
                 img.getAttribute('data-original-src') ||

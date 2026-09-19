@@ -134,9 +134,19 @@ class Storehouse {
         const item = { namespace, key, value };
         if (expire) {
             item.expire = (expire instanceof Date) ? expire.getTime() : Number(expire);
-            try { localStorage.setItem(storageKey, JSON.stringify(item)); } catch {}
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(item));
+                return true;
+            } catch {
+                return false;
+            }
         } else {
-            try { sessionStorage.setItem(storageKey, JSON.stringify(item)); } catch {}
+            try {
+                sessionStorage.setItem(storageKey, JSON.stringify(item));
+                return true;
+            } catch {
+                return false;
+            }
         }
     }
 

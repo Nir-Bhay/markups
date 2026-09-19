@@ -1,0 +1,208 @@
+/**
+ * Shared Markdown insert catalog for slash commands, Insert menu, and overflow.
+ * Keep this file free of DOM so tests can import it without jsdom.
+ * @module features/toolbar/catalog
+ */
+
+export const DIAGRAM_PRESETS = [
+    {
+        id: 'flowchart',
+        label: 'Flowchart',
+        keywords: ['mermaid', 'diagram', 'flow', 'graph'],
+        insert: '\n```mermaid\ngraph TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[Continue]\n    B -->|No| D[Stop]\n```\n',
+    },
+    {
+        id: 'sequence',
+        label: 'Sequence',
+        keywords: ['mermaid', 'diagram', 'sequence', 'uml'],
+        insert: '\n```mermaid\nsequenceDiagram\n    Alice->>Bob: Hello Bob\n    Bob-->>Alice: Hi Alice\n```\n',
+    },
+    {
+        id: 'class',
+        label: 'Class',
+        keywords: ['mermaid', 'diagram', 'class', 'uml'],
+        insert: '\n```mermaid\nclassDiagram\n    class Animal {\n        +name\n        +eat()\n    }\n    Animal <|-- Dog\n```\n',
+    },
+    {
+        id: 'state',
+        label: 'State',
+        keywords: ['mermaid', 'diagram', 'state'],
+        insert: '\n```mermaid\nstateDiagram-v2\n    [*] --> Idle\n    Idle --> Active\n    Active --> [*]\n```\n',
+    },
+    {
+        id: 'mindmap',
+        label: 'Mindmap',
+        keywords: ['mermaid', 'diagram', 'mindmap', 'idea'],
+        insert: '\n```mermaid\nmindmap\n  root((Idea))\n    Branch 1\n    Branch 2\n```\n',
+    },
+    {
+        id: 'gantt',
+        label: 'Gantt',
+        keywords: ['mermaid', 'diagram', 'gantt', 'timeline'],
+        insert: '\n```mermaid\ngantt\n    title Project Timeline\n    dateFormat  YYYY-MM-DD\n    section Planning\n    Research :a1, 2026-01-01, 3d\n```\n',
+    },
+];
+
+export const EXTRA_SLASH_COMMANDS = [
+    {
+        id: 'h4',
+        label: 'Heading 4',
+        desc: 'Smaller subsection',
+        icon: 'H4',
+        insert: '#### ',
+        keywords: ['heading', 'h4'],
+    },
+    {
+        id: 'h5',
+        label: 'Heading 5',
+        desc: 'Minor heading',
+        icon: 'H5',
+        insert: '##### ',
+        keywords: ['heading', 'h5'],
+    },
+    {
+        id: 'h6',
+        label: 'Heading 6',
+        desc: 'Smallest heading',
+        icon: 'H6',
+        insert: '###### ',
+        keywords: ['heading', 'h6'],
+    },
+    {
+        id: 'math',
+        label: 'Math (inline)',
+        desc: 'KaTeX inline formula',
+        icon: 'Σ',
+        insert: '$E = mc^2$',
+        keywords: ['math', 'katex', 'latex', 'equation', 'inline'],
+    },
+    {
+        id: 'math-block',
+        label: 'Math (block)',
+        desc: 'KaTeX display formula',
+        icon: '∫',
+        insert: '\n$$\nE = mc^2\n$$\n',
+        keywords: ['math', 'katex', 'latex', 'equation', 'block'],
+    },
+    {
+        id: 'mermaid',
+        label: 'Mermaid diagram',
+        desc: 'Flowchart starter',
+        icon: '◇',
+        insert: DIAGRAM_PRESETS[0].insert,
+        keywords: ['mermaid', 'diagram', 'flowchart', 'graph'],
+    },
+    {
+        id: 'footnote',
+        label: 'Footnote',
+        desc: 'Reference plus definition',
+        icon: '¹',
+        insert: '[^1]\n\n[^1]: Footnote text',
+        keywords: ['footnote', 'reference', 'citation', 'note'],
+    },
+    {
+        id: 'callout',
+        label: 'Callout',
+        desc: 'GitHub-style alert',
+        icon: '!',
+        insert: '\n> [!NOTE]\n> Useful information\n',
+        keywords: ['callout', 'alert', 'admonition', 'note', 'github'],
+    },
+    {
+        id: 'video',
+        label: 'Video',
+        desc: 'Bare URL becomes a player',
+        icon: '▶',
+        insert: '\nhttps://www.youtube.com/watch?v=\n',
+        keywords: ['video', 'youtube', 'mp4', 'embed'],
+    },
+    {
+        id: 'frontmatter',
+        label: 'Frontmatter',
+        desc: 'YAML title block',
+        icon: '☰',
+        insert: '---\ntitle: \ndescription: \n---\n\n',
+        keywords: ['yaml', 'frontmatter', 'meta', 'title', 'hugo', 'docs'],
+    },
+    {
+        id: 'cite',
+        label: 'Citation',
+        desc: 'Pandoc-style cite key',
+        icon: '@',
+        insert: '[@citekey]',
+        keywords: ['cite', 'citation', 'bibliography', 'pandoc', 'quarto', 'paper'],
+    },
+    {
+        id: 'details',
+        label: 'Collapsible',
+        desc: 'HTML details block',
+        icon: '▸',
+        insert: '\n<details>\n<summary>More</summary>\n\nHidden content\n\n</details>\n',
+        keywords: ['details', 'collapse', 'spoiler', 'html'],
+    },
+    {
+        id: 'emoji',
+        label: 'Emoji',
+        desc: 'Smile placeholder',
+        icon: '😊',
+        insert: '😊',
+        keywords: ['emoji', 'smile', 'icon'],
+    },
+];
+
+export const TOOLBAR_CUSTOMIZATION_GROUPS = [
+    { id: 'history', label: 'Undo and redo', description: 'Move backward or forward through edits.' },
+    { id: 'formatting', label: 'Text formatting', description: 'Bold, italic, highlight, and inline styles.' },
+    { id: 'headings', label: 'Headings', description: 'Apply heading levels to the current line.' },
+    { id: 'lists', label: 'Lists', description: 'Create bullet, numbered, and task lists.' },
+    { id: 'insert', label: 'Insert tools', description: 'Add links, images, videos, and tables.' },
+    { id: 'code', label: 'Code', description: 'Insert inline and fenced code.' },
+    { id: 'blocks', label: 'Block tools', description: 'Add quotes, rules, callouts, and colors.' },
+    { id: 'tools', label: 'Quick tools', description: 'Emoji, copy, preview, outline, and checks.' },
+    { id: 'modes', label: 'Writing modes', description: 'Focus, typewriter, and fullscreen modes.' },
+    { id: 'extras', label: 'Templates and goals', description: 'Open templates and writing goals.' },
+];
+
+export const TOOLBAR_HELP = {
+    'explorer-toggle-btn': 'Show or hide the file explorer.',
+    'toolbar-undo': 'Undo the last editor change.',
+    'toolbar-redo': 'Redo the last undone editor change.',
+    'toolbar-bold': 'Make the selected text bold.',
+    'toolbar-italic': 'Make the selected text italic.',
+    'toolbar-strikethrough': 'Cross out the selected text.',
+    'toolbar-highlight': 'Highlight the selected text.',
+    'toolbar-ul': 'Turn selected lines into a bullet list.',
+    'toolbar-ol': 'Turn selected lines into a numbered list.',
+    'toolbar-task': 'Turn selected lines into a task list.',
+    'toolbar-link': 'Insert a Markdown link around the selection.',
+    'toolbar-image': 'Insert an image from your device.',
+    'toolbar-video': 'Insert a video URL for preview.',
+    'toolbar-table': 'Choose a table size before inserting it.',
+    'toolbar-code': 'Wrap the selection in a fenced code block.',
+    'toolbar-inline-code': 'Wrap the selection as inline code.',
+    'toolbar-quote': 'Quote the selected lines.',
+    'toolbar-hr': 'Insert a horizontal rule.',
+    'callout-dropdown-btn': 'Choose a styled note, tip, warning, or callout.',
+    'toolbar-text-color': 'Apply a text color to the selection.',
+    'toolbar-highlight-color': 'Apply a highlight color to the selection.',
+    'toolbar-special-chars': 'Insert a special character by name.',
+    'toolbar-emoji': 'Choose an emoji from searchable categories.',
+    'toolbar-copy-markdown': 'Copy the current Markdown source.',
+    'toolbar-clear-formatting': 'Remove common Markdown markers from the selection.',
+    'toolbar-preview-toggle': 'Switch between the editor and preview layout.',
+    'toc-button': 'Show the document outline.',
+    'scroll-sync-button': 'Keep editor and preview scrolling together.',
+    'lint-button': 'Check the document for Markdown issues.',
+    'stats-button': 'Show document statistics.',
+    'focus-button': 'Hide distractions and focus on the editor only.',
+    'typewriter-button': 'Keep the active line centered while you write.',
+    'fullscreen-button': 'Use the full browser window for writing.',
+    'templates-button': 'Insert a saved document template.',
+    'goals-button': 'Set or review a writing goal.',
+    'toolbar-density-toggle': 'Expand or compact the toolbar layout.',
+    'toolbar-customize': 'Choose which toolbar groups stay visible.',
+};
+
+export function slashIds() {
+    return EXTRA_SLASH_COMMANDS.map((cmd) => cmd.id);
+}

@@ -45,6 +45,12 @@ class AutosaveManager {
         /** @type {string|null} Pending content to save */
         this._pendingContent = null;
 
+        /** @type {Map<string, string>} Pending content per note id (stale-write guard) */
+        this._pendingByNote = new Map();
+
+        /** @type {Map<string, string>} Last successfully saved content per note id */
+        this._lastSavedContentByNote = new Map();
+
         /** @type {boolean} */
         this._initialized = false;
 
@@ -75,9 +81,10 @@ class AutosaveManager {
             this._onContentChanged(content);
         });
 
-        // Listen for active tab changes
+        // Listen for active tab changes — stash pending under the old note,
+        // flush it, then restore the new note's pending (no cross-note bleed).
         eventBus.on(EVENTS.TAB_ACTIVATED, ({ tab }) => {
-            this._activeNoteId = tab?.id || null;
+            void this._switchActiveNote(tab?.id ?? null);
         });
 
         // Save on visibility change (tab/window losing focus)
@@ -105,6 +112,9 @@ class AutosaveManager {
         if (!this._enabled) return;
 
         this._pendingContent = content;
+        if (this._activeNoteId !== null && this._activeNoteId !== undefined) {
+            this._pendingByNote.set(String(this._activeNoteId), content);
+        }
         this._setStatus('unsaved');
 
         // Clear existing timer
@@ -143,9 +153,89 @@ class AutosaveManager {
      * @private
      */
     _onBeforeUnload() {
-        if (this._pendingContent !== null) {
-            // Synchronous save attempt — best effort for beforeunload
+        if (this._pendingContent !== null && this._activeNoteId !== null) {
+            // IndexedDB cannot flush synchronously — stage to localStorage for
+            // recovery on next boot, then attempt the async write best-effort.
+            try {
+                localStorage.setItem(
+                    `markups_autosave_staging_${String(this._activeNoteId)}`,
+                    this._pendingContent
+                );
+            } catch (_e) { /* storage full/blocked — async save is last resort */ }
             this._performSave();
+        }
+    }
+
+    /**
+     * Switch active note without letting stale content bleed across notes.
+     * Flushes the old note's pending write, then restores the new note's.
+     * @param {string|number|null} noteId
+     * @private
+     */
+    async _switchActiveNote(noteId) {
+        const prevId = this._activeNoteId;
+        const prevPending = this._pendingContent;
+        if (prevId !== null && prevId !== undefined && prevPending !== null) {
+            this._pendingByNote.set(String(prevId), prevPending);
+            await this._performSaveFor(prevId, prevPending);
+        }
+        this._activeNoteId = noteId ?? null;
+        const restored = this._activeNoteId === null
+            ? null
+            : (this._pendingByNote.get(String(this._activeNoteId)) ?? null);
+        this._pendingContent = restored;
+        if (restored !== null) {
+            this._setStatus('unsaved');
+            if (this._debounceTimer) clearTimeout(this._debounceTimer);
+            this._debounceTimer = setTimeout(() => this._performSave(), this._interval);
+        }
+    }
+
+    /**
+     * Core save for an explicit note id + content (tab-switch safe).
+     * @param {string|number} noteId
+     * @param {string} content
+     * @returns {Promise<boolean>}
+     * @private
+     */
+    async _performSaveFor(noteId, content) {
+        const numericId = typeof noteId === 'number' ? noteId : parseInt(noteId, 10);
+        if (isNaN(numericId)) return false;
+        // Hash guard: skip write when content already saved for this note.
+        if (this._lastSavedContentByNote.get(String(noteId)) === content) {
+            if (String(this._activeNoteId) === String(noteId)) this._pendingContent = null;
+            this._pendingByNote.delete(String(noteId));
+            return true;
+        }
+        this._setStatus('saving');
+        eventBus.emit(EVENTS.DOCUMENT_SAVING, { noteId });
+        try {
+            await noteStorage.updateNote(numericId, { content });
+            this._lastSavedContentByNote.set(String(noteId), content);
+            this._pendingByNote.delete(String(noteId));
+            if (String(this._activeNoteId) === String(noteId)) this._pendingContent = null;
+            try {
+                localStorage.removeItem(`markups_autosave_staging_${String(noteId)}`);
+            } catch (_e) { /* ignore */ }
+            // Best-effort version snapshot (throttled inside; never breaks saves).
+            try {
+                const { recordVersion } = await import('../../core/storage/versionHistory.js');
+                void recordVersion(numericId, content);
+            } catch (_e) { /* ignore */ }
+            this._lastSavedAt = Date.now();
+            this._setStatus('saved');
+            eventBus.emit(EVENTS.DOCUMENT_SAVED, { noteId, savedAt: this._lastSavedAt });
+            return true;
+        } catch (error) {
+            console.error('AutosaveManager: Save failed:', error);
+            this._pendingByNote.set(String(noteId), content);
+            if (String(this._activeNoteId) === String(noteId)) this._pendingContent = content;
+            this._setStatus('error');
+            eventBus.emit(EVENTS.ERROR, {
+                message: 'Auto-save failed. Your changes may not be saved.',
+                type: 'autosave'
+            });
+            return false;
         }
     }
 
@@ -157,6 +247,11 @@ class AutosaveManager {
     async _performSave() {
         if (this._pendingContent === null) return false;
 
+        // Phase 2.1: no target note → no write AND no saved signal. Previously
+        // this fell through and reported `saved` without writing (silent loss).
+        // _pendingContent is kept so a later setActiveNote can still flush it.
+        if (!this._activeNoteId) return false;
+
         const content = this._pendingContent;
         this._pendingContent = null;
 
@@ -166,41 +261,22 @@ class AutosaveManager {
             this._debounceTimer = null;
         }
 
-        this._setStatus('saving');
-        eventBus.emit(EVENTS.DOCUMENT_SAVING, { noteId: this._activeNoteId });
-
-        try {
-            if (this._activeNoteId) {
-                // Update existing note
-                const numericId = typeof this._activeNoteId === 'number'
-                    ? this._activeNoteId
-                    : parseInt(this._activeNoteId, 10);
-
-                if (!isNaN(numericId)) {
-                    await noteStorage.updateNote(numericId, { content });
-                }
+        // Phase 2.1: unresolvable id → same no-write, no-saved-signal rule.
+        // Re-queue content so it is not silently dropped. Reset the status
+        // set above — otherwise the indicator hangs on "Saving…".
+        const numericId = typeof this._activeNoteId === 'number'
+            ? this._activeNoteId
+            : parseInt(this._activeNoteId, 10);
+        if (isNaN(numericId)) {
+            this._pendingContent = content;
+            if (this._activeNoteId !== null) {
+                this._pendingByNote.set(String(this._activeNoteId), content);
             }
-
-            this._lastSavedAt = Date.now();
-            this._setStatus('saved');
-
-            eventBus.emit(EVENTS.DOCUMENT_SAVED, {
-                noteId: this._activeNoteId,
-                savedAt: this._lastSavedAt
-            });
-
-            return true;
-        } catch (error) {
-            console.error('AutosaveManager: Save failed:', error);
-            this._setStatus('error');
-
-            eventBus.emit(EVENTS.ERROR, {
-                message: 'Auto-save failed. Your changes may not be saved.',
-                type: 'autosave'
-            });
-
+            this._setStatus('unsaved');
             return false;
         }
+
+        return this._performSaveFor(this._activeNoteId, content);
     }
 
     /**
@@ -265,7 +341,16 @@ class AutosaveManager {
      * @param {string|number|null} noteId
      */
     setActiveNote(noteId) {
+        if (noteId === this._activeNoteId) return;
+        // Synchronous path (tests + direct callers): stash + restore now,
+        // flush of the old note happens on the next save cycle.
+        if (this._pendingContent !== null && this._activeNoteId !== null) {
+            this._pendingByNote.set(String(this._activeNoteId), this._pendingContent);
+        }
         this._activeNoteId = noteId;
+        this._pendingContent = noteId === null
+            ? null
+            : (this._pendingByNote.get(String(noteId)) ?? null);
     }
 
     /**

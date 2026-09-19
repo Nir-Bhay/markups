@@ -58,10 +58,9 @@ function _readLegacyDocuments() {
                 const tabs = parsed.value || parsed;
                 if (Array.isArray(tabs)) {
                     tabs.forEach(tab => {
-                        // Avoid duplicates — check if this tab's ID is already in documents
-                        const alreadyExists = documents.some(d =>
-                            d.id === tab.id || (d.name === tab.name && d.content === tab.content)
-                        );
+                        // Dedup by stable id only — name+content heuristics merged
+                        // distinct tabs that happened to share content.
+                        const alreadyExists = documents.some(d => d.id === tab.id);
                         if (!alreadyExists) {
                             documents.push(tab);
                         }
@@ -136,8 +135,61 @@ function _transformToNote(doc) {
 }
 
 /**
+ * True when any namespaced legacy keys exist (docs, tabs, or siblings).
+ * Used to tell a genuine first run (safe to mark complete) apart from
+ * present-but-unparseable legacy data (must stay retryable).
+ * @returns {boolean}
+ */
+function _hasAnyLegacyKeys() {
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(NAMESPACE + '.')) return true;
+        }
+    } catch { /* ignore */ }
+    return false;
+}
+
+/**
+ * Best-effort JSON backup of the transformed notes before the bulk write.
+ * Stored under a versioned key so a failed migration never destroys the only
+ * copy. Never throws — backup failure must not block migration.
+ * @param {Array<Object>} notes
+ * @returns {boolean} True when the backup was persisted
+ */
+function _writeMigrationBackup(notes) {
+    try {
+        localStorage.setItem(
+            'markups_migration_backup_v1',
+            JSON.stringify({ exportedAt: Date.now(), count: notes.length, notes })
+        );
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * List legacy keys eligible for post-migration cleanup (docs/tabs only —
+ * settings and UI prefs are never touched).
+ * @returns {string[]}
+ */
+export function getLegacyKeysForCleanup() {
+    const keys = [];
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith(NAMESPACE + '.docs') || key.startsWith(NAMESPACE + '.tabs'))) {
+                keys.push(key);
+            }
+        }
+    } catch { /* ignore */ }
+    return keys;
+}
+
+/**
  * Run the migration from localStorage to IndexedDB
- * @returns {Promise<{ success: boolean, notesCount: number, skipped: boolean, error?: string }>}
+ * @returns {Promise<{ success: boolean, notesCount: number, skipped: boolean, backup?: boolean, skippedDuplicates?: number, error?: string }>}
  */
 export async function runMigration() {
     // Skip if already migrated
@@ -153,15 +205,38 @@ export async function runMigration() {
         const legacyDocs = _readLegacyDocuments();
 
         if (legacyDocs.length === 0) {
-            console.log('Migration: No legacy data found. Marking as complete.');
-            localStorage.setItem(MIGRATION_FLAG_KEY, MIGRATION_VERSION);
-            return { success: true, notesCount: 0, skipped: false };
+            // Genuine first run (no legacy keys at all) → safe to mark complete.
+            // Present-but-unparseable legacy data stays retryable so a later
+            // app version can still import it.
+            if (!_hasAnyLegacyKeys()) {
+                console.log('Migration: No legacy data found. Marking as complete.');
+                localStorage.setItem(MIGRATION_FLAG_KEY, MIGRATION_VERSION);
+                return { success: true, notesCount: 0, skipped: false };
+            }
+            console.warn('Migration: Legacy keys present but nothing parseable. Staying retryable.');
+            return { success: true, notesCount: 0, skipped: false, retryable: true };
         }
 
         console.log(`Migration: Found ${legacyDocs.length} documents to migrate.`);
 
-        // Step 2: Transform to new schema
-        const notes = legacyDocs.map(_transformToNote);
+        // Step 2: Transform to new schema (dedup by legacy id; report the rest
+        // for manual review instead of silently merging distinct tabs).
+        const seen = new Set();
+        const notes = [];
+        let skippedDuplicates = 0;
+        for (const doc of legacyDocs) {
+            const note = _transformToNote(doc);
+            const key = note.legacyId ?? `${note.title}\n${note.content}`;
+            if (seen.has(key)) {
+                skippedDuplicates++;
+                continue;
+            }
+            seen.add(key);
+            notes.push(note);
+        }
+
+        // Step 2b: Backup before the bulk write (best effort, never throws).
+        const backup = _writeMigrationBackup(notes);
 
         // Step 3: Bulk write to IndexedDB
         const result = await noteStorage.bulkCreateNotes(notes);
@@ -180,7 +255,7 @@ export async function runMigration() {
         localStorage.setItem(MIGRATION_FLAG_KEY, MIGRATION_VERSION);
 
         console.log(`Migration: Successfully migrated ${result.count} notes to IndexedDB.`);
-        return { success: true, notesCount: result.count, skipped: false };
+        return { success: true, notesCount: result.count, skipped: false, backup, skippedDuplicates };
 
     } catch (error) {
         console.error('Migration: Failed!', error);
@@ -213,21 +288,19 @@ export function getMigrationStatus() {
 
 /**
  * Clear legacy localStorage data (manual cleanup after migration)
- * Only call this after verifying IndexedDB data is intact
+ * Only call this after verifying IndexedDB data is intact — pass
+ * `{ verified: true }` explicitly, otherwise the call is refused so an
+ * unverified cleanup can never destroy the only copy.
+ * @param {{ verified?: boolean }} [options]
  * @returns {boolean} Success status
  */
-export function clearLegacyData() {
+export function clearLegacyData({ verified = false } = {}) {
+    if (!verified) {
+        console.warn('Migration: clearLegacyData refused without { verified: true }.');
+        return false;
+    }
     try {
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith(NAMESPACE + '.docs')) {
-                keysToRemove.push(key);
-            }
-            if (key && key.startsWith(NAMESPACE + '.tabs')) {
-                keysToRemove.push(key);
-            }
-        }
+        const keysToRemove = getLegacyKeysForCleanup();
 
         keysToRemove.forEach(key => localStorage.removeItem(key));
         console.log(`Migration: Cleared ${keysToRemove.length} legacy keys from localStorage.`);

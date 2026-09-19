@@ -98,6 +98,36 @@ class EditorService {
     }
 
     /**
+     * Adopt an externally created Monaco editor (legacy main.js entry).
+     * main.js builds its own Monaco instance with custom wrappers, so the
+     * service must not create a second editor — it only wires the shared
+     * event bus (content, cursor, selection, scroll) onto the live one.
+     * Without this, editor-backed features (AI Writer, selection sync)
+     * silently see no editor in the production entry.
+     * @param {Object} externalEditor - Initialized Monaco standalone editor
+     * @returns {Object|null} The adopted editor, or null when invalid
+     */
+    attachEditor(externalEditor) {
+        if (!externalEditor || typeof externalEditor.onDidChangeModelContent !== 'function') {
+            console.warn('EditorService.attachEditor: invalid editor instance');
+            return null;
+        }
+        if (this.initialized) {
+            return this.editor;
+        }
+
+        this.editor = externalEditor;
+
+        // Set up event listeners
+        this._setupEventListeners();
+
+        this.initialized = true;
+        eventBus.emit(EVENTS.EDITOR_READY, { editor: this.editor });
+
+        return this.editor;
+    }
+
+    /**
      * Set up internal event listeners
      * @private
      */

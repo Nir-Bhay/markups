@@ -4,8 +4,7 @@
  * @module services
  */
 
-export { exportManager, pdfExporter, htmlExporter, markdownExporter } from './export/index.js';
-export { docxExporter, DOCXExporter } from './export/docx.js';
+export { exportManager, pdfExporter, htmlExporter, markdownExporter, docxExporter, DOCXExporter, txtExporter } from './export/index.js';
 export { shortcutsManager, ShortcutsManager, DEFAULT_SHORTCUTS } from './shortcuts/index.js';
 export { pwaService, PWAService } from './pwa/index.js';
 

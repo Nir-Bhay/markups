@@ -19,8 +19,8 @@ import {
   debounce,
   throttle,
   formatBytes,
-  escapeRegex,
 } from './utils.js';
+import { applyImageStateToMarkdown, getHtmlImageOccurrenceIndex, isNonMarkdownPreviewImage } from './markdown-sync.js';
 
 export class ImageResizeManager {
     constructor() {
@@ -36,6 +36,8 @@ export class ImageResizeManager {
         this.lockAspect = true;
         this.resizeOverlay = null;
         this.editor = null;
+        /** @type {null|((markdown: string) => void)} */
+        this.onMarkdownChange = null;
         this.ghostOutline = null;
         this.contextMenu = null;
 
@@ -68,11 +70,15 @@ export class ImageResizeManager {
      * Initialize the image resize feature
      * @param {Object} options - Configuration options
      * @param {Object} options.editor - Monaco editor instance
+     * @param {Function} [options.onMarkdownChange] - Write markdown without full preview reload
      */
     initialize(options = {}) {
+        this.editor = options.editor || this.editor || window.editor;
+        if (typeof options.onMarkdownChange === 'function') {
+            this.onMarkdownChange = options.onMarkdownChange;
+        }
         if (this.initialized) return;
 
-        this.editor = options.editor || window.editor;
         this._injectStyles();
         this._setupEventListeners();
         this._setupMutationObserver();
@@ -725,7 +731,7 @@ export class ImageResizeManager {
 
         preview.addEventListener('mousemove', (e) => {
             const img = e.target.closest('img[data-loaded]');
-            if (!img || this.activeImage === img) { _clearHoverTooltip(); return; }
+            if (!img || img.closest('.preview-video, .mermaid, .katex') || this.activeImage === img) { _clearHoverTooltip(); return; }
             // Re-position tooltip to follow cursor lightly
             if (_hoverTooltip) {
                 _hoverTooltip.style.left = `${e.clientX + 14}px`;
@@ -740,7 +746,7 @@ export class ImageResizeManager {
         // Click on image to select
         preview.addEventListener('click', (e) => {
             const img = e.target.closest('img[data-loaded]');
-            if (img) {
+            if (img && !img.closest('.preview-video, .mermaid, .katex')) {
                 e.preventDefault();
                 e.stopPropagation();
                 _clearHoverTooltip();
@@ -751,7 +757,7 @@ export class ImageResizeManager {
         // Double-click to open custom size dialog
         preview.addEventListener('dblclick', (e) => {
             const img = e.target.closest('img[data-loaded]');
-            if (img) {
+            if (img && !img.closest('.preview-video, .mermaid, .katex')) {
                 e.preventDefault();
                 e.stopPropagation();
                 this._selectImage(img);
@@ -762,7 +768,7 @@ export class ImageResizeManager {
         // Context menu on images
         preview.addEventListener('contextmenu', (e) => {
             const img = e.target.closest('img[data-loaded]');
-            if (img) {
+            if (img && !img.closest('.preview-video, .mermaid, .katex')) {
                 e.preventDefault();
                 e.stopPropagation();
                 _clearHoverTooltip();
@@ -2315,75 +2321,37 @@ export class ImageResizeManager {
         }
 
         const domSrc = img.getAttribute('src') || '';
-        const originalSrc = img.dataset.originalSrc || domSrc;
+        const originalSrc = img.dataset.originalSrc || img.getAttribute('data-original-src') || domSrc;
         const indexStr = img.dataset.irIndex;
+        const parsedIndex = indexStr !== undefined && indexStr !== ''
+            ? parseInt(indexStr, 10)
+            : NaN;
+        const htmlOccurrenceIndex = isNonMarkdownPreviewImage(img)
+            ? getHtmlImageOccurrenceIndex(img)
+            : null;
         const state = this._collectPersistedState(img);
         const encodedState = this._encodePersistedState(state);
         const attrStr = this._buildAttrString(state);
         const content = this.editor.getValue();
-        let newContent = content;
-        let found = false;
 
-        // Strategy 1: Data-Index Exact Match
-        if (indexStr !== undefined) {
-            const targetIndex = parseInt(indexStr, 10);
-            const pattern = /!\[([^\]]*)\]\(([^)]+)\)\s*(?:\{[^}]*\})?/g;
-            let currentIdx = 0;
-            
-            newContent = content.replace(pattern, (match, altText, src) => {
-                if (currentIdx === targetIndex) {
-                    found = true;
-                    return `![${altText}](${src})${attrStr}`;
-                }
-                currentIdx++;
-                return match;
-            });
-        }
-
-        // Strategy 2: Fallback by originalUrl
-        if (!found && originalSrc && !originalSrc.startsWith('data:')) {
-            const escapedSrc = escapeRegex(originalSrc);
-            try {
-                const mdPattern = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedSrc}\\)\\s*(?:\\{[^}]*\\})?`, 'g');
-                if (mdPattern.test(content)) {
-                    found = true;
-                    newContent = content.replace(
-                        new RegExp(mdPattern.source, 'g'),
-                        (match, altText) => {
-                            return `![${altText}](${originalSrc})${attrStr}`;
-                        }
-                    );
-                }
-            } catch (e) {
-                console.warn('[ImageResize v2] Regex error (MD):', e);
-            }
-        }
-
-        // Strategy 3: HTML tag fallback
-        if (!found && originalSrc && !originalSrc.startsWith('data:') && originalSrc.length < 500) {
-            try {
-                const escapedSrc = escapeRegex(originalSrc);
-                const htmlPattern = new RegExp(`<img([^>]*)src=["']${escapedSrc}["']([^>]*)>`, 'gi');
-                if (htmlPattern.test(content)) {
-                    found = true;
-                    newContent = content.replace(
-                        new RegExp(htmlPattern.source, 'gi'),
-                        (match) => {
-                            let result = match;
-                            result = this._updateHtmlAttribute(result, 'width', state.width || null);
-                            result = this._updateHtmlAttribute(result, 'height', state.height || null);
-                            result = this._updateHtmlAttribute(result, 'align', state.align || null);
-                            result = this._updateHtmlAttribute(result, 'data-ir', encodedState || null);
-                            return result;
-                        }
-                    );
-                }
-            } catch (e) {
-                console.warn('[ImageResize v2] Regex error (HTML):', e);
-            }
-        }
+        const { content: newContent, found } = applyImageStateToMarkdown(content, {
+            index: Number.isInteger(parsedIndex) ? parsedIndex : null,
+            src: originalSrc,
+            attrStr,
+            encodedState,
+            width: state.width ?? null,
+            height: state.height ?? null,
+            align: state.align ?? null,
+            htmlOccurrenceIndex,
+        });
 
         if (found && newContent !== content) {
+            if (typeof this.onMarkdownChange === 'function') {
+                // Prefer host writeback that skips full preview convert (no blink).
+                this.onMarkdownChange(newContent);
+                return;
+            }
+
             const position = this.editor.getPosition();
             const scrollTop = this.editor.getScrollTop();
             this.editor.setValue(newContent);
@@ -2392,21 +2360,6 @@ export class ImageResizeManager {
                 this.editor.setScrollTop(scrollTop);
             }
         }
-    }
-
-    _updateHtmlAttribute(html, attr, value) {
-        if (value === null) {
-            return html.replace(new RegExp(`\\s*${attr}=["'][^"']*["']`, 'gi'), '');
-        }
-        if (value) {
-            const pattern = new RegExp(`${attr}=["'][^"']*["']`, 'gi');
-            if (pattern.test(html)) {
-                return html.replace(pattern, `${attr}="${value}"`);
-            } else {
-                return html.replace(/<img/i, `<img ${attr}="${value}"`);
-            }
-        }
-        return html;
     }
 
     /* ─────────────────────────────────────────────────────────────────

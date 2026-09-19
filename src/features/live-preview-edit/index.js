@@ -1,8 +1,17 @@
 /**
- * Live Preview Edit POC
- * Lets users edit rendered preview content and syncs best-effort Markdown back
- * to the Monaco source editor. This intentionally stays behind an explicit
- * toggle because HTML→Markdown round-tripping is lossy for complex blocks.
+ * Live Preview Edit (Document Mode)
+ *
+ * Lets users edit the rendered preview and writes the change back to the
+ * Monaco source. Markdown stays the single source of truth: we never replace
+ * the preview from a preview-originated edit (no full re-render), and we only
+ * ever splice the *one* block the user actually changed.
+ *
+ * Round-tripping DOM → Markdown is the lossy direction (the "untested half" of
+ * every WYSIWYG), so blocks whose DOM cannot be inverted faithfully — code
+ * fences, mermaid diagrams, KaTeX, tables, media — are treated as atomic:
+ * they are marked non-editable and their original Markdown is preserved
+ * verbatim instead of being re-serialized.
+ *
  * @module features/live-preview-edit
  */
 
@@ -10,6 +19,7 @@ import { debounce } from '../../utils/debounce.js';
 import { serializeVideoMarkdown } from '../video-controls/index.js';
 import { formatImageAttributeBlock } from '../image-controls/index.js';
 
+// Non-editable chrome inside an editable block (buttons, player widgets, …).
 const NON_EDITABLE_SELECTOR = [
     'button',
     'iframe',
@@ -25,11 +35,38 @@ const NON_EDITABLE_SELECTOR = [
     '.preview-video-frame',
     '.code-block-header',
     '.code-copy-btn',
+    '.katex',
+    '.katex-display',
+    '.mermaid',
+    '.mermaid-diagram',
+    '.mermaid-error',
     '[data-live-edit-ignore]'
 ].join(',');
 
+// Whole blocks that must never be re-serialized from the DOM. Either the DOM
+// form is lossy (tables, code, callouts, footnotes) or round-tripping it would
+// destroy live media/layout state (images, video). Their source is preserved.
+const PROTECTED_BLOCK_SELECTOR = [
+    'pre',
+    'table',
+    'details',
+    'img',
+    'iframe',
+    'video',
+    'audio',
+    '.mermaid',
+    '.mermaid-diagram',
+    '.mermaid-error',
+    '.katex',
+    '.katex-display',
+    '.preview-video',
+    '.markdown-alert',
+    '[data-footnotes]',
+    '.footnotes'
+].join(',');
+
 // UI chrome stripped before HTML→Markdown. Keep img / .preview-image /
-// .preview-video so Document Mode round-trips media instead of deleting it.
+// .preview-video so media round-trips instead of being deleted.
 const SERIALIZE_STRIP_SELECTOR = [
     'button',
     '.preview-video-hitbox',
@@ -41,7 +78,7 @@ const SERIALIZE_STRIP_SELECTOR = [
 
 const EDITABLE_BLOCK_SELECTOR = [
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'pre', 'blockquote', 'ul', 'ol',
-    'table', 'hr', 'details', '.preview-video'
+    'table', 'hr', 'details', '.preview-video', '.markdown-alert'
 ].join(',');
 
 const BLOCK_TAGS = new Set([
@@ -109,18 +146,24 @@ function getCodeLanguage(code) {
 
 function serializeList(listNode, ordered = false, depth = 0) {
     const items = Array.from(listNode.children).filter((child) => child.tagName === 'LI');
+    // Preserve an explicit <ol start="n"> so lists don't silently renumber.
+    const startAttr = ordered ? parseInt(listNode.getAttribute('start') || '1', 10) : 1;
+    const start = Number.isFinite(startAttr) && startAttr > 0 ? startAttr : 1;
+
     return items.map((li, index) => {
         const nestedLists = Array.from(li.children).filter((child) => child.tagName === 'UL' || child.tagName === 'OL');
+        const checkbox = li.querySelector(':scope > input[type="checkbox"]');
         const clone = li.cloneNode(true);
-        clone.querySelectorAll('ul,ol').forEach((nested) => nested.remove());
+        clone.querySelectorAll('ul,ol,input[type="checkbox"]').forEach((nested) => nested.remove());
         const body = serializeInlineChildren(clone).replace(/^\s+|\s+$/g, '') || textContent(clone);
-        const marker = ordered ? `${index + 1}.` : '-';
+        const task = checkbox ? (checkbox.hasAttribute('checked') ? '[x] ' : '[ ] ') : '';
+        const marker = ordered ? `${start + index}.` : '-';
         const indent = '  '.repeat(depth);
         const nested = nestedLists
             .map((nestedList) => serializeList(nestedList, nestedList.tagName === 'OL', depth + 1).trimEnd())
             .filter(Boolean)
             .join('\n');
-        return `${indent}${marker} ${body}${nested ? `\n${nested}` : ''}`;
+        return `${indent}${marker} ${task}${body}${nested ? `\n${nested}` : ''}`;
     }).join('\n') + '\n\n';
 }
 
@@ -142,6 +185,19 @@ function serializePreviewVideo(node) {
     return serializeVideoMarkdown(node);
 }
 
+/**
+ * Recover a mermaid fence from the rendered diagram. The render pass stashes
+ * the original diagram source on the wrapper so a full-preview serialize can
+ * never dump inline SVG/CSS back into Markdown.
+ * @param {HTMLElement} node
+ * @returns {string}
+ */
+function serializeMermaid(node) {
+    const code = node.dataset?.mermaidCode || node.getAttribute?.('data-mermaid-code') || '';
+    if (!code) return '';
+    return `\`\`\`mermaid\n${String(code).replace(/\n+$/g, '')}\n\`\`\`\n\n`;
+}
+
 function serializeNode(node, context = {}) {
     if (node.nodeType === Node.TEXT_NODE) {
         const rawText = node.textContent || '';
@@ -154,6 +210,7 @@ function serializeNode(node, context = {}) {
     const tag = node.tagName;
 
     if (node.matches?.('.code-block-header,.code-copy-btn')) return '';
+    if (node.matches?.('.mermaid-diagram,.mermaid')) return serializeMermaid(node);
     if (node.matches?.('.preview-video')) return serializePreviewVideo(node);
 
     switch (tag) {
@@ -168,6 +225,9 @@ function serializeNode(node, context = {}) {
         case 'S':
         case 'DEL':
             return `~~${serializeInlineChildren(node, context)}~~`;
+        case 'INPUT':
+            // GFM task-list checkboxes are handled by serializeList.
+            return '';
         case 'CODE': {
             if (node.parentElement?.tagName === 'PRE') return node.textContent || '';
             return `\`${(node.textContent || '').replace(/`/g, '\\`')}\``;
@@ -240,8 +300,8 @@ function serializeNode(node, context = {}) {
 }
 
 /**
- * Convert editable preview DOM back to Markdown. Best-effort and intentionally
- * conservative: it covers common writing blocks and preserves raw text for the rest.
+ * Convert preview DOM back to Markdown. Best-effort for the common writing
+ * blocks; protected blocks should be excluded before calling this.
  * @param {HTMLElement} root
  * @returns {string}
  */
@@ -324,14 +384,16 @@ function findMarkdownBlockRange(lines, lineIndex) {
 
 /**
  * Replace one Markdown source block using the source line stored on a preview block.
- * Falls back to whole-preview serialization when no reliable source line exists.
+ * Splicing is line-scoped on purpose: the rest of the document (including
+ * significant blank lines inside code fences) must survive byte-for-byte.
  * @param {string} sourceMarkdown
  * @param {number} sourceLine 1-based source line
  * @param {string} blockMarkdown serialized block Markdown
  * @returns {string}
  */
 export function replaceMarkdownBlockAtLine(sourceMarkdown, sourceLine, blockMarkdown) {
-    const lines = String(sourceMarkdown || '').split('\n');
+    const source = String(sourceMarkdown ?? '');
+    const lines = source.split('\n');
     const index = Math.max(0, Number(sourceLine || 1) - 1);
     const { start, end } = findMarkdownBlockRange(lines, index);
     const replacement = trimBlankLines(blockMarkdown).split('\n');
@@ -341,7 +403,7 @@ export function replaceMarkdownBlockAtLine(sourceMarkdown, sourceLine, blockMark
         ...lines.slice(end)
     ];
 
-    return trimBlankLines(nextLines.join('\n')) + '\n';
+    return nextLines.join('\n');
 }
 
 /**
@@ -383,15 +445,10 @@ export class LivePreviewEditController {
         this.enabled = false;
         this.initialized = false;
         this._dirty = false;
-        this._lastEditedBlock = null;
         this._handleInput = debounce(() => this._syncFromPreview(), debounceMs);
         this._markDirty = () => {
             this._dirty = true;
-            this._rememberActiveBlock();
             this._handleInput();
-        };
-        this._rememberActiveBlock = () => {
-            this._lastEditedBlock = this._getActiveBlock() || this._lastEditedBlock;
         };
         this._handleKeydown = (event) => {
             if ((event.ctrlKey || event.metaKey) && event.key === 's') {
@@ -414,26 +471,57 @@ export class LivePreviewEditController {
     toggleEditing(force) {
         const next = typeof force === 'boolean' ? force : !this.enabled;
         if (next === this.enabled) return;
-        // When leaving edit mode, flush any pending debounce and sync while
-        // `enabled` is still true so final DOM edits are not dropped.
-        if (!next) {
-            this.syncFromPreview();
-        }
+        // Leaving edit mode: flush pending edits while `enabled` is still true
+        // so final DOM changes are not dropped.
+        if (!next) this.syncFromPreview();
 
         this.enabled = next;
         this._dirty = false;
         this.refresh();
         this.showToast?.(
             this.enabled
-                ? 'Live preview editing enabled — changes sync back to Markdown'
-                : 'Live preview editing disabled',
+                ? 'Document Mode enabled — complex blocks open in Markdown'
+                : 'Document Mode disabled',
             this.enabled ? 'info' : 'success',
             2200
         );
 
-        if (!this.enabled) {
-            this.onExit?.();
-        }
+        if (!this.enabled) this.onExit?.();
+    }
+
+    /** Top-level editable blocks (nested blocks are covered by their ancestor). */
+    _editableBlocks() {
+        if (!this.output) return [];
+        return Array.from(this.output.querySelectorAll(EDITABLE_BLOCK_SELECTOR))
+            .filter((el) => !(el.parentElement?.closest(EDITABLE_BLOCK_SELECTOR)))
+            .filter((el) => !['ARTICLE', 'SECTION'].includes(el.tagName));
+    }
+
+    /** A block is protected when it is atomic or contains atomic content. */
+    _isProtected(el) {
+        return el.matches?.(PROTECTED_BLOCK_SELECTOR) || !!el.querySelector?.(PROTECTED_BLOCK_SELECTOR);
+    }
+
+    /**
+     * Snapshot the serialized form of every editable block. The diff against
+     * this snapshot is what tells us which block the user actually changed —
+     * no reliance on selection or geometry.
+     */
+    _captureSnapshot() {
+        this._editableBlocks().forEach((el) => {
+            el.__livePreviewSnapshot = this._isProtected(el) ? null : serializePreviewToMarkdown(el);
+        });
+    }
+
+    /** Keep the source-line annotation consistent after an in-place splice. */
+    _shiftSourceLines(fromLine, delta) {
+        if (!delta || !this.output) return;
+        this.output.querySelectorAll('[data-source-line]').forEach((el) => {
+            const line = Number(el.getAttribute('data-source-line'));
+            if (Number.isFinite(line) && line > fromLine) {
+                el.setAttribute('data-source-line', String(line + delta));
+            }
+        });
     }
 
     refresh(output = this.output) {
@@ -456,94 +544,88 @@ export class LivePreviewEditController {
             this.output.removeAttribute('role');
             this.output.removeAttribute('aria-multiline');
             this.output.removeAttribute('aria-label');
+            // Drop the contenteditable markers we added to descendants so a
+            // re-used DOM never stays frozen after Document Mode is off.
+            this.output.querySelectorAll('[contenteditable="false"]').forEach((node) => {
+                node.removeAttribute('contenteditable');
+            });
         }
 
         this.output.removeEventListener('input', this._markDirty);
         this.output.removeEventListener('keydown', this._handleKeydown);
-        this.output.removeEventListener('keyup', this._rememberActiveBlock);
-        this.output.removeEventListener('pointerup', this._rememberActiveBlock);
-        this.output.removeEventListener('focusin', this._rememberActiveBlock);
 
         if (this.enabled) {
             this.output.addEventListener('input', this._markDirty);
             this.output.addEventListener('keydown', this._handleKeydown);
-            this.output.addEventListener('keyup', this._rememberActiveBlock);
-            this.output.addEventListener('pointerup', this._rememberActiveBlock);
-            this.output.addEventListener('focusin', this._rememberActiveBlock);
+
             this.output.querySelectorAll(NON_EDITABLE_SELECTOR).forEach((node) => {
                 node.setAttribute('contenteditable', 'false');
             });
+            // Atomic blocks: freeze the whole block so it can never be
+            // re-serialized from (lossy) rendered markup.
+            this._editableBlocks().forEach((el) => {
+                if (this._isProtected(el)) el.setAttribute('contenteditable', 'false');
+            });
+
+            // Fresh DOM → new baseline for the change diff.
+            this._captureSnapshot();
         }
     }
 
-    _getActiveBlock() {
-        const selection = typeof document !== 'undefined' ? document.getSelection?.() : null;
-        const anchor = selection?.anchorNode;
-        const element = anchor?.nodeType === Node.ELEMENT_NODE ? anchor : anchor?.parentElement;
-        const block = element?.closest?.(EDITABLE_BLOCK_SELECTOR);
-        return block && this.output?.contains(block) ? block : null;
-    }
-
-    _serializeEditedMarkdown() {
-        const block = this._getActiveBlock() || this._lastEditedBlock;
-        const sourceMarkdown = this.getSourceMarkdown?.();
-        const sourceLine = block?.getAttribute?.('data-source-line');
-
-        if (block && sourceMarkdown && sourceLine) {
-            return replaceMarkdownBlockAtLine(sourceMarkdown, Number(sourceLine), serializePreviewToMarkdown(block));
-        }
-
-        // Large-doc guard: when we have no block anchor the fallback serializes
-        // the ENTIRE preview DOM to Markdown. For 50MB+ documents doing that on
-        // every keystroke can freeze the UI. In that case skip the full-preview
-        // serialize (block-level edits above still apply) and treat the edit as
-        // a no-op sync so we never block the main thread on a huge doc.
-        if (sourceMarkdown && sourceMarkdown.length > 50 * 1024 * 1024) {
-            if (!this._largeDocWarned) {
-                this._largeDocWarned = true;
-                this.showToast?.(
-                    'Document is very large — full-preview sync disabled; per-block edits still apply',
-                    'warning',
-                    3000
-                );
-            }
-            return sourceMarkdown; // idempotent no-op (matches source → skipped by _syncFromPreview)
-        }
-
-        return serializePreviewToMarkdown(this.output);
-    }
-
+    /**
+     * Diff editable blocks against the last snapshot and splice only the
+     * changed ones back into the source. Never falls back to a whole-document
+     * serialize — an anchorless edit is a no-op, not a rewrite.
+     */
     _syncFromPreview() {
         if (!this.enabled || !this.output || !this.onMarkdownChange || !this._dirty) return;
-        const sourceMarkdown = this.getSourceMarkdown?.() || '';
-        const markdown = this._serializeEditedMarkdown();
-        if (!markdown || looksLikeBrokenMediaMarkdown(markdown, sourceMarkdown)) {
-            this.showToast?.('Skipped unsafe Document Mode sync to protect images/videos', 'warning', 2200);
-            this._dirty = false;
-            return;
-        }
-        // Idempotency: if the serialize produced exactly the current source, the sync
-        // is a no-op. Dropping it prevents redundant full-document writes — and, when
-        // combined with a stale block reference, avoids doubling a paragraph on repeat
-        // toggles / saves / view switches.
-        if (markdown === sourceMarkdown) {
-            this._dirty = false;
-            return;
-        }
-        this.onMarkdownChange(markdown);
         this._dirty = false;
-        // Drop the stale edited-block reference. After the re-render triggered by the
-        // write above (or by a mode/tab switch), the old block may point at a detached
-        // node whose data-source-line no longer maps to the same region — reusing it
-        // later made replaceMarkdownBlockAtLine INSERT instead of replace, doubling the
-        // block. Re-resolve from the live selection next edit instead.
-        this._lastEditedBlock = null;
+
+        const sourceMarkdown = this.getSourceMarkdown?.() || '';
+        const targets = this._editableBlocks()
+            .filter((el) => !this._isProtected(el))
+            .filter((el) => el.hasAttribute('data-source-line'))
+            // A block without a baseline snapshot was never indexed (new node,
+            // or annotated after the last capture). Treat it as unchanged rather
+            // than rewriting source the user never touched.
+            .filter((el) => typeof el.__livePreviewSnapshot === 'string')
+            .map((el) => ({ el, next: serializePreviewToMarkdown(el) }))
+            .filter(({ el, next }) => next !== el.__livePreviewSnapshot)
+            .map(({ el, next }) => ({ el, next, line: Number(el.getAttribute('data-source-line')) }))
+            .filter(({ line }) => Number.isFinite(line) && line >= 1)
+            .sort((a, b) => a.line - b.line);
+
+        if (targets.length === 0) return;
+
+        let nextSource = sourceMarkdown;
+        for (const target of targets) {
+            const currentLine = Number(target.el.getAttribute('data-source-line'));
+            if (!Number.isFinite(currentLine) || currentLine < 1) continue;
+
+            const replaced = replaceMarkdownBlockAtLine(nextSource, currentLine, target.next);
+            target.el.__livePreviewSnapshot = target.next;
+            if (replaced === nextSource) continue;
+
+            const delta = replaced.split('\n').length - nextSource.split('\n').length;
+            nextSource = replaced;
+            this._shiftSourceLines(currentLine, delta);
+        }
+
+        if (nextSource === sourceMarkdown) return;
+
+        if (looksLikeBrokenMediaMarkdown(nextSource, sourceMarkdown)) {
+            this.showToast?.('Skipped unsafe Document Mode sync to protect images/videos', 'warning', 2200);
+            this._captureSnapshot();
+            return;
+        }
+
+        this.onMarkdownChange(nextSource);
     }
 
     /**
      * Flush pending debounced edits and sync preview → Markdown immediately.
      * Used by mode toggles and tab switches so Document Mode state is never
-     * saved half-written (which previously broke image URLs).
+     * saved half-written.
      */
     syncFromPreview() {
         this._handleInput?.cancel?.();
@@ -554,9 +636,6 @@ export class LivePreviewEditController {
         this._handleInput?.cancel?.();
         this.output?.removeEventListener('input', this._markDirty);
         this.output?.removeEventListener('keydown', this._handleKeydown);
-        this.output?.removeEventListener('keyup', this._rememberActiveBlock);
-        this.output?.removeEventListener('pointerup', this._rememberActiveBlock);
-        this.output?.removeEventListener('focusin', this._rememberActiveBlock);
     }
 }
 
@@ -568,6 +647,7 @@ export function initLivePreviewEdit(options) {
 
 export default {
     serializePreviewToMarkdown,
+    replaceMarkdownBlockAtLine,
     LivePreviewEditController,
     initLivePreviewEdit
 };

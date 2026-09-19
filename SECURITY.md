@@ -1,6 +1,6 @@
 # Security Policy — Markups
 
-> **Last Updated:** 2026-06-12
+> **Last Updated:** 2026-09-09
 > **Applies to:** Markups project (https://markups.dev) — Vite + Vercel deployment
 
 Thank you for helping keep Markups and its users safe. Markups is a
@@ -57,7 +57,7 @@ manifest-src 'self';
 | `script-src 'unsafe-inline'` | Monaco Editor injects inline scripts at runtime and uses blob: workers. Required for live editing. |
 | `script-src 'unsafe-eval'` | Monaco, Mermaid, and KaTeX use `eval` / `new Function` to render dynamic content. |
 | `script-src https://cdn.jsdelivr.net` | KaTeX, Mermaid, and other vendor libraries may be loaded from jsDelivr in some flows. |
-| `connect-src https: wss:` | Mermaid + Monaco call back to themselves and to remote fetches. |
+| `connect-src` | Deployed allowlist (`vercel.json`): `openai.com`, `anthropic.com`, Google analytics hosts, `wss:`. Stricter than a blanket `https:` — custom/self-hosted AI endpoints are blocked by CSP in production unless allowlisted. The AI settings UI warns before a key follows a custom host. |
 | `frame-ancestors 'self'` | Clickjacking protection; allows same-origin iframes only. |
 
 > **Hardening roadmap:** A nonce-based CSP can replace
@@ -87,7 +87,9 @@ roll out immediately. The manifest is cached for 1 day.
 | **PWA / Service Worker** | `/sw.js` uses a cache-first strategy for static assets and a network-first strategy for HTML. |
 | **LocalStorage / IndexedDB** | No PII stored. All content stays client-side. |
 | **Cookies** | None set. (Analytics are cookieless / IP-anonymized.) |
-| **3rd-party iframes** | None embedded. YouTube embeds would be `youtube-nocookie.com` only. |
+| **3rd-party iframes** | User-requested YouTube/Vimeo previews are sandboxed and restricted by `frame-src`; arbitrary iframe HTML is not accepted. |
+| **AI API keys** | Stored in namespaced `localStorage` (plaintext, documented in-UI). Session-only mode keeps the key in memory and removes persisted copies. Custom endpoints require explicit `confirm()` consent; non-`http(s)` endpoints are rejected at `setConfig`. Settings `value=` attributes are HTML-escaped. |
+| **File import** | Extension allowlist (`.md/.markdown/.txt/.text`) enforced, 5 MB cap on files and URL imports, `http(s)`-only URLs. |
 
 ---
 
@@ -97,7 +99,7 @@ roll out immediately. The manifest is cached for 1 day.
 |---|---|
 | `npm audit` | Run on every release. Tracked in CI. |
 | Vite build target | `es2020` (smaller bundles, modern browsers only). |
-| Console / debugger stripping | `esbuild.drop = ['console', 'debugger']` in production. |
+| Debugger stripping | `esbuild.drop = ['debugger']` in production. Console output is not globally stripped. |
 | Source maps | Disabled in production. Hidden `nosources` if needed for error reporting. |
 | Manual chunks | `monaco-editor`, `mermaid-vendor`, `katex-vendor`, `markdown-vendor`, `dom-utils`, `storage-vendor` for cacheable long-term chunks. |
 
@@ -175,13 +177,11 @@ and safe.**
 
 ---
 
-## 8. Known Unfixed Dependency Issues (Tracked)
+## 8. Dependency Security Status
 
-| Package | Severity | Reason Not Upgraded | Mitigation |
-|---|---|---|---|
-| `html2pdf.js@0.12.x` (and its `jspdf@<4.2.0` dependency) | Critical | `0.14.0` is a breaking change for the export API used in `src/services/export/pdf.js`. Upgrade requires refactor of `.set().from().outputPdf()` / `.save()` calls. | Input to PDF is **always sanitized by DOMPurify** before being passed to `html2pdf.js`, neutralizing the upstream XSS path. Export runs **client-side only**; no PII crosses any server. Track in issue **#TBD**. |
+The repository currently uses `html2pdf.js@0.14.0` and the resolved `jspdf`
+version from the lockfile. The old 0.12.x warning is no longer applicable.
+Run `npm audit` before every release and record the result in `GATES.md`.
 
-These do **not** affect the public surface of the app, only the
-optional "Export to PDF" feature. The Markdown → HTML → PDF
-pipeline is entirely client-side; no data leaves the user's
-browser.
+The Markdown → HTML → PDF pipeline remains entirely client-side; no data
+leaves the user's browser as part of export.

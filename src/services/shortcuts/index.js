@@ -47,9 +47,8 @@ const DEFAULT_SHORTCUTS = {
     'exportHTML': { key: 'h', ctrl: true, shift: true, alt: true, description: 'Export to HTML' },
 
     // Misc
-    'commandPalette': { key: 'p', ctrl: true, description: 'Command palette' },
     'cycleTheme': { key: 'd', ctrl: true, description: 'Cycle editor themes' },
-    'reset': { key: 'k', ctrl: true, description: 'Reset editor to default' },
+    'reset': { key: 'k', ctrl: true, shift: true, description: 'Reset editor to default' },
     'help': { key: '?', ctrl: true, description: 'Show help' }
 };
 
@@ -68,6 +67,8 @@ class ShortcutsManager {
         this.shortcuts = { ...DEFAULT_SHORTCUTS };
         this.customShortcuts = {};
         this.handlers = new Map();
+        /** @type {Function|null} Stored bound listener so dispose() actually removes it */
+        this._boundKeyDown = null;
         this.enabled = true;
         this.initialized = false;
 
@@ -83,8 +84,9 @@ class ShortcutsManager {
         // Load custom shortcuts
         this._loadCustomShortcuts();
 
-        // Setup global keyboard listener
-        document.addEventListener('keydown', this._handleKeyDown.bind(this));
+        // Setup global keyboard listener (stored ref — dispose() must remove it)
+        this._boundKeyDown = this._handleKeyDown.bind(this);
+        document.addEventListener('keydown', this._boundKeyDown);
 
         this.initialized = true;
     }
@@ -302,7 +304,7 @@ class ShortcutsManager {
         'View': ['togglePreview', 'toggleFullscreen', 'zoomIn', 'zoomOut', 'resetZoom'],
         'Panels': ['toggleTOC', 'toggleLinter', 'toggleSnippets'],
         'Export': ['exportPDF', 'exportHTML'],
-        'Misc': ['commandPalette', 'help']
+        'Misc': ['help']
         };
 
         return Object.entries(categories).map(([category, actions]) => `
@@ -328,7 +330,10 @@ class ShortcutsManager {
      * Dispose shortcuts manager
      */
     dispose() {
-        document.removeEventListener('keydown', this._handleKeyDown.bind(this));
+        if (this._boundKeyDown) {
+            document.removeEventListener('keydown', this._boundKeyDown);
+            this._boundKeyDown = null;
+        }
         this.handlers.clear();
         this.initialized = false;
         ShortcutsManager.instance = null;

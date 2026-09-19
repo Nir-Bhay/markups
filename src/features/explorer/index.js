@@ -5,6 +5,7 @@ const DELETE_ICON = `<svg width="12" height="12" viewBox="0 0 16 16" fill="curre
 
 import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
+import { escapeHtml } from '../../utils/escape-html.js';
 
 export class ExplorerManager {
     constructor(config) {
@@ -489,9 +490,10 @@ export class ExplorerManager {
                 ? `<button class="explorer-node-twisty" data-action="toggle-folder" aria-label="Toggle folder">${expanded ? '▼' : '▶'}</button>`
                 : '<span class="explorer-node-twisty"></span>';
             const subtree = isFolder && expanded ? this.buildTree(node.id, level + 1) : '';
+            const escapedNodeLabel = escapeHtml(nodeLabel);
             const renameContent = this.renamingNodeId === node.id
-                ? `<input class="explorer-rename-input" data-node-id="${node.id}" value="${node.name}" />`
-                : `<span class="explorer-node-label">${nodeLabel}</span>`;
+                ? `<input class="explorer-rename-input" data-node-id="${escapeHtml(node.id)}" value="${escapeHtml(node.name)}" />`
+                : `<span class="explorer-node-label">${escapedNodeLabel}</span>`;
 
             return `
                 <div class="explorer-node ${selectedClass}">
@@ -500,8 +502,8 @@ export class ExplorerManager {
                         <span class="explorer-node-icon">${icon}</span>
                         ${renameContent}
                         ${node.id !== 'root' ? `
-                            <button class="explorer-node-action" data-action="rename" aria-label="Rename ${nodeLabel}" title="Rename">${RENAME_ICON}</button>
-                            <button class="explorer-node-action" data-action="delete" aria-label="Delete ${nodeLabel}" title="Delete">${DELETE_ICON}</button>
+                            <button class="explorer-node-action" data-action="rename" aria-label="Rename ${escapedNodeLabel}" title="Rename">${RENAME_ICON}</button>
+                            <button class="explorer-node-action" data-action="delete" aria-label="Delete ${escapedNodeLabel}" title="Delete">${DELETE_ICON}</button>
                         ` : ''}
                     </div>
                     ${isFolder && childCount === 0 && expanded ? '<div class="explorer-node-empty"></div>' : ''}

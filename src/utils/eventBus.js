@@ -145,6 +145,7 @@ export const EVENTS = {
     // App events
     APP_READY: 'app:ready',
     APP_ERROR: 'app:error',
+    ERROR: 'app:error',
 
     // Editor events
     CONTENT_CHANGED: 'editor:content-changed',
@@ -156,7 +157,6 @@ export const EVENTS = {
     // Document events
     DOCUMENT_SAVING: 'doc:saving',
     DOCUMENT_SAVED: 'doc:saved',
-    DOC_SAVED: 'doc:saved',
     DOC_LOADED: 'doc:loaded',
     DOC_CREATED: 'doc:created',
     DOC_DELETED: 'doc:deleted',
@@ -164,13 +164,19 @@ export const EVENTS = {
     TAB_CLOSED: 'doc:tab-closed',
     TAB_ACTIVATED: 'doc:tab-activated',
     TAB_CREATED: 'doc:tab-created',
+    TAB_RENAMED: 'doc:tab-renamed',
 
     // Autosave/persistence events
     AUTOSAVE_STATUS_CHANGED: 'autosave:status-changed',
 
     // Markdown events
+    MARKDOWN_READY: 'markdown:ready',
     MARKDOWN_CONVERTED: 'markdown:converted',
+    PREVIEW_UPDATED: 'markdown:preview-updated',
     TOC_UPDATED: 'toc:updated',
+    TOC_NAVIGATED: 'toc:navigated',
+    TOC_SHOWN: 'toc:shown',
+    TOC_HIDDEN: 'toc:hidden',
     MERMAID_RENDERED: 'mermaid:rendered',
 
     // UI events
@@ -178,7 +184,10 @@ export const EVENTS = {
     DARK_MODE_TOGGLED: 'ui:dark-mode-toggled',
     MODE_CHANGED: 'ui:mode-changed',
     VIEW_CHANGED: 'ui:view-changed',
+    VIEW_MODE_CHANGED: 'ui:view-mode-changed',
     TOAST_SHOW: 'ui:toast-show',
+    TOAST_SHOWN: 'ui:toast-shown',
+    TOAST_DISMISSED: 'ui:toast-dismissed',
     MODAL_OPENED: 'ui:modal-opened',
     MODAL_CLOSED: 'ui:modal-closed',
     SHOW_PROMPT: 'ui:show-prompt',
@@ -187,12 +196,33 @@ export const EVENTS = {
     // Feature events
     STATS_UPDATED: 'stats:updated',
     LINT_COMPLETE: 'lint:complete',
+    LINT_COMPLETED: 'lint:complete',
     LINT_STARTED: 'lint:started',
+    LINTER_ENABLED: 'lint:enabled',
+    LINTER_DISABLED: 'lint:disabled',
     GOAL_UPDATED: 'goals:updated',
+    GOAL_SET: 'goals:set',
+    GOAL_COMPLETED: 'goals:completed',
+    SHOW_GOAL_DIALOG: 'goals:show-dialog',
     GOAL_REACHED: 'goals:reached',
     SEARCH_PERFORMED: 'search:performed',
+    SEARCH_COMPLETED: 'search:completed',
+    SEARCH_MATCH_CHANGED: 'search:match-changed',
+    REPLACE_ALL_COMPLETED: 'search:replace-all-completed',
+    SEARCH_SHOWN: 'search:shown',
+    SEARCH_HIDDEN: 'search:hidden',
     SNIPPET_INSERTED: 'snippet:inserted',
+    SNIPPET_CREATED: 'snippet:created',
+    SNIPPET_REMOVED: 'snippet:removed',
+    SNIPPETS_SHOWN: 'snippet:shown',
+    SNIPPETS_HIDDEN: 'snippet:hidden',
+    SHOW_SNIPPET_DIALOG: 'snippet:show-dialog',
     TEMPLATE_LOADED: 'template:loaded',
+    TEMPLATE_APPLIED: 'template:applied',
+    TEMPLATE_CREATED: 'template:created',
+    TEMPLATE_REMOVED: 'template:removed',
+    TEMPLATES_SHOWN: 'template:shown',
+    TEMPLATES_HIDDEN: 'template:hidden',
 
     // Mode events
     FOCUS_MODE_TOGGLE: 'mode:focus-toggle',
@@ -205,13 +235,11 @@ export const EVENTS = {
     // Export events
     EXPORT_STARTED: 'export:started',
     EXPORT_COMPLETE: 'export:complete',
+    EXPORT_COMPLETED: 'export:complete',
     EXPORT_FAILED: 'export:failed',
     EXPORT_ERROR: 'export:error',
 
     // Import events
-    IMPORT_STARTED: 'import:started',
-    IMPORT_COMPLETE: 'import:complete',
-    IMPORT_FAILED: 'import:failed',
     FILE_IMPORTED: 'import:file-imported',
 
     // Scroll sync
@@ -224,6 +252,7 @@ export const EVENTS = {
     // Mobile events
     MOBILE_MENU_TOGGLED: 'mobile:menu-toggled',
     MOBILE_VIEW_CHANGED: 'mobile:view-changed',
+    ORIENTATION_CHANGED: 'mobile:orientation-changed',
 
     // Keyboard shortcuts
     SHORTCUT_TRIGGERED: 'shortcut:triggered',
@@ -232,11 +261,13 @@ export const EVENTS = {
     AI_PANEL_TOGGLED: 'ai:panel-toggled',
     AI_GENERATION_STARTED: 'ai:generation-started',
     AI_GENERATION_STREAMING: 'ai:generation-streaming',
+    AI_GENERATION_USAGE: 'ai:generation-usage',
     AI_GENERATION_COMPLETE: 'ai:generation-complete',
     AI_GENERATION_ERROR: 'ai:generation-error',
     AI_GENERATION_CANCELLED: 'ai:generation-cancelled',
     AI_SETTINGS_CHANGED: 'ai:settings-changed',
-    AI_RESULT_INSERTED: 'ai:result-inserted'
+    AI_RESULT_INSERTED: 'ai:result-inserted',
+    AI_PANEL_REQUESTED: 'ai:panel-requested'
 };
 
 export default eventBus;

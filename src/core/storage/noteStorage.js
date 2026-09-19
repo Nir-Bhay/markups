@@ -5,6 +5,33 @@
  */
 
 import { db } from './database.js';
+import { eventBus, EVENTS } from '../../utils/eventBus.js';
+
+/** Bytes below which a pre-write quota warning is emitted. */
+export const STORAGE_LOW_QUOTA_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Typed storage failure. Callers can check `quotaExceeded` to tell a full
+ * disk apart from a transient IndexedDB error. Read/write methods keep their
+ * legacy return-value contract (no throw) but always record + broadcast the
+ * failure so UI never mistakes an error for an empty vault.
+ */
+export class StorageError extends Error {
+    constructor(message, { quotaExceeded = false, op = 'unknown', cause = null } = {}) {
+        super(message);
+        this.name = 'StorageError';
+        this.quotaExceeded = quotaExceeded;
+        this.op = op;
+        if (cause) this.cause = cause;
+    }
+}
+
+export function isQuotaError(error) {
+    if (!error) return false;
+    if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_FILE_NO_DEVICE_SPACE') return true;
+    if (typeof error.message === 'string' && /quota|storage.*full|disk.*full/i.test(error.message)) return true;
+    return false;
+}
 
 /**
  * NoteStorageService
@@ -17,7 +44,70 @@ class NoteStorageService {
         if (NoteStorageService.instance) {
             return NoteStorageService.instance;
         }
+        /** @type {StorageError|null} Last failure, so UI can tell error apart from empty */
+        this.lastError = null;
         NoteStorageService.instance = this;
+    }
+
+    /** @returns {StorageError|null} */
+    getLastError() {
+        return this.lastError;
+    }
+
+    clearLastError() {
+        this.lastError = null;
+    }
+
+    /**
+     * Record + broadcast a storage failure (quota-aware).
+     * @private
+     */
+    _report(error, op) {
+        const quotaExceeded = isQuotaError(error);
+        const storageError = error instanceof StorageError
+            ? error
+            : new StorageError(`NoteStorage: ${op} failed: ${error?.message || error}`, {
+                quotaExceeded, op, cause: error
+            });
+        this.lastError = storageError;
+        console.error(`NoteStorage: Failed ${op}:`, error);
+        try {
+            eventBus.emit(EVENTS.ERROR, {
+                message: quotaExceeded
+                    ? 'Storage is full. Free space or export a backup — your notes were NOT deleted.'
+                    : 'Note storage failed. Your notes were NOT deleted; retry in a moment.',
+                type: 'storage',
+                op,
+                quotaExceeded
+            });
+        } catch (_e) { /* event bus unavailable in some tests */ }
+        return storageError;
+    }
+
+    /**
+     * Pre-write quota guard. Returns true when a write of `bytes` looks safe.
+     * Emits a warning event when headroom is low.
+     * @param {number} [bytes=0]
+     * @returns {Promise<boolean>}
+     */
+    async checkQuotaBeforeWrite(bytes = 0) {
+        try {
+            const usage = await this.getStorageUsage();
+            if (usage.available !== -1 && (usage.available - bytes) < STORAGE_LOW_QUOTA_BYTES) {
+                try {
+                    eventBus.emit(EVENTS.ERROR, {
+                        message: 'Storage almost full. Export a backup soon to avoid losing edits.',
+                        type: 'storage',
+                        op: 'quota-warning',
+                        quotaExceeded: false
+                    });
+                } catch (_e) { /* ignore */ }
+                return false;
+            }
+            return true;
+        } catch {
+            return true;
+        }
     }
 
     /**
@@ -26,12 +116,14 @@ class NoteStorageService {
      */
     async getAllNotes() {
         try {
-            return await db.notes
+            const notes = await db.notes
                 .orderBy('updatedAt')
                 .reverse()
                 .toArray();
+            this.clearLastError();
+            return notes;
         } catch (error) {
-            console.error('NoteStorage: Failed to get all notes:', error);
+            this._report(error, 'get all notes');
             return [];
         }
     }
@@ -43,9 +135,11 @@ class NoteStorageService {
      */
     async getNote(id) {
         try {
-            return await db.notes.get(id);
+            const note = await db.notes.get(id);
+            this.clearLastError();
+            return note;
         } catch (error) {
-            console.error(`NoteStorage: Failed to get note ${id}:`, error);
+            this._report(error, `get note ${id}`);
             return undefined;
         }
     }
@@ -62,7 +156,7 @@ class NoteStorageService {
                 .equals(legacyId)
                 .first();
         } catch (error) {
-            console.error(`NoteStorage: Failed to get note by legacyId ${legacyId}:`, error);
+            this._report(error, `get note by legacyId ${legacyId}`);
             return undefined;
         }
     }
@@ -93,15 +187,10 @@ class NoteStorageService {
             };
 
             const id = await db.notes.add(note);
+            this.clearLastError();
             return { ...note, id };
         } catch (error) {
-            console.error('NoteStorage: Failed to create note:', error);
-
-            // Check for quota exceeded
-            if (error.name === 'QuotaExceededError') {
-                console.error('NoteStorage: Storage quota exceeded!');
-            }
-
+            this._report(error, 'create note');
             return null;
         }
     }
@@ -124,9 +213,10 @@ class NoteStorageService {
             delete update.id;
 
             await db.notes.update(id, update);
+            this.clearLastError();
             return await this.getNote(id);
         } catch (error) {
-            console.error(`NoteStorage: Failed to update note ${id}:`, error);
+            this._report(error, `update note ${id}`);
             return null;
         }
     }
@@ -139,9 +229,10 @@ class NoteStorageService {
     async deleteNote(id) {
         try {
             await db.notes.delete(id);
+            this.clearLastError();
             return true;
         } catch (error) {
-            console.error(`NoteStorage: Failed to delete note ${id}:`, error);
+            this._report(error, `delete note ${id}`);
             return false;
         }
     }
@@ -160,15 +251,17 @@ class NoteStorageService {
             const lowerQuery = query.toLowerCase().trim();
 
             // Use Dexie filter for flexible search across title + content
-            return await db.notes
+            const results = await db.notes
                 .filter(note => {
                     const titleMatch = note.title.toLowerCase().includes(lowerQuery);
                     const contentMatch = note.content.toLowerCase().includes(lowerQuery);
                     return titleMatch || contentMatch;
                 })
                 .toArray();
+            this.clearLastError();
+            return results;
         } catch (error) {
-            console.error('NoteStorage: Search failed:', error);
+            this._report(error, 'search notes');
             return [];
         }
     }
@@ -185,7 +278,7 @@ class NoteStorageService {
                 .equals(tag)
                 .toArray();
         } catch (error) {
-            console.error(`NoteStorage: Failed to get notes by tag "${tag}":`, error);
+            this._report(error, `get notes by tag "${tag}"`);
             return [];
         }
     }
@@ -202,7 +295,7 @@ class NoteStorageService {
                 .equals(category)
                 .toArray();
         } catch (error) {
-            console.error(`NoteStorage: Failed to get notes by category "${category}":`, error);
+            this._report(error, `get notes by category "${category}"`);
             return [];
         }
     }
@@ -218,7 +311,7 @@ class NoteStorageService {
                 .equals(1) // IndexedDB stores booleans as 0/1
                 .toArray();
         } catch (error) {
-            console.error('NoteStorage: Failed to get favorite notes:', error);
+            this._report(error, 'get favorite notes');
             return [];
         }
     }
@@ -231,7 +324,7 @@ class NoteStorageService {
         try {
             return await db.notes.count();
         } catch (error) {
-            console.error('NoteStorage: Failed to count notes:', error);
+            this._report(error, 'count notes');
             return 0;
         }
     }
@@ -268,7 +361,7 @@ class NoteStorageService {
                 availableFormatted: 'Unknown'
             };
         } catch (error) {
-            console.error('NoteStorage: Failed to get storage usage:', error);
+            this._report(error, 'get storage usage');
             return {
                 used: 0,
                 available: -1,
@@ -302,9 +395,10 @@ class NoteStorageService {
                 await db.notes.bulkAdd(notes);
             });
 
+            this.clearLastError();
             return { success: true, count: notes.length };
         } catch (error) {
-            console.error('NoteStorage: Bulk create failed:', error);
+            this._report(error, 'bulk create notes');
             return { success: false, count: 0 };
         }
     }
@@ -316,9 +410,10 @@ class NoteStorageService {
     async clearAllNotes() {
         try {
             await db.notes.clear();
+            this.clearLastError();
             return true;
         } catch (error) {
-            console.error('NoteStorage: Failed to clear notes:', error);
+            this._report(error, 'clear all notes');
             return false;
         }
     }

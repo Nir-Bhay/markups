@@ -8,9 +8,10 @@ import { sanitizePreviewHtml, ensurePreviewLinksOpenInNewTab, escapeHtml, saniti
 import { safeBase64FromArrayBuffer } from './utils/file.js';
 import { modesManager } from './features/modes/index.js';
 
-// html2pdf / html2canvas — lazy-loaded on first export (P3-T1)
+// html2pdf / html2canvas / jspdf — lazy-loaded on first export (P3-T1)
 let _html2pdf = null;
 let _html2canvas = null;
+let _jsPDF = null;
 async function getHtml2Pdf() {
     if (!_html2pdf) {
         const mod = await import('html2pdf.js');
@@ -24,6 +25,13 @@ async function getHtml2Canvas() {
         _html2canvas = mod.default;
     }
     return _html2canvas;
+}
+async function getJsPDF() {
+    if (!_jsPDF) {
+        const mod = await import('jspdf');
+        _jsPDF = mod.jsPDF;
+    }
+    return _jsPDF;
 }
 
 // Monaco Editor Worker Setup
@@ -79,23 +87,53 @@ Prism.languages.html = Prism.languages.html || Prism.languages.markup;
 
 // Mermaid for diagrams
 import mermaid from 'mermaid';
-mermaid.initialize({ startOnLoad: false, theme: 'default', suppressErrors: true });
+mermaid.initialize({ startOnLoad: false, theme: 'default', suppressErrors: true, securityLevel: 'strict' });
 
 // KaTeX for math
 import 'katex/dist/katex.min.css';
 import markedKatex from 'marked-katex-extension';
 
 // Image resize — dynamically imported after editor init (P3-T1)
-import { CALLOUT_TYPES, toolbarManager, wrapSelection, wrapSelectionHtml, prefixLine, insertText, insertLink, insertImage, insertTable, getSelection } from './features/toolbar/index.js';
+import {
+    CALLOUT_TYPES,
+    toolbarManager,
+    wrapSelection,
+    wrapSelectionHtml,
+    prefixLine,
+    insertText,
+    insertLink,
+    insertImage,
+    insertTable,
+    getSelection,
+    transformSelection,
+    clearMarkdownFormatting,
+    initToolbarDensity,
+} from './features/toolbar/index.js';
+import { focusManager } from './features/focus/index.js';
+import { typewriterManager } from './features/typewriter/index.js';
+import { shareManager, handleIncomingShare } from './services/share/ui.js';
+import { initializeImportDialog, openImportDialog } from './features/import/dialog.js';
 import { noteStorage } from './core/storage/noteStorage.js';
 import { fileTreeStorage, ROOT_FOLDER_ID } from './core/storage/fileTreeStorage.js';
 import { runMigration, ensureFileTreeFromNotes } from './core/storage/migration.js';
-import { markdownService } from './core/markdown/index.js';
+import { markdownService, deriveDocumentTitle } from './core/markdown/index.js';
 import { createExplorerManager } from './features/explorer/index.js';
 
 // Import debounce utility for performance optimization
 import { debounce } from './utils/debounce.js';
 import { shouldRenderMermaid, shouldRenderKatex } from './utils/preview-gates.js';
+import { createHeadingIdAllocator } from './utils/heading-ids.js';
+import { markdownToPlainText, TXT_WARN_BYTES, TXT_PREVIEW_WARN_BYTES } from './services/export/txt.js';
+import {
+    convertMermaidSvgsToImages,
+    createExportWorkbench,
+    destroyExportWorkbench,
+    pickExportTimeoutMs,
+    pickHtml2CanvasScale,
+    raceExportJob,
+    renderWorkbenchToPdf,
+    stripExportChrome
+} from './services/export/pdfPrep.js';
 
 // Import UI components from modular architecture
 import { showToast } from './ui/toast/index.js';
@@ -106,14 +144,36 @@ import { initLivePreviewEdit } from './features/live-preview-edit/index.js';
 import { initVideoControls, parseVideoAttributesFromMarkdown } from './features/video-controls/index.js';
 import { initImageControls } from './features/image-controls/index.js';
 import {
+    isNonMarkdownPreviewImage,
+    mapDomImagesToMarkdownIndices,
+} from './features/image-resize/markdown-sync.js';
+import {
     enhanceLabeledVideoLinks,
     normalizeInsertVideoUrl
 } from './features/video-discoverability/index.js';
 import { appContextMenuManager } from './features/app-context-menu/index.js';
+import { editorService } from './core/editor/index.js';
 import { createFocusTrap } from './utils/dom.js';
 import { validateImageSignature, sanitizeSvgToDataUrl } from './utils/file.js';
 import { initVersionHistory, setHasEdited, stopVersionHistoryPolling } from './features/version-history/index.js';
 import { trackedAddEventListener } from './utils/listener-registry.js';
+
+let lastGlobalErrorToastAt = 0;
+const notifyGlobalError = (message) => {
+    const now = Date.now();
+    if (now - lastGlobalErrorToastAt < 2000) return;
+    lastGlobalErrorToastAt = now;
+    console.error('[Markups] Unhandled application error:', message);
+    setTimeout(() => showToast('Something went wrong. Your current draft is still in memory.', 'error'), 0);
+};
+
+window.addEventListener('error', (event) => {
+    notifyGlobalError(event.error?.message || event.message || 'Unknown error');
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    notifyGlobalError(event.reason?.message || String(event.reason || 'Unknown promise rejection'));
+});
 
 // GFM Extensions
 import markedAlert from 'marked-alert';
@@ -133,6 +193,7 @@ const APP_CONFIG = {
 
 // Global state and constants
 let editor;
+let isProgrammaticChange = false;
 // Actions queued before the editor is ready (e.g. file import) — flushed on EDITOR_READY
 let pendingEditorActions = [];
 let hasEdited = false;
@@ -363,15 +424,24 @@ let isShowingWelcome = false;
 let documents = [];
 let activeDocId = null;
 let explorerManager = null;
+let backlinksPanel = null;
+let backlinksManager = null;
 
-const mapNoteToDocument = (note, node) => ({
-    id: node.id,
-    title: (node.name || note.title || 'Untitled').replace(/\.md$/i, ''),
-    content: note.content || '',
-    lastModified: note.updatedAt || Date.now(),
-    noteId: note.id,
-    parentId: node.parentId || ROOT_FOLDER_ID
-});
+const mapNoteToDocument = (note, node) => {
+    const title = (node.name || note.title || 'Untitled').replace(/\.md$/i, '');
+    const content = note.content || '';
+    return {
+        id: node.id,
+        title,
+        content,
+        lastModified: note.updatedAt || Date.now(),
+        noteId: note.id,
+        parentId: node.parentId || ROOT_FOLDER_ID,
+        // Phase 2.2: a stored title that is neither the H1-derived title nor
+        // 'Untitled' was set by hand — keep it locked from auto-derive.
+        titleLocked: title !== 'Untitled' && title !== deriveDocumentTitle(content)
+    };
+};
 
 const ensureAtLeastOneDocument = async () => {
     if (documents.length > 0) return;
@@ -489,9 +559,16 @@ const startRenameTab = (docId, tabNameElement) => {
     input.focus();
     input.select();
 
+    let renameCancelled = false;
     const finishRename = () => {
+        // Phase 2.2 fix: Escape restores the old name — don't lock or persist.
+        if (renameCancelled) return;
         const newName = input.value.trim() || 'Untitled';
         doc.title = newName.replace(/\.md$/i, '').substring(0, 30); // Remove .md if user typed it, limit length
+        doc.titleLocked = true; // Phase 2.2: hand-set titles survive auto-derive
+        // Phase 2.2 fix: propagate the rename to IDB + tree now (previously
+        // localStorage-only until the next debounced save healed it).
+        void saveCurrentDoc();
         saveDocsToStorage();
         renderTabs();
     };
@@ -502,6 +579,8 @@ const startRenameTab = (docId, tabNameElement) => {
             e.preventDefault();
             input.blur();
         } else if (e.key === 'Escape') {
+            e.preventDefault();
+            renameCancelled = true;
             input.value = currentName; // Restore original name
             input.blur();
         }
@@ -518,13 +597,17 @@ let renderTabs = () => {
 
     documents.forEach(doc => {
         const tab = document.createElement('button');
+        tab.type = 'button';
         tab.className = `header-tab ${doc.id === activeDocId ? 'active' : ''}`;
         tab.dataset.docId = doc.id;
+        tab.title = doc.title || 'Untitled';
+        tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-selected', String(doc.id === activeDocId));
         tab.innerHTML = `
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                     <path d="M14 4.5V14a2 2 0 01-2 2H4a2 2 0 01-2-2V2a2 2 0 012-2h5.5L14 4.5zm-3 0A1.5 1.5 0 019.5 3V1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4.5h-2z" />
                 </svg>
-                <span class="tab-name">${doc.title}.md</span>
+                <span class="tab-name">${escapeHtml(doc.title || 'Untitled')}</span>
                 <span class="tab-close" aria-label="Close tab" title="Close tab">×</span>
             `;
 
@@ -556,6 +639,48 @@ let renderTabs = () => {
         tabsList.appendChild(tab);
     });
 
+    const activeTab = tabsList.querySelector('.header-tab.active');
+    if (activeTab && typeof activeTab.scrollIntoView === 'function') {
+        activeTab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+};
+
+const openMarkdownInNewTab = async ({ markdown, title } = {}) => {
+    const content = String(markdown ?? '');
+    const safeTitle = String(title || deriveDocumentTitle(content) || 'Shared')
+        .replace(/[\\/:*?"<>|]+/g, '-')
+        .replace(/\.md$/i, '')
+        .trim()
+        .slice(0, 80) || 'Shared';
+
+    try {
+        saveCurrentDoc();
+    } catch {
+        /* keep going so the shared doc still opens */
+    }
+
+    const note = await noteStorage.createNote({
+        title: safeTitle,
+        content
+    });
+    if (!note) {
+        showToast('Could not create a new tab for the shared document.', 'error');
+        return;
+    }
+    const node = await fileTreeStorage.createNode({
+        type: 'file',
+        name: note.title,
+        parentId: ROOT_FOLDER_ID,
+        noteId: note.id
+    });
+    const newDoc = mapNoteToDocument(note, node);
+    documents.push(newDoc);
+    window.__markups_documents = documents;
+    await syncTreeFromDocuments();
+    switchTab(newDoc.id);
+    editor?.focus();
+    hasEdited = true;
+    setHasEdited(true);
 };
 
 const addNewTab = async (parentFolderId) => {
@@ -637,6 +762,9 @@ const closeTab = (id) => {
 
         documents = documents.filter(d => d.id !== id);
         window.__markups_documents = documents;
+        // Phase 2.4 fix: prune the dirty-check snapshot or dead entries
+        // accumulate over long sessions.
+        lastSavedSnapshot.delete(id);
         saveDocsToStorage();
 
         // Free imageStore entries only referenced by the closed tab
@@ -668,6 +796,7 @@ const renameNode = async (node, explicitName = '') => {
         const docIndex = documents.findIndex((doc) => doc.id === renamedNode.id);
         if (docIndex !== -1) {
             documents[docIndex].title = renamedNode.name;
+            documents[docIndex].titleLocked = true; // Phase 2.2: hand-set titles survive auto-derive
             const noteId = documents[docIndex].noteId;
             if (noteId) {
                 await noteStorage.updateNote(noteId, { title: renamedNode.name });
@@ -699,7 +828,12 @@ const moveNodeInTree = async ({ draggedNode, targetNode, position, sortMode }) =
         const targetIndex = siblings.findIndex((node) => node.id === targetNode.id);
         if (targetIndex !== -1) {
             const toIndex = position === 'before' ? targetIndex : targetIndex + 1;
-            await fileTreeStorage.reorderNode(draggedNode.id, toIndex);
+            // Phase 2.4 fix: a rolled-back transaction must surface — otherwise
+            // the UI shows an order the next reload silently reverts.
+            const reordered = await fileTreeStorage.reorderNode(draggedNode.id, toIndex);
+            if (!reordered) {
+                showToast('Could not persist the new order. Please try again.', 'error');
+            }
         }
     }
 
@@ -766,6 +900,10 @@ const deleteNode = async (node) => {
     }
 
     documents = documents.filter((doc) => !result.deletedNodeIds.includes(doc.id));
+    // Phase 2.4 fix: prune dirty-check snapshots for deleted docs.
+    for (const deletedId of result.deletedNodeIds) {
+        lastSavedSnapshot.delete(deletedId);
+    }
     if (!documents.some((doc) => doc.id === activeDocId)) {
         activeDocId = documents[0]?.id || null;
     }
@@ -782,36 +920,44 @@ const deleteNode = async (node) => {
     loadActiveDocument();
 };
 
+// Phase 2.0: last persisted {content, title} per doc id. Skips the whole
+// IDB + localStorage + re-render fan-out when nothing changed since last save.
+const lastSavedSnapshot = new Map();
+
 const saveCurrentDoc = async () => {
     const content = editor?.getValue() ?? '';
     const docIndex = documents.findIndex(d => d.id === activeDocId);
 
-    if (docIndex !== -1) {
-        documents[docIndex].content = content;
-        documents[docIndex].lastModified = Date.now();
+    if (docIndex === -1) return;
+    const doc = documents[docIndex];
 
-        // Auto update title from first H1
-        const firstLine = content.split('\n')[0];
-        if (firstLine && firstLine.startsWith('# ')) {
-            documents[docIndex].title = firstLine.substring(2).trim().substring(0, 20);
-        } else {
-            documents[docIndex].title = 'Untitled';
-        }
+    // Phase 2.2: only auto-derive the title while it was never set by hand.
+    const title = doc.titleLocked ? doc.title : deriveDocumentTitle(content);
 
-        const noteId = documents[docIndex].noteId;
-        if (noteId) {
-            await noteStorage.updateNote(noteId, {
-                title: documents[docIndex].title,
-                content: documents[docIndex].content
-            });
-            await fileTreeStorage.renameNode(documents[docIndex].id, documents[docIndex].title);
-        }
-
-        saveDocsToStorage();
-        renderTabs(); // Refresh titles
-        syncTreeFromDocuments();
-        showAutosaveIndicator();
+    // Phase 2.0: dirty-check — no write, no re-render, no indicator flicker.
+    const prev = lastSavedSnapshot.get(doc.id);
+    if (prev && prev.content === content && prev.title === title) {
+        return;
     }
+
+    doc.content = content;
+    doc.title = title;
+    doc.lastModified = Date.now();
+    lastSavedSnapshot.set(doc.id, { content, title });
+
+    const noteId = doc.noteId;
+    if (noteId) {
+        await noteStorage.updateNote(noteId, {
+            title: doc.title,
+            content: doc.content
+        });
+        await fileTreeStorage.renameNode(doc.id, doc.title);
+    }
+
+    saveDocsToStorage();
+    renderTabs(); // Refresh titles
+    syncTreeFromDocuments();
+    showAutosaveIndicator();
 };
 
 const loadActiveDocument = () => {
@@ -832,11 +978,17 @@ const loadActiveDocument = () => {
 const saveDocsToStorage = () => {
     const expiredAt = new Date(2099, 1, 1);
     try {
-        Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
+        const saved = Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
+        if (saved !== false) return;
+
+        const quotaError = new Error('Document storage quota exceeded');
+        quotaError.name = 'QuotaExceededError';
+        throw quotaError;
     } catch (error) {
         if (error?.name === 'QuotaExceededError' || String(error).includes('QuotaExceededError')) {
             const before = documents.length;
             const reduced = documents.slice(-5);
+            const evicted = documents.filter((d) => !reduced.some((r) => r.id === d.id));
             documents = reduced;
             const reducedIds = new Set(reduced.map((d) => d.id));
             if (!reducedIds.has(activeDocId)) {
@@ -847,13 +999,37 @@ const saveDocsToStorage = () => {
                 }
             }
             if (before !== reduced.length) {
+                // Phase 2.3: evicted docs must not linger in IndexedDB — otherwise
+                // the next reload rebuilds them from the tree and tabs/explorer
+                // fork permanently. Best-effort, never throws out of quota path.
+                void (async () => {
+                    try {
+                        for (const doc of evicted) {
+                            lastSavedSnapshot.delete(doc.id);
+                            try {
+                                const result = await fileTreeStorage.deleteNodeRecursive(doc.id);
+                                await Promise.allSettled(
+                                    result.deletedNoteIds.map((noteId) => noteStorage.deleteNote(noteId))
+                                );
+                            } catch (err) {
+                                console.error('quota-trim: IDB cleanup failed for', doc.id, err);
+                            }
+                        }
+                    } catch (err) {
+                        console.error('quota-trim: cleanup threw unexpectedly:', err);
+                    }
+                })();
                 renderTabs();
                 syncTreeFromDocuments();
                 loadActiveDocument();
             }
             try {
-                Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
-                showToast('Storage quota exceeded. Kept the most recent documents only.', 'warning');
+                const saved = Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
+                if (saved === false) {
+                    showToast('Could not save documents. Browser storage is full.', 'error');
+                } else {
+                    showToast('Storage quota exceeded. Kept the most recent documents only.', 'warning');
+                }
             } catch {
                 showToast('Could not save documents. Browser storage is full.', 'error');
             }
@@ -862,6 +1038,10 @@ const saveDocsToStorage = () => {
         showToast('Document save failed. Please try again.', 'error');
     }
 };
+
+const debouncedSaveCurrentDoc = debounce(() => {
+    void saveCurrentDoc();
+}, 1500);
 
 const setupEditor = () => {
     editor = monaco.editor.create(document.querySelector('#editor'), {
@@ -881,12 +1061,14 @@ const setupEditor = () => {
         folding: false
     });
 
-    let isProgrammaticChange = false;
-
     // Wrap editor.setValue to distinguish programmatic changes from user edits
     const originalSetValue = editor.setValue.bind(editor);
     editor.setValue = (val) => {
         isProgrammaticChange = true;
+        // Any programmatic content replace means the pristine welcome content is
+        // gone (document load, import, restore). Clear the flag so the next real
+        // keystroke does not wipe the loaded document (QA: welcome-wipe).
+        if (val !== defaultInput) isShowingWelcome = false;
         originalSetValue(val);
         isProgrammaticChange = false;
     };
@@ -922,7 +1104,7 @@ const setupEditor = () => {
         if (!isApplyingPreviewEdit) {
             debouncedConvert(value);  // Use debounced version for performance
         }
-        saveCurrentDoc();
+        debouncedSaveCurrentDoc();
         updateStats(value);
     });
 
@@ -938,6 +1120,11 @@ const setupEditor = () => {
     });
     scrollSync.setEnabled(scrollBarSync);
 
+    // Adopt the live editor into the shared editorService so editor-backed
+    // features (AI Writer, selection sync) work in the production entry.
+    // The service wires only event-bus listeners — no second editor created.
+    editorService.attachEditor(editor);
+
     // Typewriter Mode: Center cursor + Update cursor position in status bar
     let isCursorSyncing = false;
     editor?.onDidChangeCursorPosition((e) => {
@@ -948,9 +1135,8 @@ const setupEditor = () => {
             cursorPosEl.querySelector('span').textContent = `Ln ${pos.lineNumber}, Col ${pos.column}`;
         }
 
-        if (isTypewriterMode) {
-            editor?.revealLineInCenter(e.position.lineNumber);
-        }
+        // Phase 3.5: typewriter centering lives solely in the dedicated
+        // disposable listener (enterTypewriterMode) — one center per move.
 
         if (cursorSync && !isCursorSyncing) {
             isCursorSyncing = true;
@@ -1040,15 +1226,8 @@ marked.use(markedFootnote());
 // Emoji shortcode syntax (:smile:) for the preview (Issue #45)
 marked.use(markedEmoji(emojiMarkedOptions));
 
-// Slugify function for heading IDs
-const slugify = (text) => {
-    return text
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/[\s_-]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-};
+// Slugify + GFM-style duplicate uniquify for heading IDs / TOC
+let allocateHeadingId = createHeadingIdAllocator();
 
 // Track headings for TOC
 let tocItems = [];
@@ -1059,7 +1238,7 @@ renderer.heading = function (token) {
     const headingLevel = token.depth;
     // Strip markdown link syntax [text](url) → text for slug and aria-label
     const plainText = token.text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-    const slug = slugify(plainText);
+    const slug = allocateHeadingId(plainText);
     // Render inline tokens so links/bold/etc. become HTML
     const renderedContent = this.parser.parseInline(token.tokens);
 
@@ -1368,9 +1547,8 @@ const setupGoals = () => {
 };
 
 const updateGoalProgress = (content) => {
-    // Simple word count approximation
-    const text = content.replace(/[#*`_~\[\]()]/g, '').trim();
-    const wordCount = text ? text.split(/\s+/).length : 0;
+    // Phase 3.3: canonical word count — same stripped count as footer/toolbar.
+    const wordCount = markdownService.extractStats(content || '').words;
 
     const progressBar = document.getElementById('goal-progress-bar');
     const goalText = document.getElementById('goal-text');
@@ -1558,7 +1736,7 @@ const updateLintUI = (issues) => {
             item.className = 'lint-item';
             item.innerHTML = `
                     <span class="lint-line">L${issue.lineNumber}</span>
-                    <span class="lint-msg">${issue.ruleNames[1] || issue.ruleNames[0]}: ${issue.errorDescription}</span>
+                    <span class="lint-msg">${escapeHtml(issue.ruleNames[1] || issue.ruleNames[0])}: ${escapeHtml(issue.errorDescription)}</span>
                 `;
             item.addEventListener('click', () => {
                 editor?.revealLineInCenter(issue.lineNumber);
@@ -1588,6 +1766,14 @@ let editorSearchDecorations = []; // Track Monaco editor search decorations
 let currentMatchIndex = -1; // Track which match is currently selected
 let allMatches = []; // Array of all match elements
 
+const getEditorSearchMatches = () => {
+    const model = editor?.getModel();
+    if (!model || !currentSearchQuery) return [];
+    return model.findMatches(currentSearchQuery, false, false, false, null, true);
+};
+
+let openSearchOverlay = (_opts) => {};
+
 const setupSearch = () => {
     const searchBtn = document.getElementById('search-btn');
     const searchOverlay = document.getElementById('search-overlay');
@@ -1596,21 +1782,37 @@ const setupSearch = () => {
     const searchPrev = document.getElementById('search-prev');
     const searchNext = document.getElementById('search-next');
     const matchCountEl = document.getElementById('search-match-count');
+    const replaceRow = document.getElementById('search-replace-row');
+    const replaceInput = document.getElementById('replace-input');
+    const replaceOneBtn = document.getElementById('replace-one-btn');
+    const replaceAllBtn = document.getElementById('replace-all-btn');
 
     if (!searchBtn || !searchOverlay || !searchInput) {
         console.warn('Search elements not found');
         return;
     }
 
+    const setReplaceMode = (enabled) => {
+        if (replaceRow) replaceRow.classList.toggle('hidden', !enabled);
+        searchOverlay.setAttribute('aria-label', enabled ? 'Find and replace in document' : 'Search in document');
+    };
+
+    openSearchOverlay = ({ replace = false } = {}) => {
+        searchOverlay.classList.remove('hidden');
+        setReplaceMode(replace);
+        searchInput.focus();
+        searchInput.select();
+    };
+
     // Toggle search overlay on button click - always use custom overlay for both panes
     searchBtn.addEventListener('click', () => {
-        searchOverlay.classList.toggle('hidden');
-        if (!searchOverlay.classList.contains('hidden')) {
-            searchInput.focus();
-            searchInput.select();
-        } else {
+        const isOpen = !searchOverlay.classList.contains('hidden');
+        const replaceVisible = replaceRow && !replaceRow.classList.contains('hidden');
+        if (isOpen && !replaceVisible) {
             clearSearch();
+            return;
         }
+        openSearchOverlay({ replace: false });
     });
 
     // Close search overlay
@@ -1622,8 +1824,10 @@ const setupSearch = () => {
 
     const clearSearch = () => {
         searchOverlay.classList.add('hidden');
+        setReplaceMode(false);
         currentSearchQuery = '';
         searchInput.value = '';
+        if (replaceInput) replaceInput.value = '';
         currentMatchIndex = -1;
         allMatches = [];
         if (matchCountEl) matchCountEl.textContent = '';
@@ -1631,6 +1835,88 @@ const setupSearch = () => {
         editorSearchDecorations = editor?.deltaDecorations(editorSearchDecorations, []);
         debouncedConvert(editor?.getValue()); // Re-render without highlights (debounced for performance)
     };
+
+    const syncSearchQueryFromInput = () => {
+        currentSearchQuery = searchInput.value || '';
+    };
+
+    const replaceCurrentOccurrence = () => {
+        syncSearchQueryFromInput();
+        if (!editor || !currentSearchQuery) {
+            showToast('Enter text to find first', 'info', 1500);
+            return;
+        }
+        const matches = getEditorSearchMatches();
+        if (matches.length === 0) {
+            showToast('No matches to replace', 'info', 1500);
+            return;
+        }
+        const idx = Math.min(Math.max(currentMatchIndex, 0), matches.length - 1);
+        const match = matches[idx];
+        const replacement = replaceInput ? replaceInput.value : '';
+        isProgrammaticChange = true;
+        try {
+            editor.executeEdits('find-replace', [{ range: match.range, text: replacement }]);
+            isShowingWelcome = false;
+        } finally {
+            isProgrammaticChange = false;
+        }
+        editor.setPosition({
+            lineNumber: match.range.startLineNumber,
+            column: match.range.startColumn + replacement.length
+        });
+        editor.revealLineInCenter(match.range.startLineNumber);
+        debouncedConvert(editor.getValue());
+        highlightEditorMatches();
+        updateMatchCount();
+    };
+
+    const replaceAllOccurrences = () => {
+        syncSearchQueryFromInput();
+        if (!editor || !currentSearchQuery) {
+            showToast('Enter text to find first', 'info', 1500);
+            return;
+        }
+        const matches = getEditorSearchMatches();
+        if (matches.length === 0) {
+            showToast('No matches to replace', 'info', 1500);
+            return;
+        }
+        const replacement = replaceInput ? replaceInput.value : '';
+        const count = matches.length;
+        const edits = matches.slice().reverse().map((match) => ({ range: match.range, text: replacement }));
+        isProgrammaticChange = true;
+        try {
+            editor.executeEdits('find-replace-all', edits);
+            isShowingWelcome = false;
+        } finally {
+            isProgrammaticChange = false;
+        }
+        showToast(`Replaced ${count} ${count === 1 ? 'match' : 'matches'}`, 'success', 1800);
+        debouncedConvert(editor.getValue());
+        highlightEditorMatches();
+        updateMatchCount();
+    };
+
+    if (replaceOneBtn) {
+        replaceOneBtn.addEventListener('click', replaceCurrentOccurrence);
+    }
+    if (replaceAllBtn) {
+        replaceAllBtn.addEventListener('click', replaceAllOccurrences);
+    }
+    if (replaceInput) {
+        replaceInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                replaceAllOccurrences();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                replaceCurrentOccurrence();
+            } else if (e.key === 'Escape') {
+                clearSearch();
+            }
+        });
+    }
 
     // Handle search input
     searchInput.addEventListener('input', (e) => {
@@ -1668,7 +1954,8 @@ const setupSearch = () => {
     trackedAddEventListener(document, 'keydown', (e) => {
         // Only navigate if search overlay is visible
         if (searchOverlay.classList.contains('hidden')) return;
-        
+        if (e.target === replaceInput) return;
+
         if (e.key === 'ArrowUp') {
             e.preventDefault();
             goToPreviousMatch();
@@ -1682,9 +1969,7 @@ const setupSearch = () => {
     trackedAddEventListener(document, 'keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
             e.preventDefault();
-            searchOverlay.classList.remove('hidden');
-            searchInput.focus();
-            searchInput.select();
+            openSearchOverlay({ replace: false });
         }
     });
 };
@@ -1990,6 +2275,19 @@ function blockTypeFromElement(el) {
     return 'paragraph';
 }
 
+/** Block "family" of a rendered top-level element, in the scanner's vocabulary. */
+function elementBlockScanType(el) {
+    const tag = el.tagName.toLowerCase();
+    if (/^h[1-6]$/.test(tag)) return 'heading';
+    if (tag === 'pre') return 'code';
+    if (tag === 'table') return 'table';
+    if (tag === 'ul' || tag === 'ol') return 'list';
+    if (tag === 'blockquote' || el.classList?.contains('markdown-alert')) return 'quote';
+    if (tag === 'hr') return 'hr';
+    if (tag === 'details') return 'details';
+    return 'paragraph';
+}
+
 /**
  * Annotate preview block elements with data-source-line attributes.
  * Prefer exact heading IDs, then sequential markdown-block matching so
@@ -2036,6 +2334,23 @@ function annotateSourceLines(outputElement, markdown) {
         const tag = el.tagName.toLowerCase();
         if (/^h[1-6]$/.test(tag) && el.id && headingLineMap.has(el.id)) {
             el.setAttribute('data-source-line', String(headingLineMap.get(el.id)));
+        }
+    });
+
+    // Primary pass: pair each top-level rendered block with its scanned source
+    // block so the source line is precise instead of estimated from geometry.
+    // This is what keeps Document Mode write-back on the right range.
+    // Anything unmatched falls through to the sequential + geometry passes.
+    let scanCursor = 0;
+    Array.from(outputElement.children).forEach((el) => {
+        if (el.hasAttribute('data-source-line')) return;
+        const want = elementBlockScanType(el);
+        for (let j = scanCursor; j < mdBlocks.length; j++) {
+            if (mdBlocks[j].type === want) {
+                el.setAttribute('data-source-line', String(mdBlocks[j].line));
+                scanCursor = j + 1;
+                return;
+            }
         }
     });
 
@@ -2114,11 +2429,32 @@ function annotateSourceLines(outputElement, markdown) {
     });
 }
 
+/**
+ * Replace Mermaid's bomb/"Syntax error in text" SVG with a compact note so
+ * invalid diagrams fail locally without looking like a document crash.
+ * @param {HTMLElement} root
+ */
+const normalizeMermaidPreviewErrors = (root) => {
+    if (!root) return;
+    root.querySelectorAll('.mermaid').forEach((node) => {
+        const text = (node.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!/Syntax error in text/i.test(text) && !/Parse error on line/i.test(text)) {
+            return;
+        }
+        const note = document.createElement('div');
+        note.className = 'mermaid-error';
+        note.setAttribute('role', 'status');
+        note.textContent = 'Mermaid diagram could not be rendered (syntax error). The rest of the document is unaffected.';
+        node.replaceWith(note);
+    });
+};
+
 // Render markdown text as html
 // Parse stays sync (already behind debouncedConvert); DOM write + secondary UI use rAF
 const convert = (markdown) => {
-    // Reset TOC items
+    // Reset TOC items and heading-id allocator each render (GFM uniquify)
     tocItems = [];
+    allocateHeadingId = createHeadingIdAllocator();
 
     // Resolve image store references to actual data URLs before rendering
     const resolvedMarkdown = resolveImageReferences(markdown, true);
@@ -2178,6 +2514,9 @@ const convert = (markdown) => {
         });
 
         outputElement.innerHTML = sanitized;
+
+        // Feature 2: Custom CSS injection
+        injectCustomCss(outputElement);
 
         // Gate KaTeX rendering: strip katex-rendered HTML when the setting is off.
         // markedKatex is registered globally, so we remove its output from the
@@ -2239,20 +2578,23 @@ const convert = (markdown) => {
                     div.setAttribute('role', 'img');
                     div.setAttribute('aria-label', 'Diagram');
                     div.textContent = code;
+                    // Keep the diagram source so a full serialize can rebuild the
+                    // fence instead of dumping rendered SVG/CSS into Markdown.
+                    div.dataset.mermaidCode = code;
                     pre.replaceWith(div);
                 });
 
                 mermaid.run({
                     nodes: outputElement.querySelectorAll('.mermaid')
                 }).then(() => {
-                    if (token === _convertToken) {
-                        annotateSourceLines(outputElement, renderableMarkdown);
-                        scrollSync.scheduleRebuildAnchors();
-                    }
+                    if (token !== _convertToken) return;
+                    normalizeMermaidPreviewErrors(outputElement);
+                    annotateSourceLines(outputElement, renderableMarkdown);
+                    scrollSync.scheduleRebuildAnchors();
                 }).catch(() => {
-                    if (token === _convertToken) {
-                        scrollSync.scheduleRebuildAnchors();
-                    }
+                    if (token !== _convertToken) return;
+                    normalizeMermaidPreviewErrors(outputElement);
+                    scrollSync.scheduleRebuildAnchors();
                 });
             }
 
@@ -2282,6 +2624,21 @@ const updatePreview = () => {
     convert(editor?.getValue());
 };
 
+const injectCustomCss = (outputElement) => {
+    const css = localStorage.getItem('markups_custom_css');
+    let style = outputElement.querySelector('#markups-user-css');
+    if (!css) {
+        if (style) style.remove();
+        return;
+    }
+    if (!style) {
+        style = document.createElement('style');
+        style.id = 'markups-user-css';
+        outputElement.appendChild(style);
+    }
+    style.textContent = css;
+};
+
 const applyMarkdownFromPreviewEdit = (markdown) => {
     if (!editor || typeof markdown !== 'string' || markdown === editor?.getValue()) return;
 
@@ -2306,7 +2663,6 @@ const applyMarkdownFromPreviewEdit = (markdown) => {
 
     hasEdited = true;
     setHasEdited(true);
-    saveCurrentDoc();
     updateStats(markdown);
 };
 
@@ -2317,7 +2673,6 @@ const setupLivePreviewEdit = () => {
         markdownToggle: '#markdown-mode-toggle',
         getSourceMarkdown: () => editor?.getValue() || '',
         onMarkdownChange: applyMarkdownFromPreviewEdit,
-        onExit: () => convert(editor?.getValue()),
         showToast
     });
 };
@@ -2556,9 +2911,9 @@ const updateStats = (text) => {
     const charCountHeader = document.querySelector('#char-count-header');
     const readingTimeHeader = document.querySelector('#reading-time-header');
 
-    if (wordCountHeader) wordCountHeader.textContent = `Words: ${wordCount}`;
-    if (charCountHeader) charCountHeader.textContent = `Chars: ${charCount}`;
-    if (readingTimeHeader) readingTimeHeader.textContent = `Reading: ${readingTime} min`;
+    if (wordCountHeader) wordCountHeader.textContent = `${wordCount} words`;
+    if (charCountHeader) charCountHeader.textContent = `${charCount} chars`;
+    if (readingTimeHeader) readingTimeHeader.textContent = `${readingTime} min read`;
 
     // Update modal stats if open
     const modal = document.getElementById('stats-modal');
@@ -2570,6 +2925,74 @@ const updateStats = (text) => {
         document.querySelector('#stat-headings').textContent = headings.toLocaleString();
         document.querySelector('#stat-reading-time').textContent = `${readingTime} min`;
     }
+};
+
+// Breadcrumb: shows current heading path in status bar
+const getHeadingBeforeLine = (markdown, lineNumber) => {
+    const lines = markdown.split('\n');
+    const stack = [];
+
+    for (let i = 0; i <= lineNumber && i < lines.length; i++) {
+        const line = lines[i];
+        const match = line.match(/^(#{1,6})\s+(.+)$/);
+        if (match) {
+            const level = match[1].length;
+            const text = match[2].trim();
+            while (stack.length && stack[stack.length - 1].level >= level) {
+                stack.pop();
+            }
+            stack.push({ level, text });
+        }
+    }
+
+    return stack;
+};
+
+const updateBreadcrumb = (editor) => {
+    const el = document.querySelector('#breadcrumb-path');
+    if (!el) return;
+
+    try {
+        const model = editor.getModel();
+        if (!model) {
+            el.textContent = '';
+            return;
+        }
+
+        const text = model.getValue();
+        const position = editor.getPosition();
+        if (!position) {
+            el.textContent = '';
+            return;
+        }
+
+        // Monaco line numbers are 1-based, but our helper uses 0-based index
+        const offset = position.lineNumber - 1;
+        const sections = getHeadingBeforeLine(text, offset);
+
+        if (sections.length === 0) {
+            el.textContent = '';
+            return;
+        }
+
+        el.textContent = sections.map(s => s.text).join(' › ');
+    } catch {
+        el.textContent = '';
+    }
+};
+
+const setupBreadcrumb = (editor) => {
+    if (!editor) return;
+
+    let debounceTimer = null;
+    const scheduleUpdate = () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => updateBreadcrumb(editor), 80);
+    };
+
+    editor.onDidChangeCursorPosition(scheduleUpdate);
+    editor.onDidChangeModelContent(scheduleUpdate);
+    updateBreadcrumb(editor);
 };
 
 const setupStatsButton = () => {
@@ -2771,8 +3194,8 @@ const setupTemplatesButton = () => {
             card.className = 'template-card';
             card.innerHTML = `
                     <div class="template-icon">${template.icon}</div>
-                    <div class="template-title">${template.title}</div>
-                    <div class="template-desc">${template.description}</div>
+                    <div class="template-title">${escapeHtml(template.title)}</div>
+                    <div class="template-desc">${escapeHtml(template.description)}</div>
                 `;
 
             card.addEventListener('click', () => {
@@ -2888,7 +3311,7 @@ const setupSnippetsButton = () => {
             item.className = 'dropdown-item';
             item.innerHTML = `
                     <span class="dropdown-icon">${snippet.icon}</span>
-                    <span>${snippet.title}</span>
+                    <span>${escapeHtml(snippet.title)}</span>
                 `;
 
             item.addEventListener('click', () => {
@@ -2922,20 +3345,35 @@ async function getAiWriterManager() {
     return _aiWriterManager;
 }
 
+
+// Browser-style file tabs between the brand and header actions.
+// Files come from the same document list as the file explorer; folders stay in the sidebar.
+const setupHeaderQuickTabs = () => {
+    const addBtn = document.getElementById('header-quicktab-new');
+    if (addBtn) {
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            createFileInSelectedFolder();
+        });
+    }
+    _setupTabsWheelScroll();
+};
+
 const setupAiWriterButton = () => {
     const aiWriterBtn = document.querySelector("#ai-writer-button");
     if (!aiWriterBtn) return;
 
     aiWriterBtn.addEventListener("click", async (e) => {
         e.preventDefault();
-        await getAiWriterManager();
-        // Toggle panel visibility; aiWriterUI.renderPanel already called by initialize()
-        const panel = document.querySelector("#ai-writer-panel");
-        if (panel) {
-            const isHidden = panel.style.display === "none";
-            panel.style.display = isHidden ? "block" : "none";
-            showToast(isHidden ? "AI Writer Opened" : "AI Writer Closed", "info", 1500);
+        const alreadyLoaded = !!_aiWriterManager;
+        const manager = await getAiWriterManager();
+        if (!manager) return;
+        // initialize() may restore a previously open panel; don't immediately toggle it closed.
+        if (alreadyLoaded) {
+            manager.toggle();
+            return;
         }
+        if (!manager.visible) manager.show();
     });
 };
 
@@ -2990,7 +3428,7 @@ const setupCalloutDropdown = () => {
             item.style.setProperty('--callout-accent', color);
             item.innerHTML = `
                 <span class="callout-dropdown-badge" aria-hidden="true">${icon}</span>
-                <span class="callout-dropdown-label">${label}</span>
+                <span class="callout-dropdown-label">${escapeHtml(label)}</span>
             `;
 
             item.addEventListener('click', (e) => {
@@ -3190,22 +3628,15 @@ ${content}
 
 // Export as Plain Text
 const exportToTXT = () => {
+    // Phase 3.2: shares the canonical converter with the modal + preview —
+    // quick export output always matches what the modal produces.
     const content = editor?.getValue() ?? '';
-    // Strip markdown syntax for plain text
-    const plainText = content
-        .replace(/^#{1,6}\s+/gm, '')  // Remove headings
-        .replace(/\*\*(.+?)\*\*/g, '$1')  // Remove bold
-        .replace(/\*(.+?)\*/g, '$1')  // Remove italic
-        .replace(/~~(.+?)~~/g, '$1')  // Remove strikethrough
-        .replace(/`{3}[\s\S]*?`{3}/g, '')  // Remove code blocks
-        .replace(/`(.+?)`/g, '$1')  // Remove inline code
-        .replace(/\[(.+?)\]\(.+?\)/g, '$1')  // Remove links, keep text
-        .replace(/!\[.*?\]\(.+?\)/g, '')  // Remove images
-        .replace(/^[-*+]\s+/gm, '• ')  // Convert bullets
-        .replace(/^\d+\.\s+/gm, '')  // Remove numbered list markers
-        .replace(/^>\s+/gm, '')  // Remove blockquotes
-        .replace(/^---+$/gm, '────────────────')  // Convert horizontal rules
-        .trim();
+    const plainText = markdownToPlainText(content, {
+        wordWrap: document.getElementById('export-word-wrap')?.checked ?? true,
+        includeFrontmatter: document.getElementById('export-frontmatter')?.checked ?? false,
+        title: getActiveDocTitle(),
+        dateStr: new Date().toISOString().split('T')[0]
+    });
 
     const filename = getExportFilename('txt');
     const blob = new Blob([plainText], { type: 'text/plain' });
@@ -3304,6 +3735,8 @@ const setupAdditionalExportButtons = () => {
 
 // ==================== EXPORT MODAL ====================
 let currentExportFormat = 'pdf';
+/** Active PDF/PNG export abort controller (cancel closes this). */
+let activeExportAbort = null;
 let exportModalZoom = 0.9;
 let exportPreviewDebounceTimer = null;
 
@@ -3379,6 +3812,13 @@ const setupExportModal = () => {
     closeBtn?.addEventListener('click', closeHandler);
     cancelBtn?.addEventListener('click', closeHandler);
     overlay?.addEventListener('click', closeHandler);
+    document.getElementById('export-loading-cancel')?.addEventListener('click', () => {
+        cancelActiveExport('user-cancel');
+        updateExportProgress(
+            parseInt(document.getElementById('export-loading-progress-bar')?.style.width || '0', 10) || 0,
+            'Cancelling export...'
+        );
+    });
 
     // Escape key to close
     trackedAddEventListener(document, 'keydown', (e) => {
@@ -3571,6 +4011,9 @@ const closeExportModal = () => {
     const loadingOverlay = document.getElementById('export-loading-overlay');
     const confirmBtn = document.getElementById('export-confirm-btn');
 
+    // Abort in-flight PDF/PNG so closing the modal actually stops the job.
+    cancelActiveExport('modal-closed');
+
     exportModalFocusTrap?.deactivate();
     exportModalFocusTrap = null;
 
@@ -3696,30 +4139,19 @@ const updateExportPreview = (format) => {
         const includeFrontmatter = document.getElementById('export-frontmatter')?.checked ?? false;
 
         if (txtContent) {
-            // Convert to plain text — null-safe + bounded for large docs
+            // Phase 3.2: preview renders through the same canonical converter
+            // as the download — what you approve is what you get.
             const raw = editor?.getValue() || '';
-            if (raw.length > 2_000_000) {
+            if (raw.length > TXT_PREVIEW_WARN_BYTES) {
                 showToast('Document is very large; TXT preview may be slow', 'warning');
             }
-            let plainText = raw
-                .replace(/^#{1,6}\s+/gm, '')
-                .replace(/\*\*(.+?)\*\*/g, '$1')
-                .replace(/\*(.+?)\*/g, '$1')
-                .replace(/~~(.+?)~~/g, '$1')
-                .replace(/`{3}[\s\S]*?`{3}/g, '')
-                .replace(/`(.+?)`/g, '$1')
-                .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-                .replace(/!\[.*?\]\(.+?\)/g, '')
-                .replace(/^[-*+]\s+/gm, '• ')
-                .replace(/^\d+\.\s+/gm, '')
-                .replace(/^>\s+/gm, '')
-                .trim();
-
-            // Add frontmatter if enabled
-            if (includeFrontmatter) {
-                const frontmatter = `---\ntitle: ${title}\ndate: ${today}\n---\n\n`;
-                plainText = frontmatter + plainText;
-            }
+            const plainText = markdownToPlainText(raw, {
+                wordWrap,
+                includeFrontmatter,
+                title,
+                // ISO date keeps preview identical to the downloaded file.
+                dateStr: new Date().toISOString().split('T')[0]
+            });
 
             txtContent.textContent = plainText;
             txtContent.style.whiteSpace = wordWrap ? 'pre-wrap' : 'pre';
@@ -3809,18 +4241,32 @@ const estimateFileSize = (format) => {
     }
 };
 
+const cancelActiveExport = (reason = 'cancelled') => {
+    if (activeExportAbort) {
+        try {
+            activeExportAbort.abort(reason);
+        } catch (_) { /* ignore */ }
+        activeExportAbort = null;
+    }
+};
+
 const showExportLoading = (text = 'Generating your file...', progress = 30) => {
     const overlay = document.getElementById('export-loading-overlay');
     const textEl = document.getElementById('export-loading-text');
     const progressEl = document.getElementById('export-loading-progress-bar');
     const spinner = overlay?.querySelector('.export-loading-spinner');
     const successIcon = overlay?.querySelector('.export-loading-success-icon');
+    const cancelBtn = document.getElementById('export-loading-cancel');
 
     if (overlay) overlay.classList.remove('hidden');
     if (textEl) textEl.textContent = text;
     if (progressEl) progressEl.style.width = `${progress}%`;
     if (spinner) spinner.style.display = '';
     if (successIcon) successIcon.style.display = 'none';
+    if (cancelBtn) {
+        cancelBtn.hidden = false;
+        cancelBtn.disabled = false;
+    }
 };
 
 const updateExportProgress = (progress, text) => {
@@ -3836,8 +4282,11 @@ const hideExportLoading = ({ success = true, text = 'Complete!', closeModal = tr
     const spinner = overlay?.querySelector('.export-loading-spinner');
     const successIcon = overlay?.querySelector('.export-loading-success-icon');
     const confirmBtn = document.getElementById('export-confirm-btn');
+    const cancelBtn = document.getElementById('export-loading-cancel');
 
     if (!overlay) return;
+
+    if (cancelBtn) cancelBtn.hidden = true;
 
     if (!success) {
         if (spinner) spinner.style.display = '';
@@ -3902,15 +4351,15 @@ const executeExport = (format) => {
     }
 };
 
-// Helper: Convert inline SVGs to canvas-based images for better html2canvas compatibility
-// Uses synchronous canvas drawing (no Image loading) to avoid blob URL / onload hangs
+/**
+ * Synchronous SVG rasterizer kept for callers that cannot await.
+ * Prefer convertMermaidSvgsToImages() for accurate Mermaid export.
+ */
 const convertSVGsToImages = (container) => {
-    // Only target top-level SVGs inside mermaid diagrams — skip KaTeX & nested SVGs
-    const mermaidSvgs = container.querySelectorAll('.mermaid-diagram > svg');
-    // Also grab standalone top-level SVGs (direct children of output), but not nested ones
-    const topLevelSvgs = container.querySelectorAll(':scope > svg');
-    // Deduplicate using a Set
-    const svgSet = new Set([...mermaidSvgs, ...topLevelSvgs]);
+    const svgSet = new Set([
+        ...container.querySelectorAll('.mermaid > svg, .mermaid-diagram > svg'),
+        ...container.querySelectorAll(':scope > svg')
+    ]);
 
     const stats = { total: svgSet.size, converted: 0, skipped: 0, errors: 0 };
     if (!svgSet.size) return stats;
@@ -3919,7 +4368,6 @@ const convertSVGsToImages = (container) => {
         try {
             if (!svg.parentNode) { stats.skipped++; continue; }
 
-            // Get dimensions from attributes or viewBox (getBoundingClientRect unreliable on clones)
             const vb = svg.getAttribute('viewBox');
             const attrW = parseFloat(svg.getAttribute('width') || '0');
             const attrH = parseFloat(svg.getAttribute('height') || '0');
@@ -3931,25 +4379,24 @@ const convertSVGsToImages = (container) => {
             width = Math.max(1, Math.round(width || 400));
             height = Math.max(1, Math.round(height || 300));
 
-            // Serialize SVG with explicit dimensions to ensure canvas draws correctly
             const svgClone = svg.cloneNode(true);
             svgClone.setAttribute('width', String(width));
             svgClone.setAttribute('height', String(height));
+            if (!svgClone.getAttribute('xmlns')) {
+                svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            }
             const svgData = new XMLSerializer().serializeToString(svgClone);
+            if (/<script[\s>]/i.test(svgData)) { stats.skipped++; continue; }
             const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
 
-            // Draw synchronously on canvas via a data-URL image (no blob/onload needed)
             const canvas = document.createElement('canvas');
             canvas.width = width * 2;
             canvas.height = height * 2;
             const ctx = canvas.getContext('2d');
             if (!ctx) { stats.skipped++; continue; }
 
-            // Use a temporary Image drawn synchronously by setting src to data URI
-            // Note: data URI images are loaded synchronously in most browsers when dimensions are known
             const tmpImg = new Image(width, height);
             tmpImg.src = svgDataUrl;
-            // If the image isn't immediately available, skip it rather than hanging
             if (!tmpImg.complete || !tmpImg.naturalWidth) {
                 stats.skipped++;
                 continue;
@@ -3975,7 +4422,10 @@ const convertSVGsToImages = (container) => {
 
 // Enhanced export functions with options
 const exportToPDFWithOptions = async () => {
-    let tempContainer = null;
+    let workbench = null;
+    const abort = new AbortController();
+    activeExportAbort = abort;
+    const { signal } = abort;
 
     try {
         const paperSize = document.getElementById('export-paper-size')?.value || 'letter';
@@ -3983,7 +4433,7 @@ const exportToPDFWithOptions = async () => {
         const pageNumbers = document.getElementById('export-page-numbers')?.checked ?? true;
         const headerFooter = document.getElementById('export-header-footer')?.checked ?? false;
 
-        showExportLoading('Preparing PDF document...', 10);
+        showExportLoading('Preparing PDF document...', 8);
         const element = document.querySelector('#output');
         if (!element) throw new Error('Output element not found');
 
@@ -3998,89 +4448,94 @@ const exportToPDFWithOptions = async () => {
             'tabloid': [11, 17]
         };
 
-        updateExportProgress(30, 'Preparing content...');
-
-        const html2pdf = await getHtml2Pdf();
-
-        // Determine what element to pass to html2pdf
-        let sourceElement = element;
+        const widthCss = orientation === 'landscape' ? '10in' : '7.5in';
+        updateExportProgress(18, 'Cloning preview for export...');
+        workbench = createExportWorkbench(element, { widthCss });
 
         if (headerFooter) {
-            // Only create a container when header/footer is needed
-            tempContainer = document.createElement('div');
-            tempContainer.className = 'markdown-body';
-            tempContainer.style.cssText = 'background:#fff; color:#24292e; padding:0; width:' +
-                (orientation === 'landscape' ? '10in' : '7.5in') + ';';
-            tempContainer.innerHTML = `
-                <div style="font-size:10pt;color:#666;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:16px;">${title} &mdash; ${today}</div>
-            `;
-            // Clone the output content into the temp container
-            const contentClone = element.cloneNode(true);
-            // Move all children from clone into our container
-            while (contentClone.firstChild) {
-                tempContainer.appendChild(contentClone.firstChild);
-            }
-            // Place it on-screen but behind the export overlay (z-index: -1)
-            tempContainer.style.position = 'fixed';
-            tempContainer.style.top = '0';
-            tempContainer.style.left = '0';
-            tempContainer.style.zIndex = '-1';
-            tempContainer.style.pointerEvents = 'none';
-            document.body.appendChild(tempContainer);
-            sourceElement = tempContainer;
+            const header = document.createElement('div');
+            header.style.cssText = 'font-size:10pt;color:#666;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:16px;';
+            header.textContent = `${title} — ${today}`;
+            workbench.insertBefore(header, workbench.firstChild);
         }
 
-        const options = {
-            margin: headerFooter ? [0.75, 0.5, 0.75, 0.5] : [0.5, 0.5, 0.5, 0.5],
-            filename: filename,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                letterRendering: true,
-                backgroundColor: '#ffffff',
-                scrollX: 0,
-                scrollY: -window.scrollY
-            },
-            jsPDF: {
-                unit: 'in',
+        if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+
+        updateExportProgress(28, 'Preparing diagrams...');
+        const svgStats = await convertMermaidSvgsToImages(workbench, {
+            signal,
+            onProgress: (done, total) => {
+                const pct = 28 + Math.round((done / Math.max(total, 1)) * 18);
+                updateExportProgress(pct, `Preparing diagrams (${done}/${total})...`);
+            }
+        });
+        if (svgStats.skipped > 0 && svgStats.converted === 0 && svgStats.total > 0) {
+            // Fallback sync pass for any leftover SVGs
+            convertSVGsToImages(workbench);
+        }
+
+        if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+
+        const contentHeight = Math.max(workbench.scrollHeight, element.scrollHeight || 0);
+        const diagramCount = workbench.querySelectorAll('img[data-export-raster="mermaid"], .mermaid > svg, .mermaid-diagram > svg').length;
+        const scale = pickHtml2CanvasScale(contentHeight, { diagramCount });
+        const timeoutMs = pickExportTimeoutMs(contentHeight);
+        const quality = contentHeight > 28000 ? 0.88 : 0.94;
+        const margin = headerFooter ? [0.75, 0.5, 0.75, 0.5] : [0.5, 0.5, 0.5, 0.5];
+
+        updateExportProgress(48, 'Rendering pages...');
+        const [html2canvas, JsPDF] = await Promise.all([getHtml2Canvas(), getJsPDF()]);
+
+        const runPdf = async () => {
+            const pdf = await renderWorkbenchToPdf(workbench, {
+                html2canvas,
+                JsPDF,
                 format: formatMap[paperSize] || 'letter',
-                orientation: orientation
-            },
-            pagebreak: { mode: ['css', 'legacy'] }
+                orientation,
+                margin,
+                scale,
+                quality,
+                pageNumbers,
+                signal,
+                onProgress: (page, totalGuess) => {
+                    const pct = 48 + Math.min(40, Math.round((page / Math.max(totalGuess, 1)) * 40));
+                    updateExportProgress(pct, `Rendering page ${page} of ~${totalGuess}...`);
+                }
+            });
+            if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+            updateExportProgress(92, 'Saving PDF...');
+            pdf.save(filename);
         };
 
-        // Generate PDF
-        if (pageNumbers) {
-            updateExportProgress(50, 'Rendering pages...');
-            await html2pdf().set(options).from(sourceElement).toPdf().get('pdf').then((pdf) => {
-                updateExportProgress(80, 'Adding page numbers...');
-                const totalPages = pdf.internal.getNumberOfPages();
-                for (let i = 1; i <= totalPages; i++) {
-                    pdf.setPage(i);
-                    pdf.setFontSize(9);
-                    pdf.setTextColor(128);
-                    const pageWidth = pdf.internal.pageSize.getWidth();
-                    const pageHeight = pdf.internal.pageSize.getHeight();
-                    pdf.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 0.3, { align: 'center' });
-                }
-            }).save();
-        } else {
-            updateExportProgress(60, 'Generating PDF file...');
-            await html2pdf().set(options).from(sourceElement).save();
-        }
+        await raceExportJob(runPdf(), {
+            signal,
+            timeoutMs,
+            label: 'PDF export'
+        });
 
-        // Clean up temp container if used
-        if (tempContainer?.parentNode) document.body.removeChild(tempContainer);
-        tempContainer = null;
+        if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+
+        destroyExportWorkbench(workbench);
+        workbench = null;
+        activeExportAbort = null;
         showToast(`PDF exported: ${filename}`, 'success');
         hideExportLoading();
     } catch (err) {
-        console.error('PDF export error:', err);
-        if (tempContainer?.parentNode) try { document.body.removeChild(tempContainer); } catch (_) { }
-        failExportLoading('Failed to export PDF');
-        showToast('Failed to export PDF', 'error');
+        destroyExportWorkbench(workbench);
+        workbench = null;
+        const cancelled = err?.name === 'AbortError' || /cancel/i.test(err?.message || '');
+        if (cancelled) {
+            failExportLoading('Export cancelled');
+            showToast('PDF export cancelled', 'info', 2000);
+        } else {
+            console.error('PDF export error:', err);
+            failExportLoading(err?.message?.slice(0, 80) || 'Failed to export PDF');
+            showToast(err?.message?.includes('timed out')
+                ? 'PDF export timed out — try HTML export for very large docs'
+                : 'Failed to export PDF', 'error');
+        }
+        activeExportAbort = null;
+        document.getElementById('export-confirm-btn')?.classList.remove('exporting');
     }
 };
 
@@ -4163,6 +4618,10 @@ const exportToPNGWithOptions = async () => {
     // Parse width value
     const width = parseInt(widthInput.replace(/[^0-9]/g, '')) || 1200;
 
+    const abort = new AbortController();
+    activeExportAbort = abort;
+    const { signal } = abort;
+
     showExportLoading('Capturing document as image...', 20);
     const element = document.querySelector('#output');
     const filename = getExportFilename('png');
@@ -4180,6 +4639,7 @@ const exportToPNGWithOptions = async () => {
 
     // Clone content
     const clone = element.cloneNode(true);
+    stripExportChrome(clone);
     clone.style.width = '100%';
     clone.style.maxWidth = 'none';
     wrapper.appendChild(clone);
@@ -4189,39 +4649,57 @@ const exportToPNGWithOptions = async () => {
     wrapper.style.left = '-9999px';
     document.body.appendChild(wrapper);
 
-    // Convert SVGs to images for reliable rendering (synchronous — never hangs)
-    updateExportProgress(40, 'Processing SVG elements...');
-    const pngSvgStats = convertSVGsToImages(wrapper);
-    if (pngSvgStats.skipped > 0) {
-        showToast(`Skipped ${pngSvgStats.skipped} SVG(s) during image prep`, 'info', 2400);
-    }
-
-    updateExportProgress(60, 'Rendering image canvas...');
     try {
+        updateExportProgress(35, 'Preparing diagrams...');
+        const pngSvgStats = await convertMermaidSvgsToImages(wrapper, { signal });
+        if (pngSvgStats.skipped > 0) {
+            convertSVGsToImages(wrapper);
+        }
+        if (pngSvgStats.skipped > 0 && pngSvgStats.converted === 0) {
+            showToast(`Skipped ${pngSvgStats.skipped} SVG(s) during image prep`, 'info', 2400);
+        }
+
+        if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+
+        updateExportProgress(60, 'Rendering image canvas...');
         const html2canvas = await getHtml2Canvas();
-        const canvas = await html2canvas(wrapper, {
-            scale: resolution,
-            useCORS: true,
-            logging: false,
-            backgroundColor: transparentBg ? null : (includeShadow ? '#f5f5f5' : '#ffffff'),
-            width: includeShadow ? width + 80 : width,
-            windowWidth: width + (includeShadow ? 80 : 0)
-        });
+        const canvas = await raceExportJob(
+            html2canvas(wrapper, {
+                scale: resolution,
+                useCORS: true,
+                logging: false,
+                backgroundColor: transparentBg ? null : (includeShadow ? '#f5f5f5' : '#ffffff'),
+                width: includeShadow ? width + 80 : width,
+                windowWidth: width + (includeShadow ? 80 : 0)
+            }),
+            { signal, timeoutMs: pickExportTimeoutMs(wrapper.scrollHeight), label: 'Image export' }
+        );
+
+        if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
+
         updateExportProgress(90, 'Finalizing image...');
-        // Remove wrapper
-        document.body.removeChild(wrapper);
+        if (wrapper.parentNode) document.body.removeChild(wrapper);
 
         const link = document.createElement('a');
         link.download = filename;
         link.href = canvas.toDataURL('image/png');
         link.click();
+        activeExportAbort = null;
         showToast(`Image exported: ${filename}`, 'success');
         hideExportLoading();
     } catch (err) {
         if (wrapper.parentNode) document.body.removeChild(wrapper);
-        console.error('PNG export error:', err);
-        failExportLoading('Failed to export image');
-        showToast('Failed to export image', 'error');
+        activeExportAbort = null;
+        const cancelled = err?.name === 'AbortError' || /cancel/i.test(err?.message || '');
+        if (cancelled) {
+            failExportLoading('Export cancelled');
+            showToast('Image export cancelled', 'info', 2000);
+        } else {
+            console.error('PNG export error:', err);
+            failExportLoading('Failed to export image');
+            showToast('Failed to export image', 'error');
+        }
+        document.getElementById('export-confirm-btn')?.classList.remove('exporting');
     }
 };
 
@@ -4438,7 +4916,6 @@ const exportToTXTWithOptions = () => {
     // export still works, it just may take a moment) instead of freezing
     // silently. We deliberately do NOT block — that would be worse UX than a
     // slow-but-successful export.
-    const TXT_WARN_BYTES = 10 * 1024 * 1024; // 10 MB
     if (content.length > TXT_WARN_BYTES) {
         showToast(
             `Large document (${(content.length / 1024 / 1024).toFixed(1)} MB) — TXT export may take a moment`,
@@ -4447,59 +4924,13 @@ const exportToTXTWithOptions = () => {
         );
     }
 
-    // Strip markdown syntax for plain text
-    let plainText = content
-        .replace(/^#{1,6}\s+(.+)/gm, (match, p1) => p1.toUpperCase())  // Convert headings to uppercase
-        .replace(/\*\*(.+?)\*\*/g, '$1')  // Remove bold
-        .replace(/\*(.+?)\*/g, '$1')  // Remove italic
-        .replace(/~~(.+?)~~/g, '$1')  // Remove strikethrough
-        .replace(/`{3}(\w*)\n([\s\S]*?)`{3}/g, (match, lang, code) => `[CODE${lang ? `: ${lang}` : ''}]\n${code}\n[/CODE]`)  // Mark code blocks
-        .replace(/`(.+?)`/g, '"$1"')  // Convert inline code to quotes
-        .replace(/\[(.+?)\]\((.+?)\)/g, '$1 ($2)')  // Convert links to text (URL)
-        .replace(/!\[(.+?)\]\(.+?\)/g, '[Image: $1]')  // Convert images to placeholder
-        .replace(/^[-*+]\s+/gm, '  • ')  // Convert bullets with indent
-        .replace(/^\d+\.\s+/gm, '  ')  // Convert numbered lists
-        .replace(/^>\s+/gm, '    ')  // Convert blockquotes to indent
-        .replace(/^---+$/gm, '\n' + '─'.repeat(50) + '\n')  // Convert horizontal rules
-        .replace(/\|(.+)\|/g, (match) => {
-            // Convert table rows
-            return match.replace(/\|/g, ' | ').replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '');
-        })
-        .trim();
-
-    // Apply word wrap if enabled
-    if (wordWrap) {
-        const lines = plainText.split('\n');
-        plainText = lines.map(line => {
-            if (line.length <= 80) return line;
-            const words = line.split(' ');
-            let result = '';
-            let currentLine = '';
-            words.forEach(word => {
-                if ((currentLine + ' ' + word).trim().length > 80) {
-                    result += currentLine.trim() + '\n';
-                    currentLine = word;
-                } else {
-                    currentLine += ' ' + word;
-                }
-            });
-            result += currentLine.trim();
-            return result;
-        }).join('\n');
-    }
-
-    // Add frontmatter if enabled
-    if (includeFrontmatter) {
-        const wordCount = plainText.split(/\s+/).filter(w => w.length > 0).length;
-        const frontmatter = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Document: ${title}
-Date: ${today}
-Words: ${wordCount}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-`;
-        plainText = frontmatter + plainText;
-    }
+    // Phase 3.2: canonical converter — identical output to preview + quick export.
+    const plainText = markdownToPlainText(content, {
+        wordWrap,
+        includeFrontmatter,
+        title,
+        dateStr: today
+    });
 
     const filename = getExportFilename('txt');
     try {
@@ -4804,7 +5235,8 @@ const getDefaultSettings = () => ({
         wordWrap: true,
         lineNumbers: true,
         minimap: false,
-        bracketMatching: true
+        bracketMatching: true,
+        keybindings: 'default'
     },
     preview: {
         livePreview: true,
@@ -4934,6 +5366,7 @@ const setupSettingsModal = () => {
         setCheckbox('line-numbers-checkbox', currentSettings.editor.lineNumbers);
         setCheckbox('minimap-checkbox', currentSettings.editor.minimap);
         setCheckbox('bracket-matching-checkbox', currentSettings.editor.bracketMatching);
+        setDropdown('editor-keybindings-dropdown', currentSettings.editor.keybindings);
 
         // Preview
         setCheckbox('live-preview-checkbox', currentSettings.preview.livePreview);
@@ -5103,6 +5536,17 @@ const setupEditorSettings = () => {
             showToast(e.target.checked ? 'Bracket matching enabled' : 'Bracket matching disabled', 'info', 1500);
         });
     }
+
+    // Keybindings
+    const keybindingsDropdown = document.getElementById('editor-keybindings-dropdown');
+    if (keybindingsDropdown) {
+        keybindingsDropdown.addEventListener('change', (e) => {
+            currentSettings.editor.keybindings = e.target.value || 'default';
+            saveSettings(currentSettings);
+            applyKeybindingsSetting();
+            showToast(`Keybindings: ${e.target.value}`, 'info', 1500);
+        });
+    }
 };
 
 const setupPreviewSettings = () => {
@@ -5219,6 +5663,55 @@ const applyAllSettings = () => {
     updatePreview();
 };
 
+// Feature 3: Vim keybindings
+let vimMode = null;
+
+const revertKeybindingsToDefault = (message) => {
+    currentSettings.editor.keybindings = 'default';
+    const dropdown = document.getElementById('editor-keybindings-dropdown');
+    if (dropdown) dropdown.value = 'default';
+    saveSettings(currentSettings);
+    if (message) showToast(message, 'warning');
+};
+
+const applyKeybindingsSetting = async () => {
+    const statusEl = document.getElementById('vim-status');
+    if (vimMode) {
+        try { vimMode.dispose(); } catch (_e) { /* ignore */ }
+        vimMode = null;
+    }
+    if (!statusEl) return;
+    statusEl.textContent = '';
+    statusEl.classList.add('hidden');
+
+    if (currentSettings.editor.keybindings === 'vim' && editor) {
+        let initVimMode;
+        try {
+            const mod = await import('monaco-vim');
+            initVimMode = mod.initVimMode || mod.default?.initVimMode || mod.default;
+        } catch (_e) {
+            console.warn('monaco-vim not available:', _e);
+            revertKeybindingsToDefault('Vim keybindings could not be loaded');
+            return;
+        }
+        if (typeof initVimMode !== 'function') {
+            revertKeybindingsToDefault('Vim keybindings could not be loaded');
+            return;
+        }
+        try {
+            vimMode = initVimMode(editor, statusEl);
+            statusEl.classList.remove('hidden');
+        } catch (_e) {
+            console.warn('Failed to init vim mode:', _e);
+            revertKeybindingsToDefault('Vim keybindings failed to start');
+        }
+    }
+};
+
+const setupVimKeybindings = () => {
+    applyKeybindingsSetting().catch((_e) => { /* ignore */ });
+};
+
 // ----- theme switching -----
 
 const initThemeSelector = (savedTheme) => {
@@ -5319,7 +5812,9 @@ const applyTheme = (theme) => {
         try {
             mermaid.initialize({
                 startOnLoad: false,
-                theme: isDark ? 'dark' : 'default'
+                theme: isDark ? 'dark' : 'default',
+                // Phase 3.5: preserve strict like the base init (core/markdown).
+                securityLevel: 'strict'
             });
         } catch (_e) { /* mermaid not ready yet */ }
     }
@@ -5399,11 +5894,26 @@ const setupExportPDFButton = () => {
 };
 
 const setupImportButton = () => {
+    initializeImportDialog({
+        onFilePick: () => document.querySelector('#file-input')?.click(),
+        onSharedLink: ({ markdown, title }) => {
+            openMarkdownInNewTab({ markdown, title }).then(() => {
+                showToast(`Shared document "${title || 'Untitled'}" opened in a new tab`, 'success');
+            });
+        },
+        onUrlText: ({ text, url }) => {
+            const title = deriveDocumentTitle(text) || 'Imported';
+            openMarkdownInNewTab({ markdown: text, title }).then(() => {
+                showToast(url ? 'Content imported in a new tab' : 'Content imported successfully!', 'success');
+            });
+        }
+    });
+
     const btn = document.querySelector("#import-button");
     if (btn) {
         btn.addEventListener('click', (event) => {
             event.preventDefault();
-            importFile();
+            openImportDialog(event.currentTarget);
         });
     }
 
@@ -5686,12 +6196,20 @@ const setViewMode = (mode) => {
         split: document.getElementById('view-split'),
         preview: document.getElementById('view-preview')
     };
+    const toolbarPreviewButton = document.getElementById('toolbar-preview-toggle');
 
     // Reset active state
     Object.values(btns).forEach(btn => {
         if (btn) btn.classList.remove('active')
     });
     if (btns[mode]) btns[mode].classList.add('active');
+    if (toolbarPreviewButton) {
+        const previewOnly = mode === 'preview';
+        toolbarPreviewButton.classList.toggle('active', previewOnly);
+        toolbarPreviewButton.setAttribute('aria-pressed', String(previewOnly));
+        toolbarPreviewButton.setAttribute('aria-label', previewOnly ? 'Return to Split View' : 'Show Preview');
+        toolbarPreviewButton.title = previewOnly ? 'Return to Split View' : 'Show Preview';
+    }
 
     // Update body class for CSS styling
     document.body.classList.remove('view-editor', 'view-split', 'view-preview');
@@ -5754,92 +6272,12 @@ const setupViewButtons = () => {
     }
 };
 
-// ----- Focus Mode -----
-
-let isFocusMode = false;
-
-const toggleFocusMode = () => {
-    const focusBtn = document.querySelector("#focus-button");
-    isFocusMode = !isFocusMode;
-
-    if (isFocusMode) {
-        document.body.classList.add('focus-mode');
-        if (focusBtn) focusBtn.title = 'Exit Focus Mode';
-        showToast('Focus Mode Enabled (Press ESC to exit)', 'success');
-    } else {
-        document.body.classList.remove('focus-mode');
-        if (focusBtn) focusBtn.title = 'Focus Mode';
-        showToast('Focus Mode Disabled', 'info', 1500);
-    }
-};
-
 const setupFocusMode = () => {
-    const focusBtn = document.querySelector("#focus-button");
-    if (focusBtn) {
-        focusBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            toggleFocusMode();
-        });
-    }
-};
-
-// ----- Typewriter Mode -----
-
-let isTypewriterMode = false;
-let typewriterCursorListener = null;
-
-const enterTypewriterMode = () => {
-    const typewriterBtn = document.querySelector("#typewriter-button");
-    if (typewriterBtn) typewriterBtn.classList.add('active');
-
-    // Center current line immediately
-    const position = editor?.getPosition();
-    if (position) {
-        editor?.revealLineInCenter(position.lineNumber);
-    }
-
-    // Track cursor and re-center on every move (module parity, better UX
-    // than centering once at enable time)
-    if (editor && !typewriterCursorListener) {
-        typewriterCursorListener = editor.onDidChangeCursorPosition((e) => {
-            if (isTypewriterMode) {
-                editor?.revealLineInCenter(e.position.lineNumber);
-            }
-        });
-    }
-
-    showToast('Typewriter Mode Enabled', 'success', 1500);
-};
-
-const exitTypewriterMode = () => {
-    const typewriterBtn = document.querySelector("#typewriter-button");
-    if (typewriterBtn) typewriterBtn.classList.remove('active');
-
-    if (typewriterCursorListener) {
-        typewriterCursorListener.dispose();
-        typewriterCursorListener = null;
-    }
-
-    showToast('Typewriter Mode Disabled', 'info', 1500);
-};
-
-const toggleTypewriterMode = () => {
-    isTypewriterMode = !isTypewriterMode;
-    if (isTypewriterMode) {
-        enterTypewriterMode();
-    } else {
-        exitTypewriterMode();
-    }
+    focusManager.initialize('#focus-button');
 };
 
 const setupTypewriterButton = () => {
-    const typewriterBtn = document.querySelector("#typewriter-button");
-    if (typewriterBtn) {
-        typewriterBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            toggleTypewriterMode();
-        });
-    }
+    typewriterManager.initialize('#typewriter-button');
 };
 
 // ----- fullscreen -----
@@ -5862,6 +6300,9 @@ const toggleFullscreen = () => {
             fullscreenBtn.title = 'Exit Fullscreen';
         }
         isFullscreen = true;
+        // Phase 3.5: remeasure Monaco for the new viewport (automaticLayout
+        // covers resizes, but the class-driven layout shift needs a nudge).
+        editor?.layout();
     } else {
         if (document.exitFullscreen) {
             document.exitFullscreen();
@@ -5875,6 +6316,8 @@ const toggleFullscreen = () => {
             fullscreenBtn.title = 'Fullscreen';
         }
         isFullscreen = false;
+        // Phase 3.5: remeasure Monaco after exiting fullscreen.
+        editor?.layout();
     }
 };
 
@@ -5893,6 +6336,7 @@ const setupFullscreenButton = () => {
             document.body.classList.remove('fullscreen-mode');
             if (fullscreenBtn) fullscreenBtn.title = 'Fullscreen';
             isFullscreen = false;
+            editor?.layout(); // Phase 3.5: remeasure after ESC exit.
         }
     });
 
@@ -5901,6 +6345,7 @@ const setupFullscreenButton = () => {
             document.body.classList.remove('fullscreen-mode');
             if (fullscreenBtn) fullscreenBtn.title = 'Fullscreen';
             isFullscreen = false;
+            editor?.layout(); // Phase 3.5: remeasure after ESC exit.
         }
     });
 };
@@ -5914,11 +6359,6 @@ const setupKeyboardShortcuts = () => {
         if (ctrlKey && event.key === 's') {
             event.preventDefault();
             downloadMarkdown();
-        }
-        // Ctrl/Cmd + Shift + P: Print document
-        else if (ctrlKey && event.shiftKey && event.key === 'p') {
-            event.preventDefault();
-            printDocument();
         }
         // Ctrl/Cmd + P: Export PDF
         else if (ctrlKey && event.key === 'p') {
@@ -5975,15 +6415,15 @@ const setupKeyboardShortcuts = () => {
         // Ctrl/Cmd + Shift + F: Focus Mode
         else if (ctrlKey && event.shiftKey && event.key === 'F') {
             event.preventDefault();
-            toggleFocusMode();
+            focusManager.toggle();
         }
         // ESC: Exit Focus/Fullscreen
         else if (event.key === 'Escape') {
             if (closeTableSizePopover()) {
                 return;
             }
-            if (isFocusMode) {
-                toggleFocusMode();
+            if (focusManager.getState()) {
+                focusManager.disable();
             }
         }
     });
@@ -6008,7 +6448,12 @@ const closeTableSizePopover = () => {
         document.removeEventListener('keydown', tableSizePopoverState.onDocumentKeyDown, true);
     }
 
+    const trigger = tableSizePopoverState.trigger;
     tableSizePopoverState.panel.remove();
+    trigger?.setAttribute('aria-expanded', 'false');
+    if (trigger && document.contains(trigger)) {
+        trigger.focus({ preventScroll: true });
+    }
     tableSizePopoverState = {
         panel: null,
         trigger: null,
@@ -6024,7 +6469,10 @@ const openTableSizePopover = (triggerEl) => {
     closeTableSizePopover();
 
     const panel = document.createElement('div');
+    panel.id = 'table-size-popover';
     panel.className = 'table-size-popover';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Insert table');
     panel.innerHTML = `
         <div class="table-size-popover-title">Insert table</div>
         <div class="table-size-presets" role="group" aria-label="Quick table sizes">
@@ -6032,6 +6480,8 @@ const openTableSizePopover = (triggerEl) => {
             <button class="table-size-preset-btn" type="button" data-rows="3" data-cols="3">3x3</button>
             <button class="table-size-preset-btn" type="button" data-rows="4" data-cols="4">4x4</button>
         </div>
+        <div class="table-size-selection" aria-live="polite">3 × 3 table</div>
+        <div class="table-size-grid" role="grid" aria-label="Choose table size"></div>
         <div class="table-size-custom">
             <label class="table-size-field">
                 <span>Rows</span>
@@ -6042,6 +6492,10 @@ const openTableSizePopover = (triggerEl) => {
                 <input type="number" min="1" max="${TABLE_POPUP_MAX_SIZE}" value="3" id="table-size-cols" />
             </label>
         </div>
+        <label class="table-size-header-toggle">
+            <input type="checkbox" id="table-size-header" checked />
+            <span>Use header labels</span>
+        </label>
         <div class="table-size-actions">
             <button class="table-size-insert-btn" type="button">Insert</button>
         </div>
@@ -6049,11 +6503,14 @@ const openTableSizePopover = (triggerEl) => {
     `;
 
     document.body.appendChild(panel);
+    triggerEl.setAttribute('aria-haspopup', 'dialog');
+    triggerEl.setAttribute('aria-controls', panel.id);
+    triggerEl.setAttribute('aria-expanded', 'true');
 
     const rect = triggerEl.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
     let left = rect.left;
-    const top = rect.bottom + 8;
+    let top = rect.bottom + 8;
 
     if (left + panelRect.width > window.innerWidth - 8) {
         left = window.innerWidth - panelRect.width - 8;
@@ -6061,12 +6518,18 @@ const openTableSizePopover = (triggerEl) => {
     if (left < 8) {
         left = 8;
     }
+    if (top + panelRect.height > window.innerHeight - 8) {
+        top = Math.max(8, rect.top - panelRect.height - 8);
+    }
 
     panel.style.left = `${left}px`;
     panel.style.top = `${top}px`;
 
     const rowsInput = panel.querySelector('#table-size-rows');
     const colsInput = panel.querySelector('#table-size-cols');
+    const headerInput = panel.querySelector('#table-size-header');
+    const grid = panel.querySelector('.table-size-grid');
+    const selectionLabel = panel.querySelector('.table-size-selection');
     const insertBtn = panel.querySelector('.table-size-insert-btn');
     const errorEl = panel.querySelector('.table-size-error');
 
@@ -6077,13 +6540,43 @@ const openTableSizePopover = (triggerEl) => {
     };
 
     const insertWithSize = (rows, cols) => {
-        insertTable(rows, cols);
+        insertTable(rows, cols, { includeHeader: headerInput?.checked !== false });
         closeTableSizePopover();
     };
 
     const showError = (message) => {
         errorEl.textContent = message;
     };
+
+    const updateSelection = (rows, cols) => {
+        rowsInput.value = String(rows);
+        colsInput.value = String(cols);
+        selectionLabel.textContent = `${cols} × ${rows} table`;
+        grid.querySelectorAll('.table-size-cell').forEach((cell) => {
+            const cellRows = Number(cell.dataset.rows);
+            const cellCols = Number(cell.dataset.cols);
+            cell.classList.toggle('active', cellRows <= rows && cellCols <= cols);
+            cell.setAttribute('aria-selected', String(cellRows === rows && cellCols === cols));
+        });
+    };
+
+    for (let rows = 1; rows <= 10; rows += 1) {
+        for (let cols = 1; cols <= 10; cols += 1) {
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = 'table-size-cell';
+            cell.dataset.rows = String(rows);
+            cell.dataset.cols = String(cols);
+            cell.setAttribute('role', 'gridcell');
+            cell.setAttribute('aria-label', `${cols} columns by ${rows} rows`);
+            cell.setAttribute('aria-selected', 'false');
+            cell.addEventListener('mouseenter', () => updateSelection(rows, cols));
+            cell.addEventListener('focus', () => updateSelection(rows, cols));
+            cell.addEventListener('click', () => insertWithSize(rows, cols));
+            grid.appendChild(cell);
+        }
+    }
+    updateSelection(3, 3);
 
     panel.querySelectorAll('.table-size-preset-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -6104,10 +6597,18 @@ const openTableSizePopover = (triggerEl) => {
 
         rowsInput.value = String(rows);
         colsInput.value = String(cols);
+        updateSelection(rows, cols);
         showError('');
         insertWithSize(rows, cols);
     };
 
+    const updateFromInput = () => {
+        const rows = parseSafeDimension(rowsInput.value);
+        const cols = parseSafeDimension(colsInput.value);
+        if (rows && cols) updateSelection(rows, cols);
+    };
+    rowsInput.addEventListener('input', updateFromInput);
+    colsInput.addEventListener('input', updateFromInput);
     rowsInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -6330,6 +6831,15 @@ const setupToolbar = () => {
     document.getElementById('toolbar-special-chars').addEventListener('click', (e) => {
         toolbarManager._openSpecialChars(e.currentTarget);
     });
+    document.getElementById('toolbar-copy-markdown')?.addEventListener('click', () => {
+        copyMarkdownToClipboard();
+    });
+    document.getElementById('toolbar-clear-formatting')?.addEventListener('click', () => {
+        transformSelection(clearMarkdownFormatting);
+    });
+    document.getElementById('toolbar-preview-toggle')?.addEventListener('click', () => {
+        setViewMode(getCurrentViewMode() === 'preview' ? 'split' : 'preview');
+    });
     document.getElementById('toolbar-h1').addEventListener('click', () => insertMarkdown('h1'));
     document.getElementById('toolbar-h2').addEventListener('click', () => insertMarkdown('h2'));
     document.getElementById('toolbar-h3').addEventListener('click', () => insertMarkdown('h3'));
@@ -6345,7 +6855,9 @@ const setupToolbar = () => {
     document.getElementById('toolbar-table').addEventListener('click', (event) => {
         openTableSizePopover(event.currentTarget);
     });
-    document.getElementById('toolbar-emoji').addEventListener('click', () => insertMarkdown('emoji'));
+    document.getElementById('toolbar-emoji').addEventListener('click', (event) => {
+        toolbarManager._openEmojiPicker(event.currentTarget);
+    });
 };
 
 // ----- local state -----
@@ -6583,27 +7095,42 @@ const applySavedImageState = (img, state) => {
 };
 
 const processPreviewImages = (container) => {
-    const images = container.querySelectorAll('img');
+    const images = [...container.querySelectorAll('img')];
 
     // Get markdown source to parse saved image state
     const editorContent = editor ? editor?.getValue() : '';
     const imageAttrsMap = parseImageAttributes(editorContent);
-    const markdownImageSrcs = Array.from(editorContent.matchAll(/!\[([^\]]*)\]\(([^)\s]+)\)/g)).map((m) => m[2]);
+    const markdownImageSrcs = imageAttrsMap.map((entry) => entry.markdownSrc || entry.src || '');
 
-    images.forEach((img, index) => {
-        const markdownAttrs = imageAttrsMap[index] || null;
+    const mapped = mapDomImagesToMarkdownIndices(
+        markdownImageSrcs,
+        images.map((img) => ({
+            src: img.getAttribute('src') || '',
+            originalSrc: img.dataset.originalSrc || img.getAttribute('data-original-src') || '',
+            isHtmlOnly: isNonMarkdownPreviewImage(img),
+        }))
+    );
+
+    images.forEach((img, domIndex) => {
+        const currentSrc = img.getAttribute('src') || '';
+        const mdIndex = mapped[domIndex];
+        const markdownAttrs = Number.isInteger(mdIndex) ? imageAttrsMap[mdIndex] : null;
         const domState = decodeImageState(img.getAttribute('data-ir'));
         const imageState = domState || markdownAttrs;
-        const markdownSrc = markdownAttrs?.markdownSrc || markdownAttrs?.src || markdownImageSrcs[index] || '';
+        const markdownSrc = markdownAttrs?.markdownSrc || markdownAttrs?.src || '';
+
+        if (Number.isInteger(mdIndex)) {
+            img.dataset.irIndex = String(mdIndex);
+        } else {
+            delete img.dataset.irIndex;
+        }
 
         // Always prefer stable Markdown refs (especially markups-img:) over the
         // resolved preview src. Document Mode serialization depends on this.
         if (markdownSrc) {
             img.dataset.originalSrc = markdownSrc;
             img.setAttribute('data-original-src', markdownSrc);
-            img.dataset.irIndex = String(index);
         } else if (!img.dataset.originalSrc) {
-            const currentSrc = img.getAttribute('src') || '';
             if (!currentSrc.startsWith('data:') && !currentSrc.startsWith('blob:')) {
                 img.dataset.originalSrc = currentSrc;
                 img.setAttribute('data-original-src', currentSrc);
@@ -6649,35 +7176,12 @@ const processPreviewImages = (container) => {
 };
 
 // ----- Find & Replace Button -----
+// Monaco's find contribution is registered only at editor.create(). Lazy-loading
+// it later never attaches to the existing editor, so the native widget is a no-op.
+// Use the in-app overlay instead: Replace = current match, All = every match.
 
-let monacoFindControllerPromise = null;
-
-const ensureMonacoFindController = () => {
-    if (!monacoFindControllerPromise) {
-        monacoFindControllerPromise = import('monaco-editor/esm/vs/editor/contrib/find/browser/findController.js');
-    }
-    return monacoFindControllerPromise;
-};
-
-const openFindReplace = async () => {
-    if (!editor) return;
-
-    try {
-        // Monaco's find/replace contribution is useful but heavy. Load it only when
-        // the user explicitly asks for find/replace instead of putting it in the
-        // initial editor bundle.
-        await ensureMonacoFindController();
-        editor?.trigger('keyboard', 'editor.action.startFindReplaceAction', null);
-    } catch (error) {
-        console.warn('Find/replace controller failed to load; falling back to search overlay.', error);
-        const searchOverlay = document.getElementById('search-overlay');
-        const searchInput = document.getElementById('search-input');
-        if (searchOverlay && searchInput) {
-            searchOverlay.classList.remove('hidden');
-            searchInput.focus();
-            searchInput.select();
-        }
-    }
+const openFindReplace = () => {
+    openSearchOverlay({ replace: true });
 };
 
 const setupFindReplaceButton = () => {
@@ -6864,7 +7368,7 @@ const setupDragDropTabs = () => {
                 tab.classList.remove('drag-over');
             });
 
-            tab.addEventListener('drop', (e) => {
+            tab.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 tab.classList.remove('drag-over');
                 const targetDocId = tab.dataset.docId;
@@ -6878,7 +7382,11 @@ const setupDragDropTabs = () => {
                         const [moved] = documents.splice(fromIndex, 1);
                         documents.splice(toIndex, 0, moved);
                         saveDocsToStorage();
-                        fileTreeStorage.reorderNode(moved.id, toIndex);
+                        // Phase 2.4 fix: surface a rolled-back tree reorder.
+                        const persisted = await fileTreeStorage.reorderNode(moved.id, toIndex);
+                        if (!persisted) {
+                            showToast('Could not persist the new order. Please try again.', 'error');
+                        }
                         renderTabs();
                         showToast('Tab reordered', 'info', 1000);
                     }
@@ -6978,7 +7486,12 @@ const setupDivider = () => {
     const getAvailableWidth = () => {
         const containerRect = container.getBoundingClientRect();
         const dividerWidth = divider.offsetWidth || 8;
-        return Math.max(0, containerRect.width - dividerWidth);
+        const aiPanel = document.getElementById('ai-writer-panel');
+        const aiWidth = aiPanel && getComputedStyle(aiPanel).position !== 'fixed'
+            && getComputedStyle(aiPanel).display !== 'none'
+            ? aiPanel.offsetWidth
+            : 0;
+        return Math.max(0, containerRect.width - dividerWidth - aiWidth);
     };
 
     // Helper: get left sidebar offset, used only for coordinate translation.
@@ -7220,6 +7733,7 @@ const initializeApp = async () => {
 
     // Initialize UI components
     setupToolbar();
+    initToolbarDensity();
     if (document.getElementById('enhanced-toolbar')) {
         toolbarManager.initialize('#enhanced-toolbar', { render: false });
     }
@@ -7265,10 +7779,26 @@ const initializeApp = async () => {
             }
         }
     });
+    // Phase 2.4: synchronous last-resort flush. IDB is async and cannot finish
+    // during unload, but the localStorage mirror is synchronous — persist the
+    // latest editor content so the final keystrokes survive a fast close.
+    window.addEventListener('pagehide', () => {
+        try {
+            const docIndex = documents.findIndex((d) => d.id === activeDocId);
+            if (docIndex !== -1) {
+                documents[docIndex].content = editor?.getValue() ?? documents[docIndex].content;
+                documents[docIndex].lastModified = Date.now();
+            }
+            saveDocsToStorage();
+        } catch {
+            // Unload path: never throw.
+        }
+    });
     setupSearch();
     setupLinter();
     setupGoals();
     setupKeyboardShortcuts();
+    setupVimKeybindings();
     setupGlobalEscapeKey();
 
     const themeSettings = loadThemeSettings() || 'vs';
@@ -7283,6 +7813,20 @@ const initializeApp = async () => {
     setupSettingsModal();
     setupMobileUI();
     setupExportModal();
+    shareManager.initialize({
+        getMarkdown: () => editor?.getValue() ?? '',
+        getTitle: () => {
+            const fromPage = document.getElementById('page-filename')?.textContent?.trim();
+            if (fromPage && fromPage !== 'Untitled.md') return fromPage.replace(/\.md$/i, '');
+            try {
+                return deriveDocumentTitle(editor?.getValue() ?? '') || 'document';
+            } catch {
+                return 'document';
+            }
+        },
+        onIncomingDoc: ({ markdown, title }) => openMarkdownInNewTab({ markdown, title })
+    });
+    handleIncomingShare();
 
     // New features
     setupFindReplaceButton();
@@ -7308,15 +7852,25 @@ const initializeApp = async () => {
     // Initialize stats with current content
     updateStats(editor?.getValue());
 
+    // Breadcrumb: current heading path in status bar
+    setupBreadcrumb(editor);
+
     // AI Writer — lazy-loaded module, same pattern as image-resize
     setupAiWriterButton();
+
+    // Browser-style file tabs in the header
+    setupHeaderQuickTabs();
 
     // Custom context menu
     appContextMenuManager.initialize();
 
     // Initialize image resize feature (lazy — keep off critical boot path)
     import('./features/image-resize/index.js')
-        .then(({ initImageResize }) => initImageResize({ editor }))
+        .then(({ initImageResize }) => initImageResize({
+            editor,
+            // Skip full preview convert so customize/resize does not blink-reload #output
+            onMarkdownChange: applyMarkdownFromPreviewEdit
+        }))
         .catch((err) => console.warn('Image resize module load error:', err));
 
     // Auto-focus the editor so users can start typing immediately on load.
@@ -7327,6 +7881,39 @@ const initializeApp = async () => {
         setTimeout(() => {
             try { editor.focus(); } catch (_e) { /* ignore */ }
         }, 0);
+    }
+
+    // Slash commands menu — lazy-loaded after editor init (Sprint 3.3)
+    setupSlashCommands();
+
+    // Backlinks + wikilinks panel — lazy-loaded after tabs/editor are ready
+    setupBacklinksPanel();
+};
+
+const setupSlashCommands = () => {
+    import('./features/slash-commands/index.js')
+        .then(({ slashCommandsManager }) => slashCommandsManager.initialize(editor))
+        .catch((err) => console.warn('Slash commands module load error:', err));
+};
+
+const setupBacklinksPanel = async () => {
+    try {
+        const [managerModule, panelModule] = await Promise.all([
+            import('./features/backlinks/index.js'),
+            import('./features/backlinks/panel.js')
+        ]);
+        backlinksManager = new managerModule.BacklinksManager({
+            noteStorage,
+            documents,
+            activeDocId,
+            onSwitchTab: switchTab,
+            editor
+        });
+        backlinksPanel = new panelModule.BacklinksPanel(backlinksManager);
+        backlinksManager.initialize();
+        backlinksPanel.initialize();
+    } catch (err) {
+        console.warn('Backlinks module load error:', err);
     }
 };
 
@@ -7370,6 +7957,8 @@ window.addEventListener("load", () => {
         try {
             appContextMenuManager.dispose();
             stopVersionHistoryPolling();
+            backlinksPanel?.dispose();
+            backlinksManager?.dispose();
         } catch {
             // ignore cleanup errors
         }

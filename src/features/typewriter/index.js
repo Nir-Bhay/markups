@@ -22,6 +22,7 @@ class TypewriterManager {
         this.isEnabled = false;
         this.button = null;
         this.cursorListener = null;
+        this.initialized = false;
 
         TypewriterManager.instance = this;
     }
@@ -31,6 +32,7 @@ class TypewriterManager {
      * @param {HTMLElement|string} button - Typewriter toggle button
      */
     initialize(button) {
+        if (this.initialized) return;
         this.button = typeof button === 'string'
         ? document.querySelector(button)
         : button;
@@ -45,6 +47,11 @@ class TypewriterManager {
         // Subscribe to events
         this.subscriptions = this.subscriptions || new Subscriptions();
         this.subscriptions.on(EVENTS.TYPEWRITER_MODE_TOGGLE, () => this.toggle());
+        if (this.button) {
+            this.button.setAttribute('aria-pressed', 'false');
+            this.button.dataset.tooltipDescription = 'Keeps the active line centered while you write.';
+        }
+        this.initialized = true;
     }
 
     /**
@@ -82,6 +89,9 @@ class TypewriterManager {
 
         if (this.button) {
         this.button.classList.add('active');
+        this.button.setAttribute('aria-pressed', 'true');
+        this.button.setAttribute('aria-label', 'Exit Typewriter Mode');
+        this.button.title = 'Exit Typewriter Mode';
         }
 
         eventBus.emit(EVENTS.TYPEWRITER_MODE_CHANGED, { enabled: true });
@@ -105,6 +115,9 @@ class TypewriterManager {
 
         if (this.button) {
         this.button.classList.remove('active');
+        this.button.setAttribute('aria-pressed', 'false');
+        this.button.setAttribute('aria-label', 'Typewriter Mode');
+        this.button.title = 'Typewriter Mode';
         }
 
         eventBus.emit(EVENTS.TYPEWRITER_MODE_CHANGED, { enabled: false });
@@ -132,6 +145,7 @@ class TypewriterManager {
         }
         if (this.subscriptions) this.subscriptions.dispose();
         this.isEnabled = false;
+        this.initialized = false;
         TypewriterManager.instance = null;
     }
 }

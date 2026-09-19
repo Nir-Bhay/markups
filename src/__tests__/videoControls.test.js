@@ -47,6 +47,16 @@ describe('video preview controls', () => {
         )).toBe('[demo](https://example.com/demo.mp4)');
     });
 
+    it('updates only the selected duplicate video URL occurrence', () => {
+        const line = 'https://example.com/a.mp4 https://example.com/a.mp4 https://example.com/b.mp4';
+        expect(updateVideoAttributesInMarkdown(
+            line,
+            'https://example.com/a.mp4',
+            { width: '25%' },
+            { occurrenceIndex: 1 }
+        )).toBe('https://example.com/a.mp4 https://example.com/a.mp4 {video width=25%} https://example.com/b.mp4');
+    });
+
     it('applies width and alignment presentation to preview videos', () => {
         const el = document.createElement('div');
         el.className = 'preview-video';

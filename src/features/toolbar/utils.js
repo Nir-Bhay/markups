@@ -68,34 +68,43 @@ export function generateLorem(type = 'paragraph') {
    ═══════════════════════════════════════════════════════════════════ */
 
 /**
- * Wrap selection with prefix and suffix
+ * Wrap selection with prefix and suffix (toggle-aware).
+ * Phase 3.1: toggle-off requires the affixes to sit EXACTLY adjacent to the
+ * selection on their own lines. The old code matched start/end on the joined
+ * multi-line blob with a clamped start column, so a selection crossing markup
+ * boundaries (e.g. `**a**` / `**b**`) ate live markers and produced broken
+ * markdown. Non-adjacent matches now wrap instead of unwrapping (non-destructive).
  */
 export function wrapSelection(prefix, suffix) {
     const editor = resolveEditor();
     if (!editor) return;
 
     const selection = editor.getSelection();
-    const selectedText = editor.getModel().getValueInRange(selection);
+    const model = typeof editor.getModel === 'function' ? editor.getModel() : null;
+    if (!selection || !model) return;
+    const selectedText = model.getValueInRange(selection);
 
-    const fullRange = {
-        startLineNumber: selection.startLineNumber,
-        startColumn: Math.max(1, selection.startColumn - prefix.length),
-        endLineNumber: selection.endLineNumber,
-        endColumn: selection.endColumn + suffix.length
-    };
+    const startLine = model.getLineContent(selection.startLineNumber);
+    const endLine = model.getLineContent(selection.endLineNumber);
+    const hasPrefix = selection.startColumn - 1 >= prefix.length &&
+        startLine.slice(selection.startColumn - 1 - prefix.length, selection.startColumn - 1) === prefix;
+    const hasSuffix = endLine.slice(selection.endColumn - 1, selection.endColumn - 1 + suffix.length) === suffix;
 
-    const extendedText = editor.getModel().getValueInRange(fullRange);
-    const isWrapped = extendedText.startsWith(prefix) && extendedText.endsWith(suffix);
-
-    if (isWrapped && selectedText) {
+    if (hasPrefix && hasSuffix && selectedText) {
         editor.executeEdits('toolbar', [{
-            range: fullRange,
+            range: {
+                startLineNumber: selection.startLineNumber,
+                startColumn: selection.startColumn - prefix.length,
+                endLineNumber: selection.endLineNumber,
+                endColumn: selection.endColumn + suffix.length
+            },
             text: selectedText
         }]);
     } else {
+        const placeholder = 'text';
         editor.executeEdits('toolbar', [{
             range: selection,
-            text: `${prefix}${selectedText || 'text'}${suffix}`
+            text: `${prefix}${selectedText || placeholder}${suffix}`
         }]);
 
         if (!selectedText) {
@@ -107,7 +116,7 @@ export function wrapSelection(prefix, suffix) {
                 startLineNumber: newPos.lineNumber,
                 startColumn: newPos.column,
                 endLineNumber: newPos.lineNumber,
-                endColumn: newPos.column + 4
+                endColumn: newPos.column + placeholder.length
             });
         }
     }
@@ -235,6 +244,26 @@ export function transformSelection(transformFn) {
 }
 
 /**
+ * Remove common Markdown presentation markers while preserving the selected
+ * content. This is intentionally conservative: it does not rewrite HTML or
+ * attempt to interpret arbitrary Markdown extensions.
+ */
+export function clearMarkdownFormatting(text) {
+    return String(text || '')
+        .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/^\s*[-*+]\s*\[[ xX]\]\s+/gm, '')
+        .replace(/^\s*[-*+]\s+/gm, '')
+        .replace(/^\s*\d+[.)]\s+/gm, '')
+        .replace(/^ {0,3}>\s?/gm, '')
+        .replace(/^ {0,3}#{1,6}\s+/gm, '')
+        .replace(/^ {0,3}```[^\n]*\n?/gm, '')
+        .replace(/^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/gm, '')
+        .replace(/(`{1,3}|\*\*|__|~~|[*_])/g, '')
+        .trim();
+}
+
+/**
  * Insert link with smart detection
  */
 export function insertLink() {
@@ -260,8 +289,9 @@ export function insertImage() {
 /**
  * Insert table with specified dimensions
  */
-export function insertTable(rows = 3, cols = 3) {
-    const header = '| ' + Array.from({ length: cols }, (_, i) => `Header ${i + 1}`).join(' | ') + ' |';
+export function insertTable(rows = 3, cols = 3, options = {}) {
+    const includeHeader = options?.includeHeader !== false;
+    const header = '| ' + Array.from({ length: cols }, (_, i) => includeHeader ? `Header ${i + 1}` : `Cell ${i + 1}`).join(' | ') + ' |';
     const separator = '|' + Array.from({ length: cols }, () => '----------|').join('');
     const bodyRows = Array.from({ length: rows - 1 }, (_, r) =>
         '| ' + Array.from({ length: cols }, (_, c) => `Cell ${r * cols + c + 1}   `).join(' | ') + ' |'

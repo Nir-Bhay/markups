@@ -219,8 +219,8 @@ class Toast {
         toast.innerHTML = `
             <span class="toast-icon">${this._getIcon(type)}</span>
             <div class="toast-content">
-                ${title ? `<div class="toast-title">${title}</div>` : ''}
-                <div class="toast-message">${message}</div>
+                ${title ? '<div class="toast-title"></div>' : ''}
+                <div class="toast-message"></div>
             </div>
             ${closeable ? `
                 <button class="toast-close" aria-label="Close">
@@ -231,6 +231,11 @@ class Toast {
                 </button>
             ` : ''}
         `;
+
+        if (title) {
+            toast.querySelector('.toast-title').textContent = String(title);
+        }
+        toast.querySelector('.toast-message').textContent = String(message);
 
         // Close button handler
         if (closeable) {

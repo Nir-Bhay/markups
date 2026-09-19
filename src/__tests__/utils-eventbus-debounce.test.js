@@ -56,6 +56,15 @@ describe('utils/eventBus', () => {
         eventBus.emit(EVENTS.CONTENT_CHANGED);
         expect(fn).not.toHaveBeenCalled();
     });
+
+    it('defines compatibility names used by feature modules', () => {
+        expect(EVENTS.ERROR).toBe(EVENTS.APP_ERROR);
+        expect(EVENTS.EXPORT_COMPLETED).toBe(EVENTS.EXPORT_COMPLETE);
+        expect(EVENTS.LINT_COMPLETED).toBe(EVENTS.LINT_COMPLETE);
+        expect(EVENTS.SEARCH_COMPLETED).toBeDefined();
+        expect(EVENTS.GOAL_SET).toBeDefined();
+        expect(EVENTS.VIEW_MODE_CHANGED).toBeDefined();
+    });
 });
 
 describe('utils/debounce', () => {

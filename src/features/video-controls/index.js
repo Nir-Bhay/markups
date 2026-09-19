@@ -7,6 +7,10 @@
 import { debounce } from '../../utils/debounce.js';
 import { positionMediaPopover } from '../../utils/media-popover-position.js';
 import { normalizeVideoUrl, extractCaptionsUrl } from '../../utils/video-embed.js';
+import {
+    getVideoOccurrenceIndex,
+    updateVideoAttributesInMarkdownOccurrence,
+} from './markdown-sync.js';
 
 const _VIDEO_ATTR_RE = /\{\s*(?:video\s+)?([^}]*)\}/i;
 const WIDTH_RE = /(?:^|\s)width\s*=\s*([\w.%/-]+)/i;
@@ -171,34 +175,14 @@ function formatVideoAttributeBlock(attrs = {}) {
     return parts.length > 0 ? `{video ${parts.join(' ')}}` : '';
 }
 
-export function updateVideoAttributesInMarkdown(markdown, url, attrs = {}) {
-    const normalizedTarget = normalizeVideoUrl(url);
-    if (!normalizedTarget) return markdown;
-
-    const block = formatVideoAttributeBlock(attrs);
-    const replacementSuffix = block ? ` ${block}` : '';
-    const source = String(markdown || '');
-    let replaced = false;
-
-    const replaceIfMatch = (full, foundUrl, existingAttrs = '') => {
-        if (replaced || normalizeVideoUrl(foundUrl) !== normalizedTarget) return full;
-        replaced = true;
-        return full.replace(existingAttrs || '', '').trimEnd() + replacementSuffix;
-    };
-
-    const linked = source.replace(/(!?\[[^\]]*\]\(([^)\s]+)\))(\s*\{[^}\n]*\})?/g, (full, linkPart, foundUrl, _existingAttrs = '') => {
-        if (replaced || normalizeVideoUrl(foundUrl) !== normalizedTarget) return full;
-        replaced = true;
-        return `${linkPart}${replacementSuffix}`;
-    });
-    if (replaced) return linked;
-
-    const bare = source.replace(/(https?:\/\/[^\s<>()]+)(\s*\{[^}\n]*\})?/g, (full, foundUrl, existingAttrs = '') =>
-        replaceIfMatch(full, foundUrl, existingAttrs)
+export function updateVideoAttributesInMarkdown(markdown, url, attrs = {}, options = {}) {
+    return updateVideoAttributesInMarkdownOccurrence(
+        markdown,
+        url,
+        attrs,
+        options,
+        formatVideoAttributeBlock
     );
-    if (replaced) return bare;
-
-    return source;
 }
 
 export function applyVideoPresentation(el, attrs = {}) {
@@ -376,7 +360,12 @@ export class VideoControlsController {
         const attrsByUrl = parseVideoAttributesFromMarkdown(this.getMarkdown?.() || '');
         this.output.querySelectorAll('.preview-video[data-video-url]').forEach((video) => {
             const url = normalizeVideoUrl(video.dataset.videoUrl);
-            applyVideoPresentation(video, attrsByUrl.get(url) || DEFAULT_ATTRS);
+            const attrs = attrsByUrl.get(url);
+            if (attrs) {
+                applyVideoPresentation(video, attrs);
+            } else if (!video.dataset.videoWidth || video.dataset.videoWidth === DEFAULT_ATTRS.width) {
+                applyVideoPresentation(video, { align: DEFAULT_ATTRS.align, mode: 'smart' });
+            }
             this._ensureHitbox(video);
         });
 
@@ -712,7 +701,8 @@ export class VideoControlsController {
         const url = this.activeVideo?.dataset?.videoUrl;
         if (typeof markdown !== 'string' || !url || !this.onMarkdownChange) return;
 
-        const next = updateVideoAttributesInMarkdown(markdown, url, attrs);
+        const occurrenceIndex = getVideoOccurrenceIndex(this.output, this.activeVideo);
+        const next = updateVideoAttributesInMarkdown(markdown, url, attrs, { occurrenceIndex });
         if (next !== markdown) {
             this.onMarkdownChange(next);
             this.showToast?.('Video layout updated', 'success', 1200);

@@ -151,4 +151,90 @@ describe('Data Migration', () => {
             expect(localStorage.getItem(`${NAMESPACE}.theme_settings`)).toBe('dark');
         });
     });
+
+    // Phase 2.4: key-format proof — migrator reads literal `NAMESPACE.*` keys;
+    // live mirror writes go through the MD5-hashing Storehouse shim and are
+    // invisible to it. Locked as accepted behavior (shim path is self-consistent).
+    describe('runMigration key-format proof', () => {
+        it('migrates literal NAMESPACE.docs entries end-to-end', async () => {
+            const { runMigration } = await import('../core/storage/migration.js');
+            const { noteStorage } = await import('../core/storage/noteStorage.js');
+            localStorage.removeItem('markups_migrated');
+            localStorage.setItem(`${NAMESPACE}.docs`, JSON.stringify({
+                value: [{ id: 'phase24-a', name: 'Phase24', content: '# Hi', createdAt: 1, updatedAt: 1 }]
+            }));
+
+            const result = await runMigration();
+
+            expect(result.success).toBe(true);
+            expect(result.notesCount).toBe(1);
+            const found = await noteStorage.getNoteByLegacyId('phase24-a');
+            expect(found?.title).toBe('Phase24');
+
+            await noteStorage.deleteNote(found.id);
+            localStorage.removeItem('markups_migrated');
+            localStorage.removeItem(`${NAMESPACE}.docs`);
+        });
+
+        it('ignores MD5-hashed shim keys (accepted limitation)', async () => {
+            const { runMigration } = await import('../core/storage/migration.js');
+            const { default: Storehouse } = await import('../utils/storehouse-compat.js');
+            localStorage.removeItem('markups_migrated');
+            Storehouse.setItem('com.markdownlivepreview', 'docs',
+                [{ id: 'phase24-shim', name: 'ShimDoc', content: '# Shim' }], new Date(2099, 1, 1));
+
+            const result = await runMigration();
+
+            expect(result.success).toBe(true);
+            expect(result.notesCount).toBe(0);
+
+            Storehouse.deleteItem('com.markdownlivepreview', 'docs');
+            localStorage.removeItem('markups_migrated');
+        });
+
+        it('keeps distinct tabs with identical content (id-only dedup) and writes a backup', async () => {
+            const { runMigration, clearLegacyData } = await import('../core/storage/migration.js');
+            const { noteStorage } = await import('../core/storage/noteStorage.js');
+            localStorage.removeItem('markups_migrated');
+            localStorage.removeItem('markups_migration_backup_v1');
+            localStorage.setItem(`${NAMESPACE}.docs`, JSON.stringify({
+                value: [{ id: 'dup-a', name: 'Same', content: 'same body', createdAt: 1, updatedAt: 1 }]
+            }));
+            localStorage.setItem(`${NAMESPACE}.tabs`, JSON.stringify({
+                value: [{ id: 'dup-b', name: 'Same', content: 'same body', createdAt: 1, updatedAt: 1 }]
+            }));
+
+            const result = await runMigration();
+
+            expect(result.success).toBe(true);
+            expect(result.notesCount).toBe(2);
+            expect(result.skippedDuplicates).toBe(0);
+            expect(result.backup).toBe(true);
+            expect(JSON.parse(localStorage.getItem('markups_migration_backup_v1')).count).toBe(2);
+
+            for (const legacyId of ['dup-a', 'dup-b']) {
+                const found = await noteStorage.getNoteByLegacyId(legacyId);
+                await noteStorage.deleteNote(found.id);
+            }
+            expect(clearLegacyData()).toBe(false);
+            expect(clearLegacyData({ verified: true })).toBe(true);
+            localStorage.removeItem('markups_migrated');
+            localStorage.removeItem('markups_migration_backup_v1');
+            localStorage.removeItem(`${NAMESPACE}.docs`);
+            localStorage.removeItem(`${NAMESPACE}.tabs`);
+        });
+
+        it('stays retryable when legacy keys exist but nothing parses', async () => {
+            const { runMigration } = await import('../core/storage/migration.js');
+            localStorage.removeItem('markups_migrated');
+            localStorage.setItem(`${NAMESPACE}.docs`, 'not-json{{{');
+
+            const result = await runMigration();
+
+            expect(result.notesCount).toBe(0);
+            expect(localStorage.getItem('markups_migrated')).toBeNull();
+
+            localStorage.removeItem(`${NAMESPACE}.docs`);
+        });
+    });
 });

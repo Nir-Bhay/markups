@@ -8,9 +8,23 @@
 import { eventBus, EVENTS } from './eventBus.js';
 
 /** Ignore reverse-sync echoes while the driving pane is still settling. */
-const ECHO_LOCK_MS = 120;
+const ECHO_LOCK_MS = 180;
 /** Coalesce expensive DOM rebuilds (MutationObserver / resize storms). */
 const REBUILD_DEBOUNCE_MS = 120;
+/** Treat a rect as "not in layout" (collapsed <details>, display:none, etc.). */
+const MIN_ANCHOR_HEIGHT = 0.5;
+
+/**
+ * Elements inside a closed <details> report a 0×0 (or viewport-stuck) rect.
+ * Using those Y values while scrolled poisons clampMonotonic and freezes the
+ * paired pane near the bottom during fast scroll. (Scroll-sync regression)
+ * @param {Element} el
+ * @returns {boolean}
+ */
+export function isScrollAnchorElement(el) {
+    if (!el || el.nodeType !== 1) return false;
+    return !el.closest('details:not([open])');
+}
 
 /**
  * Enforce monotonic non-decreasing positions for an anchor coordinate, so
@@ -92,6 +106,14 @@ class ScrollSync {
         this._userScrolling = false;
         this._userScrollIdleTimer = null;
         this.onPreviewScrollExtra = null;
+        /** @type {number|null} */
+        this._programmaticPreviewTop = null;
+        /** @type {number} */
+        this._programmaticPreviewUntil = 0;
+        /** @type {number|null} */
+        this._programmaticEditorTop = null;
+        /** @type {number} */
+        this._programmaticEditorUntil = 0;
     }
 
     /**
@@ -113,7 +135,8 @@ class ScrollSync {
 
     enable() {
         this.enabled = true;
-        this.scheduleRebuildAnchors();
+        this._clearEchoLock();
+        this.rebuildAnchors();
         eventBus.emit(EVENTS.MODE_CHANGED, { scrollSync: true });
     }
 
@@ -136,7 +159,8 @@ class ScrollSync {
     setEnabled(enabled) {
         this.enabled = !!enabled;
         if (this.enabled) {
-            this.scheduleRebuildAnchors();
+            this._clearEchoLock();
+            this.rebuildAnchors();
         } else {
             this._clearEchoLock();
         }
@@ -171,7 +195,22 @@ class ScrollSync {
                 if (parentBlock?.hasAttribute('data-source-line')) return;
             }
 
-            const top = el.getBoundingClientRect().top - previewRect.top + scrollTop;
+            // Collapsed <details> / display:none children must not participate.
+            // Their getBoundingClientRect() collapses to ~viewport top, so
+            // `top - previewRect.top + scrollTop` ≈ scrollTop and then
+            // clampMonotonic freezes every later anchor at the bottom.
+            if (!isScrollAnchorElement(el)) return;
+
+            const rect = el.getBoundingClientRect();
+            // Allow thin HR rules; reject other zero-height layout stubs.
+            if (rect.height < MIN_ANCHOR_HEIGHT && el.tagName !== 'HR') return;
+
+            const top = rect.top - previewRect.top + scrollTop;
+            // Guard against the "stuck at scrollTop" measurement failure mode.
+            if (scrollTop > 100 && Math.abs(top - scrollTop) < 1 && rect.height < MIN_ANCHOR_HEIGHT) {
+                return;
+            }
+
             anchors.push({
                 line,
                 previewTop: Math.max(0, top),
@@ -264,6 +303,17 @@ class ScrollSync {
 
         const editorScrollHandler = this.editor.onDidScrollChange((e) => {
             if (e && e.scrollTopChanged === false) return;
+
+            // Ignore Monaco scroll events caused by our own setScrollTop.
+            const now = performance.now();
+            if (
+                this._programmaticEditorUntil > now &&
+                this._programmaticEditorTop != null &&
+                Math.abs((this.editor.getScrollTop?.() ?? 0) - this._programmaticEditorTop) < 2
+            ) {
+                return;
+            }
+
             markUserScrolling();
 
             if (!this.enabled) return;
@@ -278,6 +328,17 @@ class ScrollSync {
         this.cleanupFunctions.push(() => editorScrollHandler.dispose());
 
         const previewScrollHandler = () => {
+            // Ignore scroll events caused by our own preview.scrollTop writes,
+            // even after syncSource was cleared (delayed echo / inertia).
+            const now = performance.now();
+            if (
+                this._programmaticPreviewUntil > now &&
+                this._programmaticPreviewTop != null &&
+                Math.abs(this.preview.scrollTop - this._programmaticPreviewTop) < 2
+            ) {
+                return;
+            }
+
             markUserScrolling();
 
             if (typeof this.onPreviewScrollExtra === 'function') {
@@ -370,6 +431,9 @@ class ScrollSync {
         );
         const topLine = this._lineForEditorScroll(edScrollTop);
 
+        this._programmaticPreviewTop = targetY;
+        this._programmaticPreviewUntil = performance.now() + ECHO_LOCK_MS + 80;
+
         if (Math.abs(this.preview.scrollTop - targetY) > 0.5) {
             this.preview.scrollTop = targetY;
         }
@@ -391,6 +455,9 @@ class ScrollSync {
             this._editorMaxScroll()
         );
         const line = this._lineForPreviewTop(pvScrollTop);
+
+        this._programmaticEditorTop = edTop;
+        this._programmaticEditorUntil = performance.now() + ECHO_LOCK_MS + 80;
 
         if (Math.abs(this.editor.getScrollTop() - edTop) > 0.5) {
             this.editor.setScrollTop(edTop);
@@ -446,6 +513,9 @@ class ScrollSync {
 
     _endSync() {
         if (this._echoUnlockTimer) clearTimeout(this._echoUnlockTimer);
+        // Fixed unlock — direction flips are guarded by programmatic echo
+        // suppression on the follower pane, not by holding syncSource forever
+        // while _userScrolling stays true (that deadlocks editor↔preview).
         this._echoUnlockTimer = setTimeout(() => {
             this.syncSource = null;
             this._echoUnlockTimer = null;
@@ -456,6 +526,10 @@ class ScrollSync {
         if (this._echoUnlockTimer) clearTimeout(this._echoUnlockTimer);
         this._echoUnlockTimer = null;
         this.syncSource = null;
+        this._programmaticPreviewTop = null;
+        this._programmaticPreviewUntil = 0;
+        this._programmaticEditorTop = null;
+        this._programmaticEditorUntil = 0;
     }
 
     _clamp(value, min, max) {

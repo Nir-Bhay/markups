@@ -139,8 +139,8 @@ const HTML_TEMPLATE = `<!DOCTYPE html>
         }
         
         .katex-display {
-            overflow-x: auto;
-            overflow-y: hidden;
+            margin: 1.25rem 0;
+            padding: 0.25em 0;
         }
 
         {{customStyles}}

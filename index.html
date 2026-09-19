@@ -8,7 +8,7 @@
     <!-- ===== SECURITY META (fallback when HTTP headers are unavailable) ===== -->
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.clarity.ms https://*.clarity.ms https://vitals.vercel-insights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://api.openai.com https://api.anthropic.com https://www.google-analytics.com https://analytics.google.com https://www.google.com https://*.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net wss:; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.clarity.ms https://*.clarity.ms https://vitals.vercel-insights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: http://localhost:* http://127.0.0.1:* https://www.google-analytics.com https://analytics.google.com https://www.google.com https://*.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net https://www.clarity.ms https://*.clarity.ms https://vitals.vercel-insights.com wss:; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com; base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'">
 
     <!-- Primary Meta Tags -->
     <title>Markups - Free Online Markdown Editor with Live Preview</title>
@@ -89,33 +89,39 @@
     }
     </script>
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8WMNRN5GFM"></script>
+    <!-- Analytics (skipped on localhost so local console stays clean) -->
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
-        gtag('config', 'G-8WMNRN5GFM');
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+        window.__MARKUPS_LOCAL__ = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
     </script>
-
-    <!-- Microsoft Clarity -->
-    <script type="text/javascript">
+    <script>
+        (function () {
+            if (window.__MARKUPS_LOCAL__) return;
+            var gtagScript = document.createElement('script');
+            gtagScript.async = true;
+            gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-8WMNRN5GFM';
+            document.head.appendChild(gtagScript);
+            gtag('js', new Date());
+            gtag('config', 'G-8WMNRN5GFM');
+        })();
+    </script>
+    <script>
         (function (c, l, a, r, i, t, y) {
+            if (window.__MARKUPS_LOCAL__) return;
             c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
             t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
             y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
         })(window, document, "clarity", "script", "uwrtfye6w8");
     </script>
-
-    <!-- Vercel Web Analytics -->
-    <script>
-        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-    </script>
     <script>
         (function () {
+            if (window.__MARKUPS_LOCAL__) return;
             var script = document.createElement('script');
             script.defer = true;
             script.src = '/_vercel/insights/script.js';
+            script.onerror = function () { /* Vercel insights is injected only on Vercel */ };
             document.head.appendChild(script);
         })();
     </script>
@@ -452,6 +458,18 @@
             <span class="brand-name">Markups</span>
         </div>
 
+        <!-- Browser-style file tabs between brand and actions -->
+        <div class="header-quicktabs" id="header-quicktabs">
+            <div class="header-quicktabs-list" id="tabs-list" role="tablist" aria-label="Open files"></div>
+            <button type="button" class="header-quicktab-new" id="header-quicktab-new" title="New file" aria-label="New file">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+        </div>
+
         <!-- Mobile: New File button (left side) -->
         <button class="mobile-header-btn" id="mobile-new-file-btn" aria-label="New file" title="New file">
             <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
@@ -507,6 +525,19 @@
             </svg>
         </button>
 
+        <!-- Mobile: Share button (right side, before hamburger) -->
+        <button class="mobile-header-btn mobile-share-btn" id="mobile-share-nav-btn" aria-label="Share"
+            title="Share">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.6" y1="10.5" x2="15.4" y2="6.5"></line>
+                <line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line>
+            </svg>
+        </button>
+
         <!-- Mobile Hamburger (right side) -->
         <button class="mobile-header-menu" id="mobile-header-menu" aria-label="Menu">
             <svg width="22" height="22" viewBox="0 0 16 16" fill="currentColor">
@@ -518,65 +549,50 @@
         <!-- Actions -->
         <div class="header-actions">
             <!-- Search -->
-            <button class="header-btn icon-with-label" id="search-btn" title="Search (Ctrl+F)" aria-label="Search">
+            <button class="header-btn icon-only" id="search-btn" title="Search (Ctrl+F)" aria-label="Search">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
-                <span class="btn-label">Search</span>
             </button>
 
             <!-- Find & Replace -->
             <button class="header-btn icon-with-label" id="find-replace-btn" title="Find & Replace (Ctrl+Shift+H)"
                 aria-label="Find and Replace">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="8" r="5"></circle>
-                    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
-                    <path d="M6 17h8"></path>
-                    <path d="M10 21l-2-2 2-2"></path>
-                    <path d="M14 17l2 2-2 2"></path>
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m4 14 4-10 4 10"></path>
+                    <path d="M5.5 10h5"></path>
+                    <path d="m14 20 3.5-8 3.5 8"></path>
+                    <path d="M15.3 17h4.4"></path>
                 </svg>
                 <span class="btn-label">Replace</span>
             </button>
 
             <!-- Version History -->
-            <button class="header-btn icon-with-label" id="version-history-btn" title="Version History (Ctrl+Shift+V)"
+            <button class="header-btn icon-only" id="version-history-btn" title="Version History (Ctrl+Shift+V)"
                 aria-label="Version History">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="10"></circle>
                     <polyline points="12 6 12 12 16 14"></polyline>
                 </svg>
-                <span class="btn-label">History</span>
-            </button>
-
-            <!-- Import -->
-            <button class="header-btn icon-with-label" id="import-button" title="Import File" aria-label="Import File">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-                <span class="btn-label">Upload</span>
             </button>
 
             <!-- Help -->
-            <button class="header-btn icon-with-label" id="help-button" title="Help (Ctrl+H)" aria-label="Help">
+            <button class="header-btn icon-only" id="help-button" title="Help (Ctrl+H)" aria-label="Help">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="10"></circle>
                     <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                     <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
-                <span class="btn-label">Help</span>
             </button>
 
             <!-- Update notice (hard-refresh tip) -->
             <div class="header-notice" id="header-notice">
-                <button class="header-btn icon-with-label header-notice-btn" id="update-notice-btn"
+                <button class="header-btn icon-only header-notice-btn" id="update-notice-btn"
                     type="button" title="Updates &amp; tip" aria-label="Updates and tip"
                     aria-haspopup="dialog" aria-expanded="false" aria-controls="update-notice-popover">
                     <span class="header-notice-icon-wrap" aria-hidden="true">
@@ -587,7 +603,6 @@
                         </svg>
                         <span class="header-notice-dot" id="update-notice-dot"></span>
                     </span>
-                    <span class="btn-label">Tips</span>
                 </button>
                 <div class="header-notice-popover hidden" id="update-notice-popover" role="dialog"
                     aria-labelledby="update-notice-title" hidden>
@@ -638,7 +653,7 @@
             </div>
 
             <!-- Theme Toggle -->
-            <button class="header-btn icon-with-label" id="dark-mode-toggle" title="Toggle theme"
+            <button class="header-btn icon-only" id="dark-mode-toggle" title="Toggle theme"
                 aria-label="Toggle theme">
                 <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -656,11 +671,10 @@
                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                 </svg>
-                <span class="btn-label">Theme</span>
             </button>
 
             <!-- Settings -->
-            <button class="header-btn icon-with-label" id="settings-btn" title="Settings" aria-label="Settings">
+            <button class="header-btn icon-only" id="settings-btn" title="Settings" aria-label="Settings">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="3"></circle>
@@ -668,7 +682,41 @@
                         d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
                     </path>
                 </svg>
-                <span class="btn-label">Settings</span>
+            </button>
+
+            <!-- AI Assistant -->
+            <button class="header-btn icon-only" id="ai-writer-button" title="MarkupsAI Assistant (Ctrl+Shift+A)"
+                aria-label="Open MarkupsAI Assistant" aria-pressed="false">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3 13.8 8.2 19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"></path>
+                    <path d="m19 15 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15Z"></path>
+                </svg>
+            </button>
+
+            <!-- Import / Upload -->
+            <button class="header-btn icon-with-label" id="import-button" title="Import File" aria-label="Import File">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span class="btn-label">Upload</span>
+            </button>
+
+            <!-- Share -->
+            <button class="header-btn icon-with-label" id="share-btn" title="Share Document (no server, free)"
+                aria-label="Share Document">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="18" cy="5" r="3"></circle>
+                    <circle cx="6" cy="12" r="3"></circle>
+                    <circle cx="18" cy="19" r="3"></circle>
+                    <line x1="8.6" y1="10.5" x2="15.4" y2="6.5"></line>
+                    <line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line>
+                </svg>
+                <span class="btn-label">Share</span>
             </button>
 
             <!-- Export -->
@@ -686,9 +734,10 @@
     </header>
 
     <!-- ==================== TOOLBAR ==================== -->
-    <div class="premium-toolbar" id="toolbar" role="toolbar" aria-label="Formatting toolbar">
+    <div class="premium-toolbar" id="toolbar" role="toolbar" aria-orientation="horizontal"
+        aria-label="Formatting toolbar">
         <!-- History -->
-        <div class="toolbar-group">
+        <div class="toolbar-group" data-toolbar-id="history">
             <button class="toolbar-btn toolbar-btn-explorer" id="explorer-toggle-btn" title="Toggle File Explorer"
                 aria-label="Toggle File Explorer">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -696,14 +745,26 @@
                         d="M1.75 2A1.75 1.75 0 0 0 0 3.75v8.5C0 13.216.784 14 1.75 14h12.5A1.75 1.75 0 0 0 16 12.25V5.75A1.75 1.75 0 0 0 14.25 4H8.707a1.75 1.75 0 0 1-1.237-.513l-.957-.957A1.75 1.75 0 0 0 5.275 2H1.75zm0 1.5h3.525a.25.25 0 0 1 .177.073l.957.957A3.25 3.25 0 0 0 8.707 5.5h5.543a.25.25 0 0 1 .25.25v6.5a.25.25 0 0 1-.25.25H1.75a.25.25 0 0 1-.25-.25v-8.5c0-.138.112-.25.25-.25z" />
                 </svg>
             </button>
-            <button class="toolbar-btn" id="toolbar-undo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
-            <button class="toolbar-btn" id="toolbar-redo" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+            <button class="toolbar-btn" id="toolbar-undo" title="Undo (Ctrl+Z)" aria-label="Undo">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 14 4 9l5-5"></path>
+                    <path d="M4 9h10a6 6 0 0 1 6 6v1"></path>
+                </svg>
+            </button>
+            <button class="toolbar-btn" id="toolbar-redo" title="Redo (Ctrl+Y)" aria-label="Redo">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m15 14 5-5-5-5"></path>
+                    <path d="M20 9H10a6 6 0 0 0-6 6v1"></path>
+                </svg>
+            </button>
         </div>
 
         <span class="toolbar-divider"></span>
 
         <!-- Text Formatting -->
-        <div class="toolbar-group">
+        <div class="toolbar-group" data-toolbar-id="formatting">
             <button class="toolbar-btn" id="toolbar-bold" title="Bold (Ctrl+B)" aria-label="Bold">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path
@@ -723,14 +784,20 @@
                 </svg>
             </button>
             <button class="toolbar-btn" id="toolbar-highlight" title="Highlight" aria-label="Highlight">
-                <mark style="background:#fef08a;color:#111827;padding:0 2px;border-radius:2px;">H</mark>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m9 11 6-6 4 4-6 6"></path>
+                    <path d="m5 15 4-4"></path>
+                    <path d="m4 20 4-4"></path>
+                    <path d="M3 21h6"></path>
+                </svg>
             </button>
         </div>
 
         <span class="toolbar-divider"></span>
 
         <!-- Headings -->
-        <div class="toolbar-group">
+        <div class="toolbar-group" data-toolbar-id="headings">
             <button class="toolbar-btn toolbar-btn-text" id="toolbar-h1" title="Heading 1"
                 aria-label="Heading 1">H1</button>
             <button class="toolbar-btn toolbar-btn-text" id="toolbar-h2" title="Heading 2"
@@ -741,8 +808,36 @@
 
         <span class="toolbar-divider"></span>
 
+        <!-- Lists -->
+        <div class="toolbar-group" data-toolbar-id="lists">
+            <button class="toolbar-btn" id="toolbar-ul" title="Bullet List" aria-label="Bullet List">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M5 11.5a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm-3 1a1 1 0 100-2 1 1 0 000 2zm0 4a1 1 0 100-2 1 1 0 000 2zm0 4a1 1 0 100-2 1 1 0 000 2z" />
+                </svg>
+            </button>
+            <button class="toolbar-btn" id="toolbar-ol" title="Numbered List" aria-label="Numbered List">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M5 11.5a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5z" />
+                    <path
+                        d="M1.713 11.865v-.474H2c.217 0 .363-.137.363-.317 0-.185-.158-.31-.361-.31-.223 0-.367.152-.373.31h-.59c.016-.467.373-.787.986-.787.588-.002.954.291.957.703a.595.595 0 01-.492.594v.033a.615.615 0 01.569.631c.003.533-.502.8-1.051.8-.656 0-1-.37-1.008-.794h.582c.008.178.186.306.422.309.254 0 .424-.145.422-.35-.002-.195-.155-.348-.414-.348h-.3zm-.004-4.699h-.604v-.035c0-.408.295-.844.958-.844.583 0 .96.326.96.756 0 .389-.257.617-.476.848l-.537.572v.03h1.054V9H1.143v-.395l.957-.99c.138-.142.293-.304.293-.508 0-.18-.147-.32-.342-.32a.33.33 0 00-.342.338v.041zM2.564 5h-.635V2.924h-.031l-.598.42v-.567l.629-.443h.635V5z" />
+                </svg>
+            </button>
+            <button class="toolbar-btn" id="toolbar-task" title="Task List" aria-label="Task List">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path
+                        d="M14 1a1 1 0 011 1v12a1 1 0 01-1 1H2a1 1 0 01-1-1V2a1 1 0 011-1h12zM2 0a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V2a2 2 0 00-2-2H2z" />
+                    <path
+                        d="M10.97 4.97a.75.75 0 011.071 1.05l-3.992 4.99a.75.75 0 01-1.08.02L4.324 8.384a.75.75 0 111.06-1.06l2.094 2.093 3.473-4.425a.235.235 0 01.02-.022z" />
+                </svg>
+            </button>
+        </div>
+
+        <span class="toolbar-divider"></span>
+
         <!-- Insert -->
-        <div class="toolbar-group">
+        <div class="toolbar-group" data-toolbar-id="insert">
             <button class="toolbar-btn" id="toolbar-link" title="Insert Link (Ctrl+K)" aria-label="Insert Link">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path
@@ -782,7 +877,7 @@
         <span class="toolbar-divider"></span>
 
         <!-- Code -->
-        <div class="toolbar-group">
+        <div class="toolbar-group" data-toolbar-id="code">
             <button class="toolbar-btn" id="toolbar-code" title="Code Block" aria-label="Code Block">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path
@@ -795,36 +890,8 @@
 
         <span class="toolbar-divider"></span>
 
-        <!-- Lists -->
-        <div class="toolbar-group">
-            <button class="toolbar-btn" id="toolbar-ul" title="Bullet List" aria-label="Bullet List">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path fill-rule="evenodd"
-                        d="M5 11.5a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm-3 1a1 1 0 100-2 1 1 0 000 2zm0 4a1 1 0 100-2 1 1 0 000 2zm0 4a1 1 0 100-2 1 1 0 000 2z" />
-                </svg>
-            </button>
-            <button class="toolbar-btn" id="toolbar-ol" title="Numbered List" aria-label="Numbered List">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path fill-rule="evenodd"
-                        d="M5 11.5a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5z" />
-                    <path
-                        d="M1.713 11.865v-.474H2c.217 0 .363-.137.363-.317 0-.185-.158-.31-.361-.31-.223 0-.367.152-.373.31h-.59c.016-.467.373-.787.986-.787.588-.002.954.291.957.703a.595.595 0 01-.492.594v.033a.615.615 0 01.569.631c.003.533-.502.8-1.051.8-.656 0-1-.37-1.008-.794h.582c.008.178.186.306.422.309.254 0 .424-.145.422-.35-.002-.195-.155-.348-.414-.348h-.3zm-.004-4.699h-.604v-.035c0-.408.295-.844.958-.844.583 0 .96.326.96.756 0 .389-.257.617-.476.848l-.537.572v.03h1.054V9H1.143v-.395l.957-.99c.138-.142.293-.304.293-.508 0-.18-.147-.32-.342-.32a.33.33 0 00-.342.338v.041zM2.564 5h-.635V2.924h-.031l-.598.42v-.567l.629-.443h.635V5z" />
-                </svg>
-            </button>
-            <button class="toolbar-btn" id="toolbar-task" title="Task List" aria-label="Task List">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path
-                        d="M14 1a1 1 0 011 1v12a1 1 0 01-1 1H2a1 1 0 01-1-1V2a1 1 0 011-1h12zM2 0a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V2a2 2 0 00-2-2H2z" />
-                    <path
-                        d="M10.97 4.97a.75.75 0 011.071 1.05l-3.992 4.99a.75.75 0 01-1.08.02L4.324 8.384a.75.75 0 111.06-1.06l2.094 2.093 3.473-4.425a.235.235 0 01.02-.022z" />
-                </svg>
-            </button>
-        </div>
-
-        <span class="toolbar-divider"></span>
-
         <!-- Block Elements -->
-        <div class="toolbar-group toolbar-block-group">
+        <div class="toolbar-group toolbar-block-group" data-toolbar-id="blocks">
             <button class="toolbar-btn" id="toolbar-quote" title="Blockquote" aria-label="Blockquote">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path
@@ -839,10 +906,10 @@
             <button class="toolbar-btn" id="callout-dropdown-btn" title="Callouts" aria-label="Callouts"
                 aria-haspopup="menu" aria-expanded="false" aria-controls="callout-dropdown-sheet">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    <path d="M9 10h6"></path>
-                    <path d="M9 14h3"></path>
+                    <path d="M12 9v4"></path>
+                    <path d="M12 16h.01"></path>
                 </svg>
             </button>
             <button class="toolbar-btn toolbar-btn-text" id="toolbar-text-color" title="Text Color"
@@ -859,7 +926,7 @@
         <div class="toolbar-spacer" style="flex: 1;"></div>
 
         <!-- Tools -->
-        <div class="toolbar-group toolbar-tools-group">
+        <div class="toolbar-group toolbar-tools-group" data-toolbar-id="tools">
             <!-- Emoji -->
             <button class="toolbar-btn" id="toolbar-emoji" title="Insert Emoji" aria-label="Insert Emoji">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -870,26 +937,46 @@
                     <line x1="15" y1="9" x2="15.01" y2="9"></line>
                 </svg>
             </button>
-            <!-- AI Writer -->
-            <button class="toolbar-btn" id="ai-writer-button" title="AI Writing Assistant (Ctrl+Shift+A)"
-                aria-label="AI Writing Assistant">
+            <!-- Copy Markdown -->
+            <button class="toolbar-btn" id="toolbar-copy-markdown" title="Copy Markdown" aria-label="Copy Markdown">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <polygon
-                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
-                    </polygon>
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+            <!-- Clear Formatting -->
+            <button class="toolbar-btn" id="toolbar-clear-formatting" title="Clear Markdown formatting"
+                aria-label="Clear Markdown formatting">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m3 6 9-3 9 3"></path>
+                    <path d="M5 6h14"></path>
+                    <path d="m7 6 1 14h8l1-14"></path>
+                    <path d="M10 10v6"></path>
+                    <path d="M14 10v6"></path>
+                </svg>
+            </button>
+            <!-- Preview Toggle -->
+            <button class="toolbar-btn" id="toolbar-preview-toggle" title="Show Preview" aria-label="Show Preview"
+                aria-pressed="false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
                 </svg>
             </button>
             <!-- Table of Contents -->
             <button class="toolbar-btn" id="toc-button" title="Table of Contents" aria-label="Toggle Table of Contents">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="8" y1="6" x2="21" y2="6"></line>
-                    <line x1="8" y1="12" x2="21" y2="12"></line>
-                    <line x1="8" y1="18" x2="21" y2="18"></line>
-                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 5h2"></path>
+                    <path d="M4 12h2"></path>
+                    <path d="M4 19h2"></path>
+                    <path d="M10 5h10"></path>
+                    <path d="M10 12h10"></path>
+                    <path d="M10 19h10"></path>
+                    <path d="M8 5v14"></path>
                 </svg>
             </button>
             <!-- Scroll Sync -->
@@ -902,11 +989,12 @@
                     <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
                 </svg>
             </button>
-            <!-- Spell Check / Lint -->
-            <button class="toolbar-btn" id="lint-button" title="Check Spelling" aria-label="Lint Document">
+            <!-- Markdown Lint -->
+            <button class="toolbar-btn" id="lint-button" title="Check Markdown" aria-label="Check Markdown">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 4h11l5 5v11H4z"></path>
+                    <path d="m8 14 2 2 5-5"></path>
                 </svg>
             </button>
             <!-- Statistics -->
@@ -920,22 +1008,25 @@
             </button>
         </div>
 
-        <span class="toolbar-divider"></span>
+        <span class="toolbar-divider toolbar-secondary-divider"></span>
 
         <!-- Mode Tools -->
-        <div class="toolbar-group toolbar-modes-group">
+        <div class="toolbar-group toolbar-modes-group" data-toolbar-id="modes">
             <!-- Focus Mode -->
-            <button class="toolbar-btn" id="focus-button" title="Focus Mode" aria-label="Focus Mode">
+            <button class="toolbar-btn" id="focus-button" title="Focus Mode" aria-label="Focus Mode"
+                aria-pressed="false">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <path d="M5 3h4M3 5v4M19 3h-4M21 5v4M5 21h4M3 19v-4M19 21h-4M21 19v-4"></path>
                 </svg>
             </button>
             <!-- Typewriter Mode -->
-            <button class="toolbar-btn" id="typewriter-button" title="Typewriter Mode" aria-label="Typewriter Mode">
+            <button class="toolbar-btn" id="typewriter-button" title="Typewriter Mode" aria-label="Typewriter Mode"
+                aria-pressed="false">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="4" y1="12" x2="20" y2="12"></line>
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                    <path d="M8 9h.01M12 9h.01M16 9h.01M8 13h8"></path>
                 </svg>
             </button>
             <!-- Fullscreen -->
@@ -950,10 +1041,10 @@
             </button>
         </div>
 
-        <span class="toolbar-divider"></span>
+        <span class="toolbar-divider toolbar-secondary-divider"></span>
 
         <!-- Templates & Snippets -->
-        <div class="toolbar-group toolbar-extras-group">
+        <div class="toolbar-group toolbar-extras-group" data-toolbar-id="extras">
             <!-- Templates -->
             <button class="toolbar-btn" id="templates-button" title="Templates" aria-label="Templates">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -968,12 +1059,32 @@
             <!-- Writing Goals -->
             <button class="toolbar-btn" id="goals-button" title="Writing Goals" aria-label="Writing Goals">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <circle cx="12" cy="12" r="1"></circle>
                 </svg>
             </button>
         </div>
+
+        <!-- Responsive density and customization -->
+        <button class="toolbar-btn toolbar-density-toggle" id="toolbar-density-toggle"
+            title="Expand toolbar" aria-label="Expand toolbar" aria-controls="toolbar"
+            aria-expanded="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </button>
+        <button class="toolbar-btn toolbar-customize-btn" id="toolbar-customize"
+            title="Customize toolbar" aria-label="Customize toolbar" aria-haspopup="dialog"
+            aria-controls="toolbar-customize-sheet" aria-expanded="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
+                <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.42 1.42-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2v-.48a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-1.42-1.42.06-.06A1.7 1.7 0 0 0 9.4 15a1.7 1.7 0 0 0-1.56-1.03H7.36v-2h.48A1.7 1.7 0 0 0 9.4 11a1.7 1.7 0 0 0-.34-1.88L9 9.06l1.42-1.42.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 13.39 6.5V6h2v.5a1.7 1.7 0 0 0 1.03 1.54 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.42 1.42-.06.06A1.7 1.7 0 0 0 19.4 11c.18.62.75 1.03 1.4 1.03h.48v2h-.48A1.7 1.7 0 0 0 19.4 15Z"></path>
+            </svg>
+        </button>
 
         <!-- Mobile Toolbar Overflow Button -->
         <button class="toolbar-overflow-btn" id="toolbar-overflow-btn" title="More tools"
@@ -994,10 +1105,33 @@
         <div class="toolbar-overflow-sheet" id="callout-dropdown-sheet" role="menu" aria-label="Callout styles"
             aria-hidden="true"></div>
 
+        <!-- Saved toolbar customization -->
+        <div class="toolbar-menu toolbar-customize-sheet" id="toolbar-customize-sheet"
+            aria-labelledby="toolbar-customize-title" hidden>
+            <div class="toolbar-customize-head">
+                <strong id="toolbar-customize-title">Customize toolbar</strong>
+                <span>Choose the groups you use most.</span>
+            </div>
+            <div class="toolbar-customize-presets" role="group" aria-label="Toolbar presets">
+                <button type="button" data-toolbar-preset="essentials">Essentials</button>
+                <button type="button" data-toolbar-preset="full">Full</button>
+                <button type="button" data-toolbar-preset="reset">Reset</button>
+            </div>
+            <div class="toolbar-customize-list" data-toolbar-customize-list></div>
+        </div>
     </div>
 
     <!-- Hidden toolbar host for shared advanced popover styles -->
     <div id="enhanced-toolbar" hidden aria-hidden="true" style="display:none;"></div>
+
+    <!-- Focus-only controls -->
+    <div class="focus-dock" id="focus-dock" role="group" aria-label="Focus mode controls" hidden>
+        <span class="focus-dock-label">Focus</span>
+        <button type="button" id="focus-zoom-out" aria-label="Zoom editor out" title="Zoom out">−</button>
+        <button type="button" id="focus-zoom-reset" aria-label="Reset editor zoom" title="Reset zoom">100%</button>
+        <button type="button" id="focus-zoom-in" aria-label="Zoom editor in" title="Zoom in">+</button>
+        <button type="button" id="focus-exit" aria-label="Exit Focus Mode" title="Exit Focus Mode">Exit</button>
+    </div>
 
     <!-- ==================== MAIN CONTAINER ==================== -->
     <main class="main-container" id="container">
@@ -1070,10 +1204,6 @@
             <div class="editor-wrapper" id="editor-wrapper">
                 <div id="editor"></div>
             </div>
-            <!-- AI Writer Panel -->
-            <div class="ai-writer-panel" id="ai-writer-panel" style="display:none;">
-                <!-- Rendered by AI Writer JS -->
-            </div>
         </section>
 
         <!-- Split Divider -->
@@ -1105,7 +1235,13 @@
                     </ul>
                 </nav>
             </aside>
+
         </section>
+
+        <!-- AI Writer Sidebar -->
+        <aside class="ai-writer-panel" id="ai-writer-panel" style="display:none;">
+            <!-- Rendered by AI Writer JS -->
+        </aside>
 
         <!-- Floating Edit Button (visible in preview mode) -->
         <button class="floating-edit-btn" id="floating-edit-btn" title="Switch to Edit mode"
@@ -1153,6 +1289,8 @@
         </div>
         <span id="reading-time-header" class="hidden">0 min read</span>
 
+        <div class="status-item" id="breadcrumb-path" title="Current section"></div>
+
         <div class="status-spacer"></div>
 
         <button class="status-item status-btn" id="word-wrap-toggle" title="Toggle Word Wrap"
@@ -1178,6 +1316,7 @@
         <div class="status-item">
             <span>Markdown</span>
         </div>
+        <div class="status-item hidden" id="vim-status"></div>
 
         <!-- Mobile Menu Toggle -->
         <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
@@ -1195,7 +1334,14 @@
     <!-- Search Input (Hidden by default, toggled by search button) -->
     <div class="search-overlay hidden" id="search-overlay" role="dialog" aria-modal="true" aria-label="Search in document">
         <div class="search-container">
-            <input type="text" id="search-input" class="search-input" placeholder="Search in document..." aria-label="Search preview">
+            <div class="search-fields">
+                <input type="text" id="search-input" class="search-input" placeholder="Find..." aria-label="Find in document">
+                <div class="search-replace-row hidden" id="search-replace-row">
+                    <input type="text" id="replace-input" class="search-input replace-input" placeholder="Replace with..." aria-label="Replace with">
+                    <button type="button" class="search-replace-btn" id="replace-one-btn" title="Replace current match">Replace</button>
+                    <button type="button" class="search-replace-btn" id="replace-all-btn" title="Replace all matches">All</button>
+                </div>
+            </div>
             <span class="search-match-count" id="search-match-count"></span>
             <button class="search-nav-btn" id="search-prev" aria-label="Previous match">↑</button>
             <button class="search-nav-btn" id="search-next" aria-label="Next match">↓</button>
@@ -1434,6 +1580,27 @@
                             </label>
                         </div>
                     </section>
+
+                    <div class="settings-divider"></div>
+
+                    <section class="settings-section">
+                        <h3 class="settings-section-title">
+                            <span class="material-symbols-outlined">keyboard</span>
+                            Keybindings
+                        </h3>
+                        <div class="settings-group">
+                            <div class="settings-field">
+                                <label class="settings-field-label">Editor Keybindings</label>
+                                <div class="settings-select-wrapper">
+                                    <select id="editor-keybindings-dropdown" class="settings-select">
+                                        <option value="default" selected>Default</option>
+                                        <option value="vim">Vim</option>
+                                    </select>
+                                    <span class="material-symbols-outlined">expand_more</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
                 <!-- Preview Tab -->
@@ -1484,6 +1651,19 @@
                                     <span class="settings-toggle-slider"></span>
                                 </div>
                             </label>
+                        </div>
+                    </section>
+
+                    <div class="settings-divider"></div>
+
+                    <section class="settings-section">
+                        <h3 class="settings-section-title">
+                            <span class="material-symbols-outlined">css</span>
+                            Custom CSS
+                        </h3>
+                        <div class="settings-group">
+                            <label class="settings-field-label" for="custom-css-textarea">Custom CSS (preview only)</label>
+                            <textarea id="custom-css-textarea" class="settings-textarea" placeholder="body { background: yellow; }" rows="6"></textarea>
                         </div>
                     </section>
                 </div>
@@ -1885,7 +2065,7 @@
                     <div class="shortcut-item"><span>Open File</span><kbd>Ctrl+O</kbd></div>
                     <div class="shortcut-item"><span>Export PDF</span><kbd>Ctrl+P</kbd></div>
                     <div class="shortcut-item"><span>Export HTML</span><kbd>Ctrl+Shift+E</kbd></div>
-                    <div class="shortcut-item"><span>Print</span><kbd>Ctrl+Shift+P</kbd></div>
+                    <div class="shortcut-item"><span>Export PDF</span><kbd>Ctrl+P</kbd></div>
                 </div>
                 <div class="shortcuts-section">
                     <h4>
@@ -2098,6 +2278,9 @@
                 <div class="export-loading-progress-container">
                     <div class="export-loading-progress-bar" id="export-loading-progress-bar"></div>
                 </div>
+                <button type="button" class="export-loading-cancel" id="export-loading-cancel">
+                    Cancel export
+                </button>
             </div>
         </div>
 
@@ -2393,6 +2576,132 @@
         </div>
     </div>
 
+    <!-- Share Modal (no server, free-first) -->
+    <div class="export-modal-overlay" id="share-modal-overlay"></div>
+    <div class="export-modal share-modal" id="share-modal" role="dialog" aria-modal="true"
+        aria-labelledby="share-modal-title">
+        <div class="export-modal-header">
+            <h2 class="export-modal-title" id="share-modal-title">Share Document</h2>
+            <button class="export-modal-close" id="share-modal-close" aria-label="Close share dialog">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="export-modal-content share-modal-content">
+            <section class="share-card" aria-labelledby="share-link-heading">
+                <p class="export-section-label" id="share-link-heading"><span class="material-symbols-outlined"
+                        aria-hidden="true">link</span> Link share <span
+                        class="share-badge">private · offline</span></p>
+                <div class="share-row">
+                    <input class="export-input share-link-input" id="share-link-output" readonly
+                        placeholder="Generating link…" aria-label="Shareable link" />
+                    <button class="share-btn icon-btn" id="share-copy-link-btn" title="Copy link"
+                        aria-label="Copy link"><span class="material-symbols-outlined"
+                            aria-hidden="true">content_copy</span></button>
+                    <button class="share-btn icon-btn" id="share-native-link-btn" title="System share"
+                        aria-label="System share"><span class="material-symbols-outlined"
+                            aria-hidden="true">ios_share</span></button>
+                </div>
+                <div class="share-qr-row">
+                    <div class="share-qr" id="share-qr" role="img" aria-label="Share link QR code" hidden></div>
+                    <div class="share-qr-side">
+                        <span class="share-meter" id="share-link-meter" aria-live="polite"></span>
+                        <button class="share-btn" id="share-qr-download-btn" disabled><span
+                                class="material-symbols-outlined" aria-hidden="true">qr_code_2</span>QR
+                            PNG</button>
+                        <p class="share-hint" id="share-qr-hint" hidden></p>
+                    </div>
+                </div>
+            </section>
+            <section class="share-card" aria-labelledby="share-file-heading">
+                <p class="export-section-label" id="share-file-heading"><span class="material-symbols-outlined"
+                        aria-hidden="true">description</span> File share <span class="share-badge">any size</span>
+                </p>
+                <div class="share-row">
+                    <button class="share-btn primary" id="share-download-file-btn"><span
+                            class="material-symbols-outlined" aria-hidden="true">download</span>Share /
+                        download .md</button>
+                </div>
+            </section>
+            <section class="share-card" aria-labelledby="share-paste-heading">
+                <p class="export-section-label" id="share-paste-heading"><span class="material-symbols-outlined"
+                        aria-hidden="true">cloud_upload</span> Public paste <span
+                        class="share-badge share-badge-warn">large docs only</span></p>
+                <label class="share-warning">
+                    <input type="checkbox" id="share-public-confirm" />
+                    <span>Public link, may expire. No sensitive docs.</span>
+                </label>
+                <div class="share-row">
+                    <button class="share-btn" id="share-upload-btn"><span class="material-symbols-outlined"
+                            aria-hidden="true">upload</span>Upload</button>
+                    <input class="export-input share-link-input" id="share-paste-output" readonly
+                        placeholder="Public link appears here" aria-label="Public paste link" />
+                    <button class="share-btn icon-btn" id="share-paste-qr-download-btn" title="Download QR PNG"
+                        aria-label="Download QR PNG" disabled><span class="material-symbols-outlined"
+                            aria-hidden="true">qr_code_2</span></button>
+                </div>
+                <div class="share-qr-row">
+                    <div class="share-qr" id="share-paste-qr" role="img" aria-label="Public paste link QR code" hidden>
+                    </div>
+                </div>
+            </section>
+            <p class="share-status" id="share-status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="export-modal-footer">
+            <div class="export-actions">
+                <button class="export-btn secondary" id="share-cancel-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Dialog (file + shared link + URL) -->
+    <div class="export-modal-overlay" id="import-modal-overlay"></div>
+    <div class="export-modal share-modal" id="import-modal" role="dialog" aria-modal="true"
+        aria-labelledby="import-modal-title">
+        <div class="export-modal-header">
+            <h2 class="export-modal-title" id="import-modal-title">Import</h2>
+            <button class="export-modal-close" id="import-modal-close" aria-label="Close import dialog">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="export-modal-content share-modal-content">
+            <section class="share-card" aria-labelledby="import-file-heading">
+                <p class="export-section-label" id="import-file-heading">1. From your device</p>
+                <div class="share-row">
+                    <button class="export-btn secondary" id="import-choose-file-btn">Choose .md / .txt file</button>
+                </div>
+            </section>
+            <section class="share-card" aria-labelledby="import-link-heading">
+                <p class="export-section-label" id="import-link-heading">2. From a shared link <span
+                        class="share-badge">new</span></p>
+                <p class="share-hint">Paste a Markups share link (<code>#s=…</code>) to open it instantly, or a
+                    public paste URL to fetch it.</p>
+                <div class="share-row">
+                    <input class="export-input share-link-input" id="import-link-input"
+                        placeholder="Paste share link or public paste URL…" aria-label="Shared link to open" />
+                </div>
+                <div class="share-row">
+                    <button class="export-btn secondary" id="import-open-link-btn">Open link</button>
+                </div>
+            </section>
+            <section class="share-card" aria-labelledby="import-url-heading">
+                <p class="export-section-label" id="import-url-heading">3. From a URL</p>
+                <div class="share-row">
+                    <input class="export-input share-link-input" id="import-url-input" placeholder="https://…"
+                        aria-label="URL to import" inputmode="url" />
+                </div>
+                <div class="share-row">
+                    <button class="export-btn secondary" id="import-fetch-url-btn">Fetch URL</button>
+                </div>
+            </section>
+            <p class="share-status" id="import-status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="export-modal-footer">
+            <div class="export-actions">
+                <button class="export-btn secondary" id="import-cancel-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Snippets Dropdown -->
     <div class="dropdown-menu snippets-dropdown hidden" id="snippets-dropdown">
         <!-- Snippets rendered by JS -->
@@ -2438,7 +2747,18 @@
                     <polyline points="17 8 12 3 7 8"></polyline>
                     <line x1="12" y1="3" x2="12" y2="15"></line>
                 </svg>
-                Import File
+                Import
+            </button>
+            <button class="mobile-nav-item" id="mobile-share-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="3"></circle>
+                    <circle cx="6" cy="12" r="3"></circle>
+                    <circle cx="18" cy="19" r="3"></circle>
+                    <line x1="8.6" y1="10.5" x2="15.4" y2="6.5"></line>
+                    <line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line>
+                </svg>
+                Share
             </button>
             <button class="mobile-nav-item" id="mobile-export-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -2457,13 +2777,39 @@
                 </svg>
                 Search
             </button>
+            <button class="mobile-nav-item" id="mobile-replace-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m4 14 4-10 4 10"></path>
+                    <path d="M5.5 10h5"></path>
+                    <path d="m14 20 3.5-8 3.5 8"></path>
+                    <path d="M15.3 17h4.4"></path>
+                </svg>
+                Find &amp; Replace
+            </button>
+            <button class="mobile-nav-item" id="mobile-undo-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 14 4 9l5-5"></path>
+                    <path d="M4 9h10a6 6 0 0 1 6 6v1"></path>
+                </svg>
+                Undo
+            </button>
+            <button class="mobile-nav-item" id="mobile-redo-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m15 14 5-5-5-5"></path>
+                    <path d="M20 9H10a6 6 0 0 0-6 6v1"></path>
+                </svg>
+                Redo
+            </button>
         </div>
 
         <div class="mobile-nav-divider"></div>
 
         <!-- Settings Section -->
         <div class="mobile-drawer-section">
-            <button class="mobile-nav-item" id="mobile-theme-btn">
+            <button class="mobile-nav-item" id="mobile-drawer-theme-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -2491,6 +2837,9 @@
             </button>
         </div>
     </nav>
+
+    <!-- Slash Commands Menu -->
+    <div id="slash-menu" class="slash-menu" style="display:none"></div>
 
 </body>
 

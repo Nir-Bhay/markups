@@ -42,6 +42,72 @@ export const EMOJI_SETS = {
     'Arrows': ['➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '🔄', '🔃', '🔀', '🔁', '🔂', '▶️', '◀️', '🔼', '🔽', '⏩', '⏪', '⏫', '⏬'],
 };
 
+export const EMOJI_SEARCH_NAMES = {
+    '😀': 'grinning smile happy',
+    '😃': 'smile happy',
+    '😄': 'smile happy',
+    '😁': 'grin happy',
+    '😅': 'sweat smile nervous',
+    '😂': 'joy laugh tears',
+    '🤣': 'rofl laugh',
+    '😊': 'blush smile happy',
+    '😉': 'wink',
+    '😍': 'heart eyes love',
+    '🥰': 'love hearts',
+    '😘': 'kiss',
+    '😋': 'yum delicious',
+    '🤔': 'thinking consider',
+    '😮': 'surprise wow',
+    '😴': 'sleep tired',
+    '👍': 'thumbs up approve like',
+    '👎': 'thumbs down dislike',
+    '👌': 'ok okay approve',
+    '✌️': 'peace victory',
+    '🤞': 'fingers crossed luck',
+    '👋': 'wave hello goodbye',
+    '🙏': 'pray thanks please',
+    '💪': 'strong muscle',
+    '⭐': 'star favorite',
+    '🔥': 'fire hot trending',
+    '💯': 'hundred perfect score',
+    '❤️': 'heart love',
+    '💡': 'idea lightbulb',
+    '📌': 'pin',
+    '📝': 'memo note write',
+    '📁': 'folder',
+    '🔒': 'lock private',
+    '🔔': 'bell notification',
+    '💬': 'speech chat comment',
+    '📊': 'chart data',
+    '📈': 'trend up chart',
+    '⚡': 'zap lightning fast',
+    '🎯': 'target goal',
+    '🚀': 'rocket launch',
+    '✅': 'check done success',
+    '❌': 'cross no error',
+    '⚠️': 'warning caution',
+    'ℹ️': 'info information',
+    '❓': 'question help',
+    '❗': 'exclamation important',
+    '➡️': 'right arrow',
+    '⬅️': 'left arrow',
+    '⬆️': 'up arrow',
+    '⬇️': 'down arrow',
+    '🔄': 'refresh reload',
+    '🔀': 'shuffle random',
+    '🔁': 'repeat loop',
+};
+
+export function searchEmojis(query = '') {
+    const normalized = String(query).toLowerCase().trim();
+    const emojis = Object.values(EMOJI_SETS).flat();
+    if (!normalized) return emojis;
+    return emojis.filter((emoji) => {
+        const name = EMOJI_SEARCH_NAMES[emoji] || '';
+        return emoji.includes(normalized) || name.includes(normalized);
+    });
+}
+
 export const CALLOUT_TYPES = [
     { type: 'note', icon: 'N', label: 'Note', color: '#3b82f6' },
     { type: 'tip', icon: 'T', label: 'Tip', color: '#22c55e' },

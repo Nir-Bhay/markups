@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-09-19
+
+### Added
+- Command palette, backlinks, slash commands, custom CSS, and Vim mode
+- Recent-tabs dropdown in the header, sorted by last modified
+- Private URL share (`#s=`) plus file share for larger documents
+- Isolated image, GIF, and video customize: one item's size or align writes only that item, without a full preview reload
+
+### Changed
+- Raise the production `main-*.js` health budget to 1300 kB for the larger editor bundle
+
+### Fixed
+- Sibling image/GIF/video bleed during resize and layout customize
+- HTML/picture images with colliding URLs no longer steal markdown image indexes
+
 ## [2.0.1] - 2026-09-06
 
 ### Security

@@ -5,6 +5,8 @@
 
 import { TOOLBAR_STORAGE_KEY } from './constants.js';
 
+const PREFS_VERSION = 2;
+
 export class ToolbarPreferences {
     constructor() {
         this._prefs = this._load();
@@ -13,7 +15,9 @@ export class ToolbarPreferences {
     _load() {
         try {
             const raw = localStorage.getItem(TOOLBAR_STORAGE_KEY);
-            return raw ? JSON.parse(raw) : {};
+            const parsed = raw ? JSON.parse(raw) : {};
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+            return parsed;
         } catch {
             return {};
         }
@@ -31,8 +35,11 @@ export class ToolbarPreferences {
 
     set(key, value) {
         this._prefs[key] = value;
+        this._prefs.version = PREFS_VERSION;
         this._save();
     }
+
+    get version() { return this.get('version', PREFS_VERSION); }
 
     get recentColors() { return this.get('recentColors', []); }
     addRecentColor(hex) {
@@ -63,13 +70,34 @@ export class ToolbarPreferences {
 
     get hiddenButtons() { return this.get('hiddenButtons', []); }
     toggleButtonVisibility(id) {
-        let arr = this.hiddenButtons;
+        let arr = [...this.hiddenButtons];
         if (arr.includes(id)) {
             arr = arr.filter(x => x !== id);
         } else {
             arr.push(id);
         }
         this.set('hiddenButtons', arr);
+    }
+
+    setHiddenButtons(ids) {
+        const next = Array.isArray(ids)
+            ? [...new Set(ids.filter((id) => typeof id === 'string' && id.trim()))]
+            : [];
+        this.set('hiddenButtons', next);
+    }
+
+    get density() {
+        const value = this.get('density', 'auto');
+        return ['auto', 'compact', 'default', 'expanded'].includes(value) ? value : 'auto';
+    }
+
+    setDensity(value) {
+        this.set('density', ['auto', 'compact', 'default', 'expanded'].includes(value) ? value : 'auto');
+    }
+
+    resetToolbar() {
+        this._prefs = { version: PREFS_VERSION };
+        this._save();
     }
 }
 

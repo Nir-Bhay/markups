@@ -13,8 +13,10 @@ import {
     wrapSelection,
     wrapSelectionHtml,
     transformSelection,
+    clearMarkdownFormatting,
     getSelection,
 } from '../toolbar/index.js';
+import { DIAGRAM_PRESETS } from '../toolbar/catalog.js';
 
 const getOverflowSelection = () => getSelection() || 'Content here';
 
@@ -73,45 +75,6 @@ const generateLorem = (type = 'paragraph') => {
             return sentences.slice(0, 5).join(' ');
     }
 };
-
-const DIAGRAM_PRESETS = [
-    {
-        action: 'diagram-flowchart',
-        icon: '🔷',
-        label: 'Flowchart',
-        content: '\n```mermaid\ngraph TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[Continue]\n    B -->|No| D[Stop]\n```\n',
-    },
-    {
-        action: 'diagram-sequence',
-        icon: '↔️',
-        label: 'Sequence',
-        content: '\n```mermaid\nsequenceDiagram\n    Alice->>Bob: Hello Bob\n    Bob-->>Alice: Hi Alice\n```\n',
-    },
-    {
-        action: 'diagram-class',
-        icon: '🧱',
-        label: 'Class',
-        content: '\n```mermaid\nclassDiagram\n    class Animal {\n        +name\n        +eat()\n    }\n    Animal <|-- Dog\n```\n',
-    },
-    {
-        action: 'diagram-state',
-        icon: '⚙️',
-        label: 'State',
-        content: '\n```mermaid\nstateDiagram-v2\n    [*] --> Idle\n    Idle --> Active\n    Active --> [*]\n```\n',
-    },
-    {
-        action: 'diagram-mindmap',
-        icon: '🧠',
-        label: 'Mindmap',
-        content: '\n```mermaid\nmindmap\n  root((Idea))\n    Branch 1\n    Branch 2\n```\n',
-    },
-    {
-        action: 'diagram-gantt',
-        icon: '📅',
-        label: 'Gantt',
-        content: '\n```mermaid\ngantt\n    title Project Timeline\n    dateFormat  YYYY-MM-DD\n    section Planning\n    Research :a1, 2026-01-01, 3d\n```\n',
-    },
-];
 
 const outdentSelection = () => {
     const editor = typeof window !== 'undefined' ? window.editor : null;
@@ -173,6 +136,8 @@ class MobileUIManager {
         this._boundOverflowOutsideClick = null;
         this._boundOverflowResize = null;
         this._boundBreakpointResize = null;
+        this._setOverflowState = null;
+        this._overflowTrigger = null;
         this._docsListTimers = [];
 
         MobileUIManager.instance = this;
@@ -303,7 +268,7 @@ class MobileUIManager {
                     this.closeDrawer();
                     e.preventDefault();
                 } else if (this.overflowSheet?.classList.contains('active')) {
-                    this.overflowSheet.classList.remove('active');
+                    this._setOverflowState?.(false);
                     e.preventDefault();
                 }
             }
@@ -340,6 +305,14 @@ class MobileUIManager {
             });
         }
 
+        const shareBtn = document.getElementById('mobile-share-btn');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => {
+                document.getElementById('share-btn')?.click();
+                this.closeDrawer();
+            });
+        }
+
         // Export
         const exportBtn = document.getElementById('mobile-export-btn');
         if (exportBtn) {
@@ -358,8 +331,32 @@ class MobileUIManager {
             });
         }
 
+        const replaceBtn = document.getElementById('mobile-replace-btn');
+        if (replaceBtn) {
+            replaceBtn.addEventListener('click', () => {
+                document.getElementById('find-replace-btn')?.click();
+                this.closeDrawer();
+            });
+        }
+
+        const undoBtn = document.getElementById('mobile-undo-btn');
+        if (undoBtn) {
+            undoBtn.addEventListener('click', () => {
+                document.getElementById('toolbar-undo')?.click();
+                this.closeDrawer();
+            });
+        }
+
+        const redoBtn = document.getElementById('mobile-redo-btn');
+        if (redoBtn) {
+            redoBtn.addEventListener('click', () => {
+                document.getElementById('toolbar-redo')?.click();
+                this.closeDrawer();
+            });
+        }
+
         // Theme toggle
-        const themeBtn = document.getElementById('mobile-theme-btn');
+        const themeBtn = document.getElementById('mobile-drawer-theme-btn');
         if (themeBtn) {
             themeBtn.addEventListener('click', () => {
                 document.getElementById('dark-mode-toggle')?.click();
@@ -571,7 +568,9 @@ class MobileUIManager {
         const overflowBtn = document.getElementById('toolbar-overflow-btn');
         if (!overflowBtn || !this.overflowSheet) return;
 
+        this._overflowTrigger = overflowBtn;
         overflowBtn.setAttribute('aria-expanded', 'false');
+        this.overflowSheet.setAttribute('aria-hidden', 'true');
         this._renderToolbarOverflowMenu(overflowBtn);
 
         const setOverflowState = (isOpen) => {
@@ -580,8 +579,12 @@ class MobileUIManager {
             this.overflowSheet.setAttribute('aria-hidden', String(!isOpen));
             if (isOpen) {
                 this._positionToolbarOverflow(overflowBtn);
+                this.overflowSheet.querySelector('button[data-action]')?.focus();
+            } else if (this.overflowSheet.contains(document.activeElement)) {
+                overflowBtn.focus({ preventScroll: true });
             }
         };
+        this._setOverflowState = setOverflowState;
 
         overflowBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -611,6 +614,13 @@ class MobileUIManager {
             e.stopPropagation();
             setOverflowState(false);
             handler();
+        });
+
+        this.overflowSheet.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                setOverflowState(false);
+            }
         });
 
         this._boundOverflowResize = () => {
@@ -699,9 +709,44 @@ class MobileUIManager {
         addItem('line-break', '↵', 'Line Break', () => insertText('<br>\n'));
 
         addSection('Diagrams');
-        DIAGRAM_PRESETS.forEach(({ action, icon, label, content }) => {
-            addItem(action, icon, label, () => insertText(content));
+        DIAGRAM_PRESETS.forEach((preset) => {
+            addItem(`diagram-${preset.id}`, '◇', preset.label, () => insertText(preset.insert));
         });
+
+        addSection('Quick tools');
+        addItem('emoji', '☺', 'Insert emoji', () => document.getElementById('toolbar-emoji')?.click());
+        addItem('ai-writer', '✦', 'AI writing assistant', () => document.getElementById('ai-writer-button')?.click());
+        addItem('copy-markdown', '⧉', 'Copy Markdown', () => document.getElementById('toolbar-copy-markdown')?.click());
+        addItem('clear-formatting', '⌫', 'Clear Markdown formatting', () => {
+            const button = document.getElementById('toolbar-clear-formatting');
+            if (button) button.click();
+            else transformSelection(clearMarkdownFormatting);
+        });
+        addItem('preview-toggle', '◉', 'Toggle preview', () => document.getElementById('toolbar-preview-toggle')?.click());
+
+        addSection('View');
+        addItem('scroll-sync', '⇅', 'Scroll sync', () => document.getElementById('scroll-sync-button')?.click());
+        addItem('lint', '✓', 'Check Markdown', () => document.getElementById('lint-button')?.click());
+        addItem('stats', '▦', 'Statistics', () => document.getElementById('stats-button')?.click());
+        addItem('focus', '◎', 'Focus mode', () => document.getElementById('focus-button')?.click());
+        addItem('typewriter', '⌨', 'Typewriter mode', () => document.getElementById('typewriter-button')?.click());
+        addItem('fullscreen', '⛶', 'Fullscreen', () => document.getElementById('fullscreen-button')?.click());
+        addItem('templates', '▤', 'Templates', () => document.getElementById('templates-button')?.click());
+        addItem('goals', '◷', 'Writing goals', () => document.getElementById('goals-button')?.click());
+        addItem('highlight', 'H', 'Highlight', () => document.getElementById('toolbar-highlight')?.click());
+        addItem('text-color', 'A', 'Text color (HTML)', () => {
+            const overflowBtn = document.getElementById('toolbar-overflow-btn');
+            if (overflowBtn) toolbarManager._openColorPicker(overflowBtn, 'text');
+        });
+        addItem('highlight-color', 'A', 'Highlight color (HTML)', () => {
+            const overflowBtn = document.getElementById('toolbar-overflow-btn');
+            if (overflowBtn) toolbarManager._openColorPicker(overflowBtn, 'highlight');
+        });
+        addItem('special-chars', 'Ω', 'Special characters', () => {
+            const overflowBtn = document.getElementById('toolbar-overflow-btn');
+            if (overflowBtn) toolbarManager._openSpecialChars(overflowBtn);
+        });
+        addItem('format-url', '🔗', 'Format URL', () => document.getElementById('toolbar-url')?.click());
 
         addSection('Transform');
         addItem('upper', 'A', 'UPPERCASE', () => transformSelection(t => t.toUpperCase()));
@@ -717,13 +762,9 @@ class MobileUIManager {
         addItem('reverse-lines', '⇅', 'Reverse Lines', () => transformSelection(t => t.split('\n').reverse().join('\n')));
         addItem('unique-lines', '◎', 'Unique Lines', () => transformSelection(t => [...new Set(t.split('\n'))].join('\n')));
         addItem('trim-lines', '⌧', 'Trim Lines', () => transformSelection(t => t.split('\n').map((line) => line.trim()).join('\n')));
-        addItem('remove-formatting', '✕', 'Remove Markdown', () => transformSelection(t =>
-            t
-                .replace(/[*_~`#>]/g, '')
-                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
-                .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '$1')
-                .trim()
-        ));
+        addItem('remove-formatting', '✕', 'Remove Markdown', () => {
+            transformSelection(clearMarkdownFormatting);
+        });
         addItem('encode-uri', '%', 'URL Encode', () => transformSelection(t => encodeURIComponent(t)));
         addItem('decode-uri', '🔓', 'URL Decode', () => transformSelection(t => {
             try {
@@ -823,9 +864,7 @@ class MobileUIManager {
                 document.body.classList.remove('view-editor', 'view-preview');
                 document.body.classList.add('view-split');
                 this.closeDrawer();
-                if (this.overflowSheet) {
-                    this.overflowSheet.classList.remove('active');
-                }
+                this._setOverflowState?.(false);
             }
 
             wasDesktop = isNowDesktop;
@@ -847,10 +886,9 @@ class MobileUIManager {
 
     dispose() {
         this.closeDrawer();
-        if (this.overflowSheet) {
-            this.overflowSheet.classList.remove('active');
-            this.overflowSheet.setAttribute('aria-hidden', 'true');
-        }
+        this._setOverflowState?.(false);
+        this._setOverflowState = null;
+        this._overflowTrigger = null;
 
         if (this._boundKeydown) {
             document.removeEventListener('keydown', this._boundKeydown);

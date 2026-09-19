@@ -7,6 +7,8 @@ import {
   COLORS,
   HIGHLIGHT_COLORS,
   EMOJI_SETS,
+  EMOJI_SEARCH_NAMES,
+  searchEmojis,
   SPECIAL_CHARS,
   TABLE_MAX,
 } from './constants.js';
@@ -14,6 +16,7 @@ import { TOOLBAR_GROUPS } from './dropdowns.js';
 import { prefs } from './preferences.js';
 import { popover } from './popovers.js';
 import { injectToolbarStyles } from './styles.js';
+import { markdownService } from '../../core/markdown/index.js';
 import {
   resolveEditor,
   wrapSelectionHtml,
@@ -496,9 +499,12 @@ export class ToolbarManager {
 
     /** @private */
     _createColorSwatch(hex, mode) {
-        const swatch = document.createElement('div');
+        const swatch = document.createElement('button');
+        swatch.type = 'button';
         swatch.className = 'tb-color-swatch';
         swatch.style.background = hex;
+        swatch.setAttribute('aria-label', `${mode === 'highlight' ? 'Highlight' : 'Text'} color ${hex}`);
+        swatch.title = hex;
 
         if (hex === '#ffffff' || hex === '#000000') {
             swatch.style.border = '1px solid rgba(255,255,255,0.2)';
@@ -550,30 +556,41 @@ export class ToolbarManager {
         const panel = document.createElement('div');
         panel.className = 'tb-panel';
         panel.style.width = '290px';
+        panel.setAttribute('aria-label', 'Emoji picker');
 
         // Search input
         const search = document.createElement('input');
         search.className = 'tb-emoji-search';
         search.placeholder = '🔍 Search emoji…';
+        search.type = 'search';
+        search.setAttribute('aria-label', 'Search emoji by name');
         panel.appendChild(search);
 
         // Tabs
         const tabBar = document.createElement('div');
         tabBar.className = 'tb-emoji-tabs';
+        tabBar.setAttribute('role', 'tablist');
+        tabBar.setAttribute('aria-label', 'Emoji categories');
 
         const categories = Object.keys(EMOJI_SETS);
         const allCategories = ['Recent', ...categories];
 
         const grid = document.createElement('div');
         grid.className = 'tb-emoji-grid';
+        grid.setAttribute('role', 'grid');
+        grid.setAttribute('aria-label', 'Emoji results');
 
         const renderEmojis = (emojis) => {
             grid.innerHTML = '';
             emojis.forEach(emoji => {
                 const btn = document.createElement('button');
+                const name = EMOJI_SEARCH_NAMES[emoji] || 'emoji';
                 btn.className = 'tb-emoji-btn';
+                btn.type = 'button';
                 btn.textContent = emoji;
-                btn.title = emoji;
+                btn.title = name;
+                btn.setAttribute('role', 'gridcell');
+                btn.setAttribute('aria-label', `Insert ${name}`);
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     insertText(emoji);
@@ -584,13 +601,17 @@ export class ToolbarManager {
             });
 
             if (emojis.length === 0) {
-                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#64748b;font-size:12px;padding:16px;">No emoji found</div>';
+                const empty = document.createElement('div');
+                empty.textContent = 'No emoji found';
+                empty.style.cssText = 'grid-column:1/-1;text-align:center;color:var(--text-tertiary);font-size:12px;padding:16px;';
+                grid.appendChild(empty);
             }
         };
 
         const setActiveTab = (tabName) => {
             tabBar.querySelectorAll('.tb-emoji-tab').forEach(t => {
                 t.classList.toggle('active', t.dataset.tab === tabName);
+                t.setAttribute('aria-selected', String(t.dataset.tab === tabName));
             });
 
             if (tabName === 'Recent') {
@@ -603,8 +624,11 @@ export class ToolbarManager {
         allCategories.forEach(cat => {
             const tab = document.createElement('button');
             tab.className = 'tb-emoji-tab';
+            tab.type = 'button';
             tab.textContent = cat;
             tab.dataset.tab = cat;
+            tab.setAttribute('role', 'tab');
+            tab.setAttribute('aria-selected', 'false');
             tab.addEventListener('click', (e) => {
                 e.stopPropagation();
                 search.value = '';
@@ -625,10 +649,7 @@ export class ToolbarManager {
                 setActiveTab(activeTab ? activeTab.dataset.tab : 'Smileys');
                 return;
             }
-            // Search all emojis
-            const allEmojis = Object.values(EMOJI_SETS).flat();
-            // Simple contains search (limited since emojis don't have text names in this set)
-            renderEmojis(allEmojis.slice(0, 48));
+            renderEmojis(searchEmojis(q));
         });
 
         // Start with Recent or first category
@@ -843,16 +864,20 @@ export class ToolbarManager {
         const content = editor.getValue();
         const selection = getSelection();
 
-        // Count stats
+        // Count stats — Phase 3.3: canonical extractStats so the popover
+        // agrees with footer + goals. Sentences use the footer modal regex.
         const countStats = (text) => {
-            const chars = text.length;
-            const charsNoSpace = text.replace(/\s/g, '').length;
-            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-            const lines = text.split('\n').length;
-            const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim()).length;
-            const sentences = text.split(/[.!?]+/).filter(s => s.trim()).length;
-            const readTime = Math.max(1, Math.ceil(words / 200));
-            return { chars, charsNoSpace, words, lines, paragraphs, sentences, readTime };
+            const stats = markdownService.extractStats(text || '');
+            const sentences = (text || '').split(/[.(!?)]+/).filter(s => s.trim()).length;
+            return {
+                chars: stats.characters,
+                charsNoSpace: stats.charactersNoSpaces,
+                words: stats.words,
+                lines: stats.lines,
+                paragraphs: stats.paragraphs,
+                sentences,
+                readTime: Math.max(1, stats.readingTime)
+            };
         };
 
         const docStats = countStats(content);

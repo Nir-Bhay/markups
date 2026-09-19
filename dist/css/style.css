@@ -11323,3 +11323,83 @@ header input[type='text']::placeholder {
         height: 0;
     }
 }
+
+/* ===== Header file tabs (browser-style, between brand and actions) ===== */
+.header-quicktabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+    height: 100%;
+    margin: 0;
+    padding: 0 4px;
+    overflow: hidden;
+    align-self: stretch;
+}
+
+.header-quicktabs-list,
+#header-quicktabs #tabs-list {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.header-quicktabs-list::-webkit-scrollbar,
+#header-quicktabs #tabs-list::-webkit-scrollbar {
+    display: none;
+}
+
+#header-quicktabs .header-tab {
+    height: 32px;
+    padding: 0 8px 0 10px;
+    min-width: 72px;
+    max-width: 168px;
+    font-size: 0.75rem;
+}
+
+#header-quicktabs .header-tab .tab-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-left: 2px;
+}
+
+.header-quicktab-new {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px dashed var(--border-medium, rgba(0, 0, 0, 0.18));
+    border-radius: var(--radius-md, 8px);
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.header-quicktab-new:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+/* Hide quicktabs on small screens (mobile has its own navigation) */
+@media (max-width: 720px) {
+    .header-quicktabs {
+        display: none;
+    }
+}

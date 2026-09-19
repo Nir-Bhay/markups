@@ -305,7 +305,14 @@ class MarkdownService {
     async render(markdown, container, options = {}) {
         if (!container) return;
 
+        // Render token: fast keystrokes start a new render before the previous
+        // async Mermaid pass finishes. The stale pass must not mutate the
+        // container after the newer HTML already replaced it.
+        this._renderToken = (this._renderToken || 0) + 1;
+        const token = this._renderToken;
+
         const html = this.parse(markdown, options);
+        if (token !== this._renderToken) return;
         container.innerHTML = html;
 
         // Post-process: handle broken images (Issue #24) — must run before any async work
@@ -316,7 +323,8 @@ class MarkdownService {
 
         // Post-process: render mermaid diagrams
         if (this.mermaidEnabled && options.renderMermaid !== false) {
-            await this._renderMermaidDiagrams(container);
+            await this._renderMermaidDiagrams(container, token);
+            if (token !== this._renderToken) return;
         }
 
         this.renderCount++;
@@ -330,10 +338,14 @@ class MarkdownService {
      * @param {HTMLElement} container - Container element
      * @private
      */
-    async _renderMermaidDiagrams(container) {
+    async _renderMermaidDiagrams(container, token = null) {
+        // Clear stale error notes from the previous pass so they cannot pile up.
+        container.querySelectorAll('.mermaid-error').forEach((el) => el.remove());
+
         const mermaidBlocks = container.querySelectorAll('code.language-mermaid');
 
         for (let i = 0; i < mermaidBlocks.length; i++) {
+            if (token !== null && token !== this._renderToken) return;
             const block = mermaidBlocks[i];
             const pre = block.parentElement;
             const code = block.textContent;
@@ -344,6 +356,7 @@ class MarkdownService {
                 MarkdownService._mermaidSeq = (MarkdownService._mermaidSeq || 0) + 1;
                 const id = `mermaid-${MarkdownService._mermaidSeq}`;
                 const { svg } = await mermaid.render(id, code);
+                if (token !== null && token !== this._renderToken) return;
 
                 // Defense-in-depth: sanitize the mermaid SVG before injecting.
                 // securityLevel: 'strict' already prevents script execution, but we
@@ -356,9 +369,13 @@ class MarkdownService {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'mermaid-diagram';
                 wrapper.innerHTML = cleanSvg;
+                // Preserve the diagram source so Document Mode serialization can
+                // rebuild the fence instead of walking the rendered SVG.
+                wrapper.dataset.mermaidCode = code;
 
                 pre.replaceWith(wrapper);
             } catch (err) {
+                if (token !== null && token !== this._renderToken) return;
                 console.error('Mermaid render error:', err);
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'mermaid-error';
@@ -500,7 +517,8 @@ class MarkdownService {
 
         const chars = markdown.replace(/\s/g, '').length;
         const lines = markdown.split('\n').length;
-        const paragraphs = markdown.split(/\n\n+/).filter(p => p.trim()).length;
+        // Phase 3.3: whitespace-only lines separate paragraphs (matches footer).
+        const paragraphs = markdown.split(/\n\s*\n/).filter(p => p.trim()).length;
 
         return {
             words: words.length,
@@ -591,5 +609,22 @@ export const markdownService = new MarkdownService();
 
 // Also export the class for testing
 export { MarkdownService };
+
+/**
+ * Derive a document title from markdown content (Phase 2.2).
+ * First `# ` H1 line (trimmed, capped) wins; anything else is 'Untitled'.
+ * Pure function — unit-tested, shared by main.js save path.
+ * @param {string} content - Markdown source
+ * @param {number} [maxLength=20] - Title cap
+ * @returns {string}
+ */
+export function deriveDocumentTitle(content = '', maxLength = 20) {
+    const nl = content.indexOf('\n');
+    const firstLine = nl === -1 ? content : content.slice(0, nl);
+    if (firstLine && firstLine.startsWith('# ')) {
+        return firstLine.substring(2).trim().substring(0, maxLength) || 'Untitled';
+    }
+    return 'Untitled';
+}
 
 export default markdownService;

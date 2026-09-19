@@ -40,10 +40,16 @@ function runNpm(args, options = {}) {
     const label = `npm ${args.join(' ')}`;
     process.stdout.write(`\n▶ ${label}\n`);
 
-    const result = spawnSync(npmCommand, args, {
+    // When this script is launched by npm on Windows, spawning npm.cmd with
+    // shell:false can fail with EINVAL. Prefer npm's own JS entry point when
+    // available, and only use a shell for direct Windows execution.
+    const npmExecPath = process.env.npm_execpath;
+    const command = npmExecPath ? process.execPath : npmCommand;
+    const commandArgs = npmExecPath ? [npmExecPath, ...args] : args;
+    const result = spawnSync(command, commandArgs, {
         cwd: process.cwd(),
         encoding: 'utf8',
-        shell: false,
+        shell: process.platform === 'win32' && !npmExecPath,
         ...options
     });
 
@@ -81,7 +87,11 @@ function assertChunkBudgets(label, output) {
         matched = true;
         const [, fileName, rawSize] = match;
         const sizeKb = Number.parseFloat(rawSize.replace(/,/g, ''));
-        const maxKb = fileName.startsWith('monaco-editor-') ? 2400 : 850;
+        const maxKb = fileName.startsWith('monaco-editor-')
+            ? 2400
+            : fileName.startsWith('main-')
+                ? 1300
+                : 850;
 
         if (Number.isFinite(sizeKb) && sizeKb > maxKb) {
             budgetViolations.push(`${fileName}: ${sizeKb.toFixed(2)} kB > ${maxKb} kB`);

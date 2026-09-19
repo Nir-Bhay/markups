@@ -32,6 +32,7 @@ export const STORAGE_KEYS = {
     FONT_SIZE: 'font_size',
     WORD_WRAP: 'word_wrap',
     LINE_NUMBERS: 'line_numbers',
+    KEYBINDINGS: 'editor_keybindings',
 
     // UI state
     SIDEBAR_COLLAPSED: 'sidebar_collapsed',
@@ -52,6 +53,9 @@ export const STORAGE_KEYS = {
     AI_MODEL: 'ai_model',
     AI_TEMPERATURE: 'ai_temperature',
     AI_MAX_TOKENS: 'ai_max_tokens',
+    AI_CONTEXT_CHARS: 'ai_context_chars',
+    AI_CUSTOM_INSTRUCTIONS: 'ai_custom_instructions',
+    AI_REMEMBER_KEY: 'ai_remember_key',
     AI_PANEL_VISIBLE: 'ai_panel_visible',
 
     // Feature-specific keys (legacy -> namespaced)

@@ -36,7 +36,7 @@ describe('a11y: search overlay dialog semantics', () => {
         const html = load(INDEX_HTML);
         const input = html.match(/<input[^>]*id="search-input"[^>]*>/);
         expect(input, '#search-input must exist').toBeTruthy();
-        expect(input[0]).toContain('aria-label="Search preview"');
+        expect(input[0]).toContain('aria-label="Find in document"');
     });
 });
 
@@ -60,7 +60,9 @@ describe('a11y: existing modal contracts (regression guards)', () => {
         { id: 'goals-modal', label: 'goals' },
         { id: 'stats-modal', label: 'stats' },
         { id: 'templates-modal', label: 'templates' },
-        { id: 'export-modal', label: 'export' }
+        { id: 'export-modal', label: 'export' },
+        { id: 'share-modal', label: 'share' },
+        { id: 'import-modal', label: 'import' }
     ];
 
     for (const { id, label } of EXPECTED_MODALS) {

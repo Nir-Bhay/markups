@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { clampMonotonic, findAnchorSegment } from '../utils/scroll-sync.js';
+import { clampMonotonic, findAnchorSegment, isScrollAnchorElement } from '../utils/scroll-sync.js';
 
 describe('scroll sync mapping (Issue #39)', () => {
     it('clampMonotonic removes backwards positions that caused "halt then jump"', () => {
@@ -47,5 +47,26 @@ describe('scroll sync mapping (Issue #39)', () => {
         const atEnd = findAnchorSegment(1e9, 'editorTop', anchors);
         expect(atEnd.a).toBe(anchors[2]);
         expect(atEnd.t).toBe(1);
+    });
+
+    it('isScrollAnchorElement rejects nodes inside closed details', () => {
+        document.body.innerHTML = `
+          <details>
+            <summary>Hidden</summary>
+            <p data-source-line="10">secret</p>
+          </details>
+          <details open>
+            <summary>Shown</summary>
+            <p data-source-line="20">visible</p>
+          </details>
+          <p data-source-line="30">root</p>
+        `;
+        const closed = document.querySelector('details:not([open]) p');
+        const opened = document.querySelector('details[open] p');
+        const root = document.querySelector('p[data-source-line="30"]');
+        expect(isScrollAnchorElement(closed)).toBe(false);
+        expect(isScrollAnchorElement(opened)).toBe(true);
+        expect(isScrollAnchorElement(root)).toBe(true);
+        document.body.innerHTML = '';
     });
 });

@@ -77,4 +77,18 @@ describe('features/explorer dispose', () => {
         expect(manager._boundMousemove).toBeNull();
         expect(manager._boundMouseup).toBeNull();
     });
+
+    it('escapes persisted node names when rendering the tree', () => {
+        manager.setNodes([{
+            id: 'file-1',
+            type: 'file',
+            name: '<img src=x onerror=alert(1)>',
+            parentId: 'root',
+            order: 0
+        }]);
+
+        const tree = document.getElementById('explorer-tree');
+        expect(tree.querySelector('img')).toBeNull();
+        expect(tree.textContent).toContain('<img src=x onerror=alert(1)>.md');
+    });
 });
