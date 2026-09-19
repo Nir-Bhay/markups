@@ -52,9 +52,24 @@ export function stripExportChrome(root) {
         '.preview-video-hitbox',
         '.image-controls-toolbar',
         '.resize-handle',
+        '.html2canvas-container',
         '[data-export-ignore]'
     ].join(','));
     junk.forEach((el) => el.remove());
+
+    // Nested iframes/videos cannot be cloned by html2canvas and can throw
+    // "Unable to find element in cloned iframe".
+    root.querySelectorAll('iframe, video').forEach((el) => {
+        const note = document.createElement('p');
+        note.setAttribute('data-export-media-placeholder', '');
+        note.style.cssText = 'margin:12px 0;padding:12px;border:1px dashed #cbd5e1;color:#64748b;font-size:13px;';
+        note.textContent = el.tagName === 'VIDEO' ? '[Video]' : '[Embedded media]';
+        el.replaceWith(note);
+    });
+
+    root.querySelectorAll('[id]').forEach((el) => {
+        el.removeAttribute('id');
+    });
 
     root.querySelectorAll('[contenteditable]').forEach((el) => {
         el.removeAttribute('contenteditable');
@@ -237,12 +252,27 @@ export async function convertMermaidSvgsToImages(container, opts = {}) {
  * @returns {HTMLElement}
  */
 export function createExportWorkbench(sourceElement, { widthCss, className = 'markdown-body' } = {}) {
+    const host = document.createElement('div');
+    host.setAttribute('data-export-host', 'true');
+    // Stay in the layout viewport so html2canvas can clone the node, but clip
+    // so the live editor is not covered. Loading overlay sits above this.
+    host.style.cssText = [
+        'position:fixed',
+        'left:0',
+        'top:0',
+        'width:8.5in',
+        'height:64px',
+        'overflow:hidden',
+        'pointer-events:none',
+        'z-index:0'
+    ].join(';');
+
     const workbench = document.createElement('div');
     workbench.className = className;
     workbench.setAttribute('data-export-workbench', 'true');
     workbench.style.cssText = [
-        'position:fixed',
-        'left:-12000px',
+        'position:relative',
+        'left:0',
         'top:0',
         `width:${widthCss || '7.5in'}`,
         'background:#ffffff',
@@ -250,14 +280,14 @@ export function createExportWorkbench(sourceElement, { widthCss, className = 'ma
         'padding:0',
         'margin:0',
         'pointer-events:none',
-        'z-index:-1',
         'overflow:visible'
     ].join(';');
 
     const clone = sourceElement.cloneNode(true);
     stripExportChrome(clone);
     workbench.appendChild(clone);
-    document.body.appendChild(workbench);
+    host.appendChild(workbench);
+    document.body.appendChild(host);
     return workbench;
 }
 
@@ -266,8 +296,88 @@ export function createExportWorkbench(sourceElement, { widthCss, className = 'ma
  * @param {HTMLElement | null} workbench
  */
 export function destroyExportWorkbench(workbench) {
-    if (workbench?.parentNode) {
-        workbench.parentNode.removeChild(workbench);
+    const host = workbench?.closest?.('[data-export-host]') || workbench;
+    if (host?.parentNode) {
+        host.parentNode.removeChild(host);
+    }
+}
+
+const KEEP_IN_CLONE = new Set(['HTML', 'HEAD', 'BODY', 'STYLE', 'LINK', 'META', 'TITLE']);
+
+export function isHtml2CanvasCloneError(err) {
+    return /cloned iframe|Unable to find element/i.test(String(err?.message || err || ''));
+}
+
+/**
+ * html2canvas clones the whole document. Ignore app chrome (Monaco, etc.) so
+ * the clone iframe can still locate the export subtree.
+ * @param {Element} el
+ * @param {HTMLElement} root
+ * @returns {boolean}
+ */
+export function ignoreElementsOutsideSubtree(el, root) {
+    if (!el || el === root) return false;
+    const tag = (el.tagName || '').toUpperCase();
+    if (KEEP_IN_CLONE.has(tag)) return false;
+    if (root.contains(el)) return false;
+    // Never skip ancestors — ignoring the export host drops the workbench
+    // from the clone iframe ("Unable to find element in cloned iframe").
+    if (typeof el.contains === 'function' && el.contains(root)) return false;
+    return true;
+}
+
+/**
+ * Capture a DOM subtree with html2canvas, retrying without crop options if
+ * the clone iframe cannot locate the element.
+ * @param {(el: HTMLElement, opts: object) => Promise<HTMLCanvasElement>} html2canvas
+ * @param {HTMLElement} root
+ * @param {object} [opts]
+ * @returns {Promise<HTMLCanvasElement>}
+ */
+export async function captureSubtreeCanvas(html2canvas, root, opts = {}) {
+    const { extraIgnore, ...rest } = opts;
+    const ignore = (el) => ignoreElementsOutsideSubtree(el, root) || Boolean(extraIgnore?.(el));
+
+    const onclone = (clonedDoc) => {
+        const clonedRoot = clonedDoc.querySelector('[data-export-workbench="true"]') || clonedDoc.body;
+        const host = clonedRoot?.closest?.('[data-export-host]');
+        if (host) {
+            host.style.height = 'auto';
+            host.style.overflow = 'visible';
+            host.style.opacity = '1';
+        }
+        if (typeof rest.onclone === 'function') rest.onclone(clonedDoc);
+    };
+
+    const base = {
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        letterRendering: false,
+        backgroundColor: '#ffffff',
+        imageTimeout: 10_000,
+        removeContainer: true,
+        ignoreElements: ignore,
+        onclone,
+        ...rest,
+        ignoreElements: ignore,
+        onclone
+    };
+
+    try {
+        return await html2canvas(root, base);
+    } catch (err) {
+        if (!isHtml2CanvasCloneError(err)) throw err;
+        return await html2canvas(root, {
+            ...base,
+            x: 0,
+            y: rest.y || 0,
+            width: rest.width,
+            height: rest.height,
+            windowWidth: Math.max(root.scrollWidth || rest.width || 800, 800),
+            windowHeight: Math.max(root.scrollHeight || rest.height || 600, 600),
+            ignoreElements: (el) => ignoreElementsOutsideSubtree(el, root)
+        });
     }
 }
 
@@ -410,28 +520,21 @@ export async function renderWorkbenchToPdf(workbench, opts) {
 
         // Capture only this vertical band. ignoreElements skips off-band boxes so
         // html2canvas does not re-paint the entire tall document every page.
-        const canvas = await html2canvas(workbench, {
+        const canvas = await captureSubtreeCanvas(html2canvas, workbench, {
             scale,
-            useCORS: true,
-            allowTaint: false,
-            logging: false,
-            letterRendering: false,
-            backgroundColor: '#ffffff',
             x: 0,
             y,
             width: workbenchWidthPx,
             height: sliceHeight,
             windowWidth: workbenchWidthPx,
-            windowHeight: sliceHeight,
+            windowHeight: Math.max(sliceHeight, 400),
             scrollX: 0,
             scrollY: 0,
-            ignoreElements: (el) => {
-                if (!el || el === workbench) return false;
+            extraIgnore: (el) => {
                 if (el.getAttribute?.('data-export-ignore') != null) return true;
                 const top = Number(el.getAttribute?.('data-export-top'));
                 const bottom = Number(el.getAttribute?.('data-export-bottom'));
                 if (!Number.isFinite(top) || !Number.isFinite(bottom)) return false;
-                // Fully above or fully below the current page band
                 return bottom < bandTop - 2 || top > bandBottom + 2;
             }
         });
@@ -475,5 +578,8 @@ export default {
     destroyExportWorkbench,
     raceExportJob,
     annotateExportBands,
-    renderWorkbenchToPdf
+    renderWorkbenchToPdf,
+    captureSubtreeCanvas,
+    ignoreElementsOutsideSubtree,
+    isHtml2CanvasCloneError
 };
