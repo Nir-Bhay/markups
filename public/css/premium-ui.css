@@ -5158,7 +5158,7 @@ body.dark-mode .export-preview-container {
     border-bottom: 1px solid var(--border-light);
   }
 
-  .export-section-label,
+  .export-modal:not(.share-modal) .export-section-label,
   .export-divider,
   .export-recommended-tag {
     display: none !important;
@@ -9056,18 +9056,22 @@ a:focus-visible,
 }
 
 /* ==================== SHARE MODAL (no-server) ==================== */
-.share-modal {
+/* Beat .export-modal-content (flex row) so stale/partial CSS cannot lay
+   the three share cards out as columns. */
+.export-modal.share-modal {
   height: auto;
   max-height: 90vh;
   max-width: 640px;
 }
 
+.export-modal.share-modal .export-modal-content,
 .share-modal-content {
   display: flex;
   flex-direction: column;
+  flex-wrap: nowrap;
   gap: 10px;
   padding: 20px 24px;
-  overflow-y: auto;
+  overflow: hidden auto;
 }
 
 .share-row {
