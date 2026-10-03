@@ -1,289 +1,186 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
-
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <!-- ===== PRIMARY SEO META ===== -->
-    <title>Markups product overview</title>
-    <meta name="description"
-        content="A short overview of Markups. The editor itself is at the main page.">
-    <meta name="keywords"
-        content="markdown editor, free markdown editor, online markdown editor, markdown preview, live markdown preview, markdown to pdf, markdown to html, mermaid diagrams, katex math, monaco editor, markdown editor online free, open source markdown editor, browser markdown editor, markdown writer, github flavored markdown, gfm editor, markdown export, pwa markdown editor, distraction free writing, markdown linter, markdown templates">
-    <meta name="author" content="Nir-Bhay">
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-    <meta name="googlebot" content="index, follow">
-    <meta name="bingbot" content="index, follow">
-    <link rel="canonical" href="https://markups.dev/">
-
-    <!-- ===== ADDITIONAL SEO META ===== -->
-    <meta name="application-name" content="Markups">
-    <meta name="theme-color" content="#3DDC84" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: dark)">
-    <meta name="color-scheme" content="light dark">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Markups">
-    <meta name="format-detection" content="telephone=no">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-
-    <!-- ===== LANGUAGE / LOCALE ===== -->
-    <meta property="og:locale" content="en_US">
-
-    <!-- ===== OPEN GRAPH (Facebook, LinkedIn, Discord) ===== -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://markups.dev/landing">
-    <meta property="og:site_name" content="Markups">
-    <meta property="og:title" content="Markups product overview">
-    <meta property="og:description"
-        content="A short overview of Markups. The editor itself is at the main page.">
-    <meta property="og:image" content="https://markups.dev/image/og-image.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:image:alt"
-        content="Markups. A free online Markdown editor in the browser, with live split preview and no signup.">
-    <meta property="og:image:type" content="image/png">
-
-    <!-- ===== TWITTER CARD ===== -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Markups product overview">
-    <meta name="twitter:description"
-        content="A short overview of Markups. The editor itself is at the main page.">
-    <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
-    <meta name="twitter:image:alt" content="Markups. A free online Markdown editor in the browser, with live split preview and no signup.">
-    <meta name="twitter:creator" content="@NirBhay">
-
-    <!-- ===== ICONS & MANIFEST ===== -->
-    <link rel="icon" type="image/svg+xml" href="/image/og-image.svg">
-    <link rel="apple-touch-icon" href="/image/og-image.svg">
-    <link rel="manifest" href="/manifest.json">
-
-    <!-- ===== JSON-LD STRUCTURED DATA: WebSite ===== -->
-
-    <!-- ===== JSON-LD STRUCTURED DATA: SoftwareApplication ===== -->
-
-    <!-- ===== JSON-LD STRUCTURED DATA: FAQPage ===== -->
-
-    <!-- ===== JSON-LD STRUCTURED DATA: BreadcrumbList ===== -->
-
-    <!-- ===== JSON-LD STRUCTURED DATA: Organization ===== -->
-
-    <!-- ===== JSON-LD STRUCTURED DATA: HowTo ===== -->
-
-    <!-- ===== JSON-LD STRUCTURED DATA: Article (Freshness signals for AI + Search) ===== -->
-
-    <!-- Review schema intentionally omitted until ratings/reviews are externally verifiable on-page -->
-
-    <!-- ===== FRESHNESS SIGNAL (AI SEO: +3.2x citation rate for recent content) ===== -->
-    <meta name="last-modified" content="2026-03-04">
-    <meta name="date" content="2026-03-04">
-    <meta name="revised" content="2026-03-04">
-    <meta property="article:published_time" content="2025-06-01T00:00:00+00:00">
-    <meta property="article:modified_time" content="2026-03-04T00:00:00+00:00">
-    <meta property="article:author" content="https://github.com/Nir-Bhay">
-    <meta property="article:section" content="Developer Tools">
-    <meta property="article:tag" content="markdown editor">
-    <meta property="article:tag" content="free markdown editor">
-    <meta property="article:tag" content="online markdown editor">
-    <meta property="article:tag" content="mermaid diagrams">
-    <meta property="article:tag" content="katex math">
-
-    <!-- ===== BING / COPILOT: IndexNow for faster indexing ===== -->
-    <meta name="msvalidate.01" content="">
-
-    <!-- ===== PERFORMANCE HINTS ===== -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
-    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
-    <link rel="dns-prefetch" href="https://markups.dev">
-
-    <!-- ===== FONTS (display=swap for CLS optimization) ===== -->
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap"
-        rel="stylesheet">
-
-    <!-- ===== CRITICAL CSS INLINE (Reduce render-blocking for LCP < 2.5s) ===== -->
-    <style>
-        /* Prevent CLS from font loading */
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }
-
-        .animate-in {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.6s ease, transform 0.6s ease;
-        }
-
-        .animate-in.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    </style>
-
-    <!-- ===== STYLES ===== -->
-    <link rel="stylesheet" href="./styles.css">
-
-    <!-- ===== NOSCRIPT FALLBACK ===== -->
-    <noscript>
-        <style>
-            #preloader {
-                display: none !important;
-            }
-
-            .animate-in {
-                opacity: 1 !important;
-                transform: none !important;
-            }
-        </style>
-    </noscript>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How Markups works</title>
+  <meta name="description" content="A walkthrough of the Markups editor: split preview, math, diagrams, video, and what each export saves.">
+  <link rel="canonical" href="https://markups.dev/">
+  <meta name="robots" content="index, follow">
+  <meta property="og:title" content="How Markups works">
+  <meta property="og:description" content="A walkthrough of the Markups editor: split preview, math, diagrams, video, and what each export saves.">
+  <meta property="og:url" content="https://markups.dev/landing">
+  <meta property="og:image" content="https://markups.dev/image/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How Markups works">
+  <meta name="twitter:description" content="A walkthrough of the Markups editor: split preview, math, diagrams, video, and what each export saves.">
+  <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,680&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./tour.css">
 </head>
-
 <body>
-    <!-- ========== PRELOADER ========== -->
-    <div id="preloader" class="preloader" aria-hidden="true" role="presentation">
-        <div class="preloader-content">
-            <span class="preloader-icon">✨</span>
-            <span class="preloader-text">Markups</span>
-            <div class="preloader-bar">
-                <div class="preloader-bar-fill"></div>
-            </div>
-        </div>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="#main">Markups</a>
+      <nav class="nav-links" aria-label="On this page">
+        <a href="#write">Write</a>
+        <a href="#preview">Preview</a>
+        <a href="#export">Export</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <a class="btn" href="https://markups.dev/">Open the editor</a>
     </div>
+  </header>
 
-    <!-- ========== SKIP TO CONTENT (Accessibility) ========== -->
-    <a href="#main-content" class="skip-link">Skip to main content</a>
-
-    <!-- ========== NAVIGATION ========== -->
-    <nav class="nav" id="navbar" role="navigation" aria-label="Main navigation">
-        <div class="nav-inner">
-            <a href="#hero" class="nav-brand">
-                <span class="nav-brand-icon">✨</span>
-                <span class="nav-brand-text">Markups</span>
-                <span class="nav-version">v2.0</span>
-            </a>
-
-            <div class="nav-links" id="navLinks">
-                <a href="#how-it-works" class="nav-link">How it works</a>
-                <a href="#export" class="nav-link">Export</a>
-            </div>
-
-            <div class="nav-actions">
-                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
-                    <span class="theme-toggle-icon" id="themeIcon">🌙</span>
-                </button>
-                <a href="https://github.com/Nir-Bhay/markups" target="_blank" rel="noopener noreferrer"
-                    class="github-star-btn">
-                    <span>⭐</span>
-                    <span>Star on GitHub</span>
-                </a>
-                <a href="https://markups.dev" class="nav-cta">Try Editor →</a>
-                <button class="hamburger" id="hamburger" aria-label="Open menu">
-                    <span></span><span></span><span></span>
-                </button>
-            </div>
+  <main id="main">
+    <section class="hero">
+      <div class="wrap">
+        <p class="kicker">Product walkthrough</p>
+        <h1>How Markups works</h1>
+        <p class="lede">One tab. You write Markdown on the left and read the preview on the right. There is no signup. This page only explains that editor. The button opens it.</p>
+        <div class="hero-actions">
+          <a class="btn" href="https://markups.dev/">Open the editor</a>
         </div>
+        <figure class="editor-frame">
+          <iframe src="https://markups.dev/" title="The Markups editor"></iframe>
+          <figcaption>The editor on the main page, inside this walkthrough. Writing happens there, not on this page.</figcaption>
+        </figure>
+      </div>
+    </section>
 
-        <!-- Mobile Menu -->
-        <div class="mobile-menu" id="mobileMenu" role="menu">
-            <a href="#how-it-works" class="mobile-link" role="menuitem">How it works</a>
-            <a href="#export" class="mobile-link" role="menuitem">Export</a>
-            <a href="https://markups.dev" class="mobile-cta" role="menuitem">Try Editor →</a>
+    <section class="section" id="write">
+      <div class="wrap">
+        <h2>1. Open it and write</h2>
+        <p class="section-intro">The session starts on the editor. This walkthrough is not a second product, and it does not ask for an account.</p>
+        <div class="grid-2">
+          <article class="card">
+            <h3>No account</h3>
+            <p>There is no signup form in front of the document. You open the editor in the browser tab you already have. The writing pane is the Monaco editor. What you type stays Markdown. The preview is a view of that same text, not a different file.</p>
+          </article>
+          <article class="card">
+            <h3>What you can type</h3>
+            <p>Headings, emphasis, lists, links, tables, and fenced code. The left pane is the source you edit. If the preview looks wrong, the fix is in that source. The preview does not invent a sentence that is not in the Markdown.</p>
+          </article>
+          <article class="card">
+            <h3>If the network drops</h3>
+            <p>A page that already loaded can appear again if the connection drops. That is not the same as opening the editor with no network from the start. This is not full offline use.</p>
+          </article>
+          <article class="card">
+            <h3>Where the writing happens</h3>
+            <p>The frame above is the real editor. The sections below are the objections that a button label does not answer: when a diagram appears, what math-off does, and what each export file actually is.</p>
+          </article>
         </div>
-    </nav>
+      </div>
+    </section>
 
-    <!-- ===== BREADCRUMB (Hidden visually, visible to crawlers) ===== -->
-    <nav class="breadcrumb-nav" aria-label="Breadcrumb">
-        <ol class="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList">
-            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                <a itemprop="item" href="https://markups.dev"><span itemprop="name">Markups</span></a>
-                <meta itemprop="position" content="1">
-            </li>
-            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                <span itemprop="name">Landing</span>
-                <meta itemprop="position" content="2">
-            </li>
-        </ol>
-    </nav>
+    <section class="section band" id="preview">
+      <div class="wrap">
+        <h2>2. Read the other pane</h2>
+        <p class="section-intro">The right pane is the live split preview. Most of the document updates as you type. Two things do not behave like the rest.</p>
+        <div class="grid-2">
+          <article class="card">
+            <h3>What updates as you type</h3>
+            <p>Headings, paragraphs, lists, links, tables, and fenced code show up from the Markdown on the left. On a wide screen the panes sit side by side. Use the preview to check structure before you export.</p>
+          </article>
+          <article class="card">
+            <h3>Mermaid waits</h3>
+            <p>A mermaid block becomes an SVG after the first paint, not on the first paint. The first look at the page is still the fence. If you turn the preview off, the fence stays a code block. It is not a separate drawing tool. You edit the source inside the fence.</p>
+          </article>
+          <article class="card">
+            <h3>Math on</h3>
+            <p>KaTeX renders inline and display math in the preview. A centered equation is still a line of TeX in the editor. The preview is where it becomes a typeset formula. The source stays in the editor while math is on.</p>
+          </article>
+          <article class="card">
+            <h3>Math off</h3>
+            <p>Turning math off removes the formula and does not restore the TeX source in the preview. The dollar-sign line does not come back in that pane. If you need the source, it is still in the editor.</p>
+          </article>
+        </div>
+      </div>
+    </section>
 
-    <main id="main-content" role="main">
-        <section class="hero" id="hero" aria-label="Markups overview">
-            <div class="hero-bg-decor"></div>
-            <div class="container">
-                <div class="hero-main glass-card-heavy">
-                    <h1 class="hero-headline">
-                        <span class="hero-line">Free online</span>
-                        <span class="hero-line">Markdown editor</span>
-                    </h1>
-                    <p class="hero-sub">A free online Markdown editor in the browser, with live split preview and no signup.</p>
-                    <div class="hero-ctas">
-                        <a href="https://markups.dev/" class="btn btn-primary btn-cta-primary">Open the editor</a>
-                    </div>
-                </div>
-            </div>
-        </section>
+    <section class="section" id="video">
+      <div class="wrap">
+        <h2>3. Put a video in the document</h2>
+        <p class="section-intro">YouTube insert is included. The preview shows the embed. The Markdown still holds the reference you typed.</p>
+        <div class="card">
+          <h3>What this is, and what it is not</h3>
+          <p>Use the insert control and paste a YouTube URL. The preview embeds that video in the document. This is not a video editor. It does not trim, caption, or re-encode the clip. It places the video in the page you are writing, next to the headings and lists already in the source.</p>
+        </div>
+      </div>
+    </section>
 
-        <section class="features-section" id="how-it-works" aria-label="How the editor works">
-            <div class="container">
-                <div class="section-header">
-                    <h2 class="section-title">How it works</h2>
-                    <p class="section-desc">Open the editor, write on the left, and read the preview on the right.</p>
-                </div>
-                <div class="steps-grid">
-                    <div class="step-card">
-                        <div class="step-badge step-badge-jade">1</div>
-                        <h3 class="step-title">No signup</h3>
-                        <p class="step-desc">Open the editor in the browser. An account is not required.</p>
-                    </div>
-                    <div class="step-card">
-                        <div class="step-badge step-badge-indigo">2</div>
-                        <h3 class="step-title">Split preview</h3>
-                        <p class="step-desc">The editor is on the left. The live preview is on the right.</p>
-                    </div>
-                    <div class="step-card">
-                        <div class="step-badge step-badge-orange">3</div>
-                        <h3 class="step-title">Math, video, diagrams</h3>
-                        <p class="step-desc">KaTeX renders math. YouTube insert is included. A mermaid block becomes an SVG after the first paint, not on the first paint. Turning math off removes the formula and does not put the TeX source back.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+    <section class="section" id="export">
+      <div class="wrap">
+        <h2>4. Save a copy out</h2>
+        <p class="section-intro">The button name is shorter than the file it writes. Read this before you send a file to someone else.</p>
+        <div class="grid-2">
+          <article class="card">
+            <h3>PDF</h3>
+            <p>PDF export is a picture of the preview. The page is letter size, portrait, with a three-quarter inch margin. It is a picture of the preview pane, not a text PDF you can select and search. A diagram or a formula appears only as it looks in that picture.</p>
+          </article>
+          <article class="card">
+            <h3>Word</h3>
+            <p>The Word button saves Word-compatible HTML as a .doc file. It is not an OOXML .docx package, and it does not include Track Changes or other Word review markup. Opening it in Word is not the same as receiving a native Word document.</p>
+          </article>
+          <article class="card">
+            <h3>HTML</h3>
+            <p>HTML export is a separate save of the rendered document as a web file. Use it when the next step is a browser, not a word processor. It is not the same button as the Word save.</p>
+          </article>
+          <article class="card">
+            <h3>Markdown</h3>
+            <p>You can also save the raw Markdown. That file is the source. It is the copy to keep if you want to edit the document again later. Export does not replace that source with the preview.</p>
+          </article>
+        </div>
+      </div>
+    </section>
 
-        <section class="export-section" id="export" aria-label="What export actually saves">
-            <div class="container">
-                <div class="section-header section-header-center">
-                    <h2 class="section-title">What export saves</h2>
-                </div>
-                <div class="export-cards-grid">
-                    <div class="export-card export-card-pdf">
-                        <h3 class="export-title">PDF</h3>
-                        <p class="export-desc">The PDF button saves a picture of the preview. It is not a text PDF.</p>
-                    </div>
-                    <div class="export-card export-card-html">
-                        <h3 class="export-title">Word</h3>
-                        <p class="export-desc">The Word button saves Word-compatible HTML as a .doc file. It is not an OOXML DOCX.</p>
-                    </div>
-                    <div class="export-card export-card-md">
-                        <h3 class="export-title">HTML and Markdown</h3>
-                        <p class="export-desc">HTML is a separate save. You can also save the raw Markdown file.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+    <section class="section" id="faq">
+      <div class="wrap">
+        <h2>Questions</h2>
+        <p class="section-intro">The same four answers as the editor page, so there is one version to quote.</p>
+        <div class="faq">
+          <details open>
+            <summary>Does Markups require an account?</summary>
+            <p>No. There is no account.</p>
+          </details>
+          <details>
+            <summary>What do the PDF and Word buttons save?</summary>
+            <p>PDF export is a picture of the preview. The Word button saves Word-compatible HTML as a .doc file.</p>
+          </details>
+          <details>
+            <summary>When does a mermaid block become an SVG?</summary>
+            <p>A mermaid block becomes an SVG after the first paint, not on the first paint.</p>
+          </details>
+          <details>
+            <summary>What happens if math is turned off?</summary>
+            <p>Turning math off removes the formula and does not restore the TeX source. YouTube insert is included.</p>
+          </details>
+        </div>
+      </div>
+    </section>
 
-        <section class="cta-section" aria-label="Open the editor">
-            <div class="container container-narrow">
-                <h2 class="section-title">Open the editor</h2>
-                <p class="section-desc">The editor is the main page. This page is only the overview.</p>
-                <a href="https://markups.dev/" class="btn btn-primary btn-cta-primary">Open the editor</a>
-            </div>
-        </section>
-    </main>
-
-    <script type="module" src="./landing.js"></script>
+    <section class="section">
+      <div class="wrap">
+        <div class="cta">
+          <div>
+            <h2>Open the editor</h2>
+            <p>The writing happens on the main page, not here.</p>
+          </div>
+          <a class="btn" href="https://markups.dev/">Open the editor</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="wrap">
+      <a href="https://markups.dev/">Editor</a>
+      · <a href="https://markups.dev/license">MIT license</a>
+      · <a href="https://github.com/Nir-Bhay/markups">Source</a>
+    </div>
+  </footer>
 </body>
-
 </html>
