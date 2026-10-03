@@ -3,7 +3,7 @@
   <title id="title2">Where a draft lives</title>
   <desc id="desc2">Notes are stored in IndexedDB and copied into localStorage. Export downloads a file. Share encodes the document in the URL hash or hands over a Markdown file. Neither path uploads the note to a Markups server.</desc>
   <rect width="920" height="250" fill="#f6f8fa" rx="12"/>
-  <text x="28" y="34" fill="#1f2328" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600">Nothing is uploaded unless you use a share or export action</text>
+  <text x="28" y="34" fill="#1f2328" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600">Notes stay in this browser. Export downloads. Share does not upload.</text>
   <rect x="28" y="64" width="180" height="140" rx="10" fill="#ffffff" stroke="#0969da" stroke-width="1.5"/>
   <text x="118" y="100" text-anchor="middle" fill="#1f2328" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600">Editor</text>
   <text x="118" y="124" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">open tabs</text>
