@@ -1,6 +1,6 @@
 # Markups
 
-Free browser Markdown editor with a live preview. The editor is Monaco. Parsing, sanitizing, diagram rendering, PDF export, and saving all run in the page. There is no account and no paywall on [markups.dev](https://markups.dev/).
+Free browser Markdown editor with a live preview. The editor is Monaco. Parsing, sanitizing, KaTeX, PDF export, and saving all run in the page. A fence tagged `mermaid` is drawn after that first paint, when Settings → Preview → Mermaid Diagrams is on. There is no account and no paywall on [markups.dev](https://markups.dev/).
 
 - **Live app:** [https://markups.dev/](https://markups.dev/)
 - **Source:** [https://github.com/Nir-Bhay/markups](https://github.com/Nir-Bhay/markups)
@@ -12,7 +12,17 @@ The hosted site loads `src/main.js` (Vite's default entry). `src/app.js` is a se
 
 Open the site and write. A preview pane updates after you pause typing. Notes stay in this browser until you download a file or build a share link.
 
-It fits README drafts, notes with tables and task lists, math, and Mermaid diagrams, without installing a desktop app. It is a single-user editor. It is not a hosted wiki, not a multiplayer document, and not a folder of Markdown files on disk the way Obsidian or Typora is.
+It is a single-user editor in the browser. It is not a hosted wiki, not a multiplayer document, and not a folder of Markdown files on disk the way Obsidian or Typora is.
+
+## Who it is for
+
+This is only what works on [markups.dev](https://markups.dev/) as of 3 October 2026: a free editor in the browser, no account, split preview, KaTeX, export, share by link, and YouTube insert. Mermaid is included with a timing limit, stated in the preview section.
+
+**Student.** Open the site and write. No account. Split view shows the Markdown beside the preview. KaTeX draws math when Math Rendering is on. Export downloads a file. Share by link puts the note in the URL hash.
+
+**Writer.** Same editor: no account, split preview, export, and a link you can send. YouTube insert works. After the preview HTML is sanitized, a recognized YouTube URL becomes an embedded player. `src/utils/video-embed.js` builds that iframe with a `youtube-nocookie.com` source.
+
+**Developer.** A Monaco buffer, language `markdown`, with split preview, KaTeX, export, and link share. A fence tagged `mermaid` is drawn when the Preview toggle is on. The SVG is not there at the instant `#output` updates. `mermaid.run` runs on a later frame.
 
 ## Editing
 
@@ -56,12 +66,12 @@ Pasted images are kept in a `Map` and mirrored to localStorage key `image_store`
 Typing calls `debouncedConvert`, which waits 300 ms and then runs `convert()`.
 
 1. Image references stored in the browser are turned back into URLs, and image-attribute suffixes plus video-attribute blocks are stripped so they do not show up as raw text.
-2. `marked.parse` runs. Marked 15 is left on its default `gfm: true`, so tables, strikethrough, task lists, and autolinks are parsed. This file also registers `marked-alert` (GitHub-style callouts), `marked-footnote`, `marked-emoji` (with the `gemoji` name list), `marked-highlight` (Prism), and `marked-katex-extension`. Heading ids are allocated in a custom renderer so the table of contents can link to them.
+2. `marked.parse` runs. Marked 15 is left on its default `gfm: true`, so tables, strikethrough, task lists, and autolinks are parsed. This file also registers `marked-alert` (GitHub-style callouts), `marked-emoji` (with the `gemoji` name list), `marked-highlight` (Prism), and `marked-katex-extension`. `marked-footnote` is registered as well. On 3 October 2026 the preview showed the footnote marker and did not show the definition at the end, so this README does not treat footnotes as rendered. Heading ids are allocated in a custom renderer so the table of contents can link to them.
 3. The HTML goes through `sanitizePreviewHtml` in `src/utils/sanitize.js`, which calls DOMPurify. The preview profile forbids `script`, `iframe`, `video`, `audio`, and similar tags. A raw `<iframe>` or `<video>` in the Markdown does not survive this step.
 4. The result is written to `#output`. Custom CSS from Settings → Preview (`localStorage` key `markups_custom_css`) is injected as a `<style>` inside that node.
 5. If Math Rendering is off, every `.katex` and `.katex-display` node is removed. The TeX source is not put back into the preview; it remains only in the editor.
 6. Recognized video URLs are then turned into players in the DOM (YouTube, Vimeo, and direct video URLs handled by `src/utils/video-embed.js`). That happens after sanitizing, which is why the embed is allowed even though a hand-written `<iframe>` is not.
-7. If Mermaid Diagrams is on, each `pre code.language-mermaid` fence is replaced and passed to `mermaid.run`. Mermaid is initialized with `securityLevel: 'strict'`. If the toggle is off, those fences stay as code blocks. A diagram that fails to parse is replaced with a short error note; the rest of the document still renders.
+7. Mermaid is initialized in `src/main.js` with `startOnLoad: false`, `theme: 'default'`, `suppressErrors: true`, and `securityLevel: 'strict'`. If Mermaid Diagrams is on, a later animation frame (after `#output` has been written) replaces each `pre code.language-mermaid` fence with a `div.mermaid` and calls `mermaid.run` on those nodes. The diagram is not on the first paint. Until `mermaid.run` finishes, that node is the `.mermaid` box in `public/css/premium-ui.css` (background `--bg-secondary`, padding). On 3 October 2026, with the toggle on, a fence tagged `mermaid` finished as an SVG flowchart with nodes A and B. If the toggle is off, those fences stay as code blocks. If a `.mermaid` node's text later matches "Syntax error in text" or "Parse error on line", `normalizeMermaidPreviewErrors` replaces that node with a short note. That error branch was not what the live check showed.
 
 Both preview toggles live under Settings → Preview and default to on (`src/utils/preview-gates.js`). Syntax highlighting has its own checkbox. Prism grammars are imported explicitly in `src/main.js` (JavaScript, TypeScript, JSX, TSX, Python, JSON, YAML, Bash, SQL, and others). An unknown fence language is left unhighlighted.
 
@@ -77,7 +87,7 @@ The preview has a right-hand **ON THIS PAGE** sidebar (`#toc-sidebar`) with a cl
 
 In preview mode an older rule forced `.toc-sidebar { display: flex !important }`, which beat the hidden class, so the close button appeared to do nothing. The rule that ships now is `body.view-preview .toc-sidebar:not(.hidden)` for the shown state, and `display: none !important` when `.hidden` is set, in both preview and split (`public/css/premium-ui.css`). Backlinks reuses `.toc-sidebar`, so the same close behavior covers both panels. This is the CSS served as `/css/premium-ui.css?v=2.1.1`.
 
-![Edit, render, sanitize, then optional Mermaid and autosave](docs/readme/architecture.svg)
+![Edit, render, sanitize, then Mermaid on a later frame, and autosave](docs/readme/architecture.svg)
 
 ## Local save
 
@@ -95,7 +105,7 @@ If that localStorage write hits a quota error, the app keeps the five most recen
 
 Editor settings use a separate localStorage key, `markdown_editor_settings`.
 
-A service worker (`public/sw.js`) is registered from `/sw.js`, and `public/manifest.json` makes the site installable. Navigations use network-first and fall back to the cache. Static assets use stale-while-revalidate. The first visit needs a network. After that, a cached shell can load when the network fails. The cache does not sync notes between browsers or devices.
+A service worker (`public/sw.js`) is registered from `/sw.js`, and `public/manifest.json` makes the site installable. Navigations use network-first and fall back to the cache. Static assets use stale-while-revalidate. The first visit needs a network. After that, a cached shell can load when the network fails. The note itself is the IndexedDB and localStorage data above, in this browser.
 
 ![Drafts stay in IndexedDB and localStorage until you export or share](docs/readme/local-data.svg)
 
@@ -109,11 +119,11 @@ The export modal is the control labeled Export. Its format buttons, as rendered 
 | Button | What the handler actually writes |
 |---|---|
 | Markdown | The editor source, downloaded as `.md`. |
-| PDF | `html2pdf.js` rasterizes `#output` (html2canvas, scale 2, JPEG quality 0.98) into a letter-size PDF with 0.75 inch margins. This is a picture of the preview, not a tagged text PDF. |
+| PDF | Two writers. `#export-pdf-button` and Ctrl/Cmd+P call `exportToPDF`: it lazy-loads `html2pdf.js` and saves from `#output` with JPEG quality 0.98, html2canvas scale 2, letter size, portrait, and 0.75 inch margins. The modal's PDF confirm calls `exportToPDFWithOptions`: it clones `#output` and rasterizes that clone with html2canvas into a jsPDF file (paper size and orientation come from the modal). These functions write the file. The downloaded PDF was not opened in a viewer in this check. |
 | HTML | A standalone `.html` file with the preview markup and inlined export CSS. |
-| DOCX | The button says DOCX. The file is Word-compatible HTML with the Office XML namespaces, MIME type `application/msword`, downloaded as `.doc` (`getExportFilename('doc')` in `src/main.js`). It is not an OOXML `.docx` package (no `[Content_Types].xml`, no word/document.xml zip). Word will usually open it. Other word processors may treat it as HTML. |
+| DOCX | The button says DOCX. `exportToDOCX` (toolbar) and `exportToDOCXWithOptions` (modal) both write an HTML document that includes the Office namespaces `urn:schemas-microsoft-com:office:office` and `urn:schemas-microsoft-com:office:word`, set the blob type to `application/msword`, and download it with `getExportFilename('doc')` (a `.doc` name). The bytes are that HTML string. They are not an OOXML `.docx` zip. The file was not opened in Word in this check. |
 | Text | Plain text from `markdownToPlainText` in `src/services/export/txt.js`. |
-| Image | A PNG of `#output` via html2canvas (scale 2, white background). |
+| Image | `exportToPNG` captures `#output` with html2canvas (scale 2, white background) and downloads a PNG data URL. The modal calls `exportToPNGWithOptions`, which clones `#output` and captures that clone with html2canvas using the modal's width and scale. The PNG was not opened in an image viewer in this check. |
 | Print | Opens a new window with the preview HTML and calls `print()`. |
 | Copy MD / Copy HTML | Clipboard copies of the source or the preview HTML. |
 
@@ -133,7 +143,7 @@ The share dialog labels link share "private · offline". That describes the abse
 flowchart TD
   A[Type in Monaco] --> B[Wait 300 ms]
   A --> S[Wait 1.5 s]
-  B --> C["marked.parse<br/>GFM, alerts, footnotes, emoji, KaTeX, Prism"]
+  B --> C["marked.parse<br/>GFM, alerts, emoji, KaTeX, Prism"]
   C --> D[DOMPurify]
   D --> E["Write #output"]
   E --> F{Math Rendering on?}
@@ -141,7 +151,7 @@ flowchart TD
   F -->|yes| H[Leave KaTeX HTML]
   G --> I{Mermaid toggle on?}
   H --> I
-  I -->|yes| J["mermaid.run on language-mermaid fences"]
+  I -->|yes| J["Later frame: mermaid.run<br/>SVG, not the first paint"]
   I -->|no| K[Leave the fence as code]
   J --> L[Rebuild table of contents]
   K --> L
@@ -206,11 +216,11 @@ Each line is a direct `dependencies` entry that the production boot imports. Dev
 | `marked` | `marked.parse` for the preview. Installed default keeps `gfm: true` |
 | `marked-highlight` | Prism highlighting inside Marked |
 | `marked-alert` | GitHub-style alert blocks |
-| `marked-footnote` | Footnote syntax |
+| `marked-footnote` | `marked.use(markedFootnote())` in `src/main.js`. Live preview on 3 October 2026 showed the marker, not the definition at the end |
 | `marked-emoji` | `:shortcode:` emoji in the preview |
 | `marked-katex-extension` | `marked.use(markedKatex(...))` in `src/main.js` |
 | `katex` | Loaded with `katex/dist/katex.min.css`; the extension calls KaTeX |
-| `mermaid` | `mermaid.run` on `language-mermaid` fences, `securityLevel: 'strict'` |
+| `mermaid` | `mermaid.run` on `language-mermaid` fences after `#output` is painted, `securityLevel: 'strict'` |
 | `prismjs` | Grammars imported from `src/main.js` for fenced code |
 | `dompurify` | `src/utils/sanitize.js`, applied before `#output` is updated |
 | `gemoji` | Emoji name data in `src/utils/emoji-shortcodes.js` |
@@ -229,15 +239,23 @@ No. The live page has no login. Share and export do not ask for one.
 
 ### Where is the document saved?
 
-In this browser. Notes go to IndexedDB (`markups_db`) and a copy of the open list goes to localStorage (`com.markdownlivepreview`). Clearing site data deletes them. There is no cross-device sync in this app.
+In this browser. Notes go to IndexedDB (`markups_db`) and a copy of the open list goes to localStorage (`com.markdownlivepreview`). Clearing site data deletes them.
 
 ### Is the DOCX button a real Word file?
 
-It is a Word-compatible HTML document saved as `.doc`. Word can open that format. It is not an Office Open XML `.docx`.
+The toolbar button calls `exportToDOCX`. The modal calls `exportToDOCXWithOptions`. Both write HTML that includes Word's Office XML namespaces and download a `.doc` file with type `application/msword`. That is what those functions write. It is not an Office Open XML `.docx` package. The file was not opened in Word in this check.
 
-### Does math and Mermaid always render?
+### Does math render?
 
-Both are on unless you turn them off under Settings → Preview. Math uses the delimiter rules above. Mermaid only runs on fenced blocks tagged `mermaid`. Turning math off removes the rendered math from the preview rather than showing the dollar-sign source there.
+Math Rendering is on unless you turn it off under Settings → Preview. KaTeX draws the formulas when it is on. On 3 October 2026, turning it off removed the formulas, and the dollar-sign source did not come back in the preview. Turning it on brought the formulas back. In code, that off state removes every `.katex` and `.katex-display` node and does not put the TeX source back. The source stays in the editor.
+
+### Do Mermaid diagrams render?
+
+Yes, when the fence is tagged `mermaid` and Settings → Preview → Mermaid Diagrams is on. On 3 October 2026 that finished as an SVG flowchart with nodes A and B. It does not appear on the first paint. `mermaid.run` runs on a later frame, after `#output` is written. With the toggle off, the fence stays a code block.
+
+### Do footnotes render?
+
+No. `marked-footnote` is registered in `src/main.js`. On 3 October 2026 the marker showed and the definition did not appear at the end of the preview.
 
 ### Can I close the table of contents in preview mode?
 
