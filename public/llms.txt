@@ -7,7 +7,6 @@
 - [Online Markdown editor](https://markups.dev/seo/online-markdown-editor)
 - [Markdown to PDF](https://markups.dev/seo/markdown-to-pdf)
 - [Markdown to HTML](https://markups.dev/seo/markdown-to-html)
-- [Markdown to Word](https://markups.dev/seo/markdown-to-docx)
 - [Live preview](https://markups.dev/seo/markdown-live-preview-editor)
 - [Cheatsheet](https://markups.dev/seo/cheatsheet)
 - [Mermaid example](https://markups.dev/seo/examples/mermaid)
