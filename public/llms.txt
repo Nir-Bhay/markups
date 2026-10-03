@@ -9,8 +9,6 @@
 - [Markdown to HTML](https://markups.dev/seo/markdown-to-html)
 - [Markdown to Word](https://markups.dev/seo/markdown-to-docx)
 - [Live preview](https://markups.dev/seo/markdown-live-preview-editor)
-- [Typora alternative](https://markups.dev/seo/typora-alternative)
-- [Growth playbook](https://markups.dev/seo/global-growth-playbook)
 - [Cheatsheet](https://markups.dev/seo/cheatsheet)
 - [Mermaid example](https://markups.dev/seo/examples/mermaid)
 - [Math example](https://markups.dev/seo/examples/math)
