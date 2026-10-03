@@ -7,6 +7,7 @@ import exportCss from './styles/export.css?raw';
 import { sanitizePreviewHtml, ensurePreviewLinksOpenInNewTab, escapeHtml, sanitizeMarkdownAlt } from './utils/sanitize.js';
 import { safeBase64FromArrayBuffer } from './utils/file.js';
 import { modesManager } from './features/modes/index.js';
+import { setupSpellcheck } from './features/spellcheck/index.js';
 
 // html2pdf / html2canvas / jspdf — lazy-loaded on first export (P3-T1)
 let _html2pdf = null;
@@ -1078,8 +1079,10 @@ const setupEditor = () => {
         // Auto-clear welcome content on first real user keystroke
         if (!isApplyingPreviewEdit && isShowingWelcome && !isProgrammaticChange && e.changes && e.changes.length > 0) {
             const change = e.changes[0];
-            // User typed or pasted something — clear welcome content, keep only what they entered
-            if (change.text.length > 0) {
+            // Only a real insertion clears the welcome template.
+            // A partial replace, such as a spell suggestion, must keep the rest of the document.
+            const isInsertion = change.rangeLength === 0;
+            if (change.text.length > 0 && isInsertion) {
                 isShowingWelcome = false;
                 const typed = change.text;
                 editor?.setValue(typed);
@@ -7711,6 +7714,7 @@ const initializeApp = async () => {
     const lastContent = loadLastContent();
     loadImageStore(); // Load image store before editor setup so convert() can resolve refs
     editor = setupEditor();
+    setupSpellcheck(editor);
     if (typeof window !== 'undefined') {
         window.editor = editor;
     }
