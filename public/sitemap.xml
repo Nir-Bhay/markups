@@ -2,134 +2,54 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://markups.dev/</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://markups.dev/landing</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://markups.dev/privacy-policy</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://markups.dev/terms</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://markups.dev/cookie-policy</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://markups.dev/accessibility</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <lastmod>2026-10-03</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/license</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/seo/online-markdown-editor</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/seo/markdown-to-pdf</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/seo/markdown-to-html</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/seo/markdown-to-docx</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/seo/markdown-live-preview-editor</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://markups.dev/seo/markups-vs-typora</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/seo/typora-alternative</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://markups.dev/seo/stackedit-alternative</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://markups.dev/seo/best-markdown-editor-for-developers</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/seo/global-growth-playbook</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/seo/cheatsheet</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/seo/examples/mermaid</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/seo/examples/math</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
   <url>
     <loc>https://markups.dev/seo/tutorials/markdown-to-pdf</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://markups.dev/llms.txt</loc>
-    <lastmod>2026-04-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <lastmod>2026-09-19</lastmod>
   </url>
 </urlset>

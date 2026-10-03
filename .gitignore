@@ -61,3 +61,5 @@ plot/
 .github/*
 !.github/workflows/
 !.github/workflows/*.yml
+# QA screenshot output from scripts/qa-stress-test-suite.mjs
+qa-evidence/
