@@ -71,6 +71,7 @@
     "mermaid": "^11.12.2",
     "monaco-editor": "^0.52.2",
     "monaco-vim": "^0.4.4",
-    "prismjs": "^1.30.0"
+    "prismjs": "^1.30.0",
+    "typo-js": "^1.3.2"
   }
 }
