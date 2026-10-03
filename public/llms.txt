@@ -3,7 +3,6 @@
 > A free online Markdown editor in the browser, with live split preview and no signup.
 
 - [Editor](https://markups.dev/)
-- [Landing](https://markups.dev/landing)
 - [License](https://markups.dev/license)
 - [Online Markdown editor](https://markups.dev/seo/online-markdown-editor)
 - [Markdown to PDF](https://markups.dev/seo/markdown-to-pdf)
