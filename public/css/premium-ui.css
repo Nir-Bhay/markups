@@ -2634,9 +2634,16 @@ body.view-preview .preview-content {
   margin: 0 auto;
 }
 
-/* Show right TOC sidebar in preview mode */
-body.view-preview .toc-sidebar {
+/* Show the right sidebars in preview unless the user hid them.
+   Backlinks reuses .toc-sidebar, so one rule covers both panels.
+   The old !important display was beating .toc-sidebar.hidden. */
+body.view-preview .toc-sidebar:not(.hidden) {
   display: flex !important;
+}
+
+body.view-preview .toc-sidebar.hidden,
+body.view-split .toc-sidebar.hidden {
+  display: none !important;
 }
 
 /* Split View (Default) */
