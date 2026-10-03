@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="200" viewBox="0 0 720 200" role="img" aria-labelledby="title2 desc2">
+  <title id="title2">Where Markups keeps your drafts</title>
+  <desc id="desc2">Drafts stay in the browser with localStorage and IndexedDB. Export and share are explicit user actions.</desc>
+  <rect width="720" height="200" fill="#f6f8fa" rx="12"/>
+  <rect x="40" y="56" width="160" height="88" rx="10" fill="#ffffff" stroke="#0969da" stroke-width="1.5"/>
+  <text x="120" y="92" text-anchor="middle" fill="#1f2328" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600">Your browser</text>
+  <text x="120" y="112" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11">markups.dev tab</text>
+  <path d="M208 100 H248" stroke="#656d76" stroke-width="2" marker-end="url(#arrow2)"/>
+  <rect x="256" y="40" width="180" height="120" rx="10" fill="#ffffff" stroke="#1a7f37" stroke-width="1.5"/>
+  <text x="346" y="72" text-anchor="middle" fill="#1f2328" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600">On-device storage</text>
+  <text x="346" y="96" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11">localStorage settings</text>
+  <text x="346" y="116" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11">IndexedDB notes</text>
+  <text x="346" y="136" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11">Auto-save while you type</text>
+  <path d="M444 100 H484" stroke="#656d76" stroke-width="2" marker-end="url(#arrow2)"/>
+  <rect x="492" y="40" width="188" height="120" rx="10" fill="#ffffff" stroke="#bf3989" stroke-width="1.5"/>
+  <text x="586" y="72" text-anchor="middle" fill="#1f2328" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600">You choose to leave</text>
+  <text x="586" y="96" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11">Export file download</text>
+  <text x="586" y="116" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11">URL-hash share link</text>
+  <text x="586" y="136" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11">Native file share</text>
+  <text x="40" y="28" fill="#1f2328" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600">Drafts stay on your device unless you export or share</text>
+  <defs>
+    <marker id="arrow2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#656d76"/>
+    </marker>
+  </defs>
+</svg>
