@@ -18,7 +18,7 @@
   <link rel="icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,680&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./tour.css">
 </head>
 <body>
@@ -27,113 +27,144 @@
     <div class="nav-inner">
       <a class="brand" href="#main">Markups</a>
       <nav class="nav-links" aria-label="On this page">
-        <a href="#write">Write</a>
+        <a href="#session">Session</a>
         <a href="#preview">Preview</a>
+        <a href="#math-on">Math</a>
+        <a href="#diagrams">Diagrams</a>
+        <a href="#video">Video</a>
         <a href="#export">Export</a>
+        <a href="#limits">Limits</a>
         <a href="#faq">FAQ</a>
       </nav>
       <a class="btn" href="https://markups.dev/">Open the editor</a>
     </div>
   </header>
-
   <main id="main">
     <section class="hero">
       <div class="wrap">
         <p class="kicker">Product walkthrough</p>
         <h1>How Markups works</h1>
-        <p class="lede">One tab. You write Markdown on the left and read the preview on the right. There is no signup. This page only explains that editor. The button opens it.</p>
-        <div class="hero-actions">
-          <a class="btn" href="https://markups.dev/">Open the editor</a>
-        </div>
-        <figure class="editor-frame">
-          <iframe src="https://markups.dev/" title="The Markups editor"></iframe>
-          <figcaption>The editor on the main page, inside this walkthrough. Writing happens there, not on this page.</figcaption>
-        </figure>
+        <p class="lede">One editor, one preview, no account. This page shows each state. The button opens the real editor.</p>
+        <a class="btn" href="https://markups.dev/">Open the editor</a>
       </div>
     </section>
 
-    <section class="section" id="write">
+    <section class="section" id="session">
       <div class="wrap">
-        <h2>1. Open it and write</h2>
-        <p class="section-intro">The session starts on the editor. This walkthrough is not a second product, and it does not ask for an account.</p>
-        <div class="grid-2">
-          <article class="card">
-            <h3>No account</h3>
-            <p>There is no signup form in front of the document. You open the editor in the browser tab you already have. The writing pane is the Monaco editor. What you type stays Markdown. The preview is a view of that same text, not a different file.</p>
-          </article>
-          <article class="card">
-            <h3>What you can type</h3>
-            <p>Headings, emphasis, lists, links, tables, and fenced code. The left pane is the source you edit. If the preview looks wrong, the fix is in that source. The preview does not invent a sentence that is not in the Markdown.</p>
-          </article>
-          <article class="card">
-            <h3>If the network drops</h3>
-            <p>A page that already loaded can appear again if the connection drops. That is not the same as opening the editor with no network from the start. This is not full offline use.</p>
-          </article>
-          <article class="card">
-            <h3>Where the writing happens</h3>
-            <p>The frame above is the real editor. The sections below are the objections that a button label does not answer: when a diagram appears, what math-off does, and what each export file actually is.</p>
-          </article>
+        <h2>A session, with no account</h2>
+        <div class="frame" aria-hidden="true">
+          <div class="chrome"><span>Markups</span><div class="modes"><span class="on">Write</span><span>Split</span><span>Preview</span></div></div>
+          <div class="pane src"><b># </b>
+The document starts here.
+There is no signup in front of it.</div>
         </div>
+        <p class="note">The editor opens in the browser. There is no account and no signup form.</p>
+        <p class="note">The left pane is the Monaco editor. What you type stays Markdown.</p>
       </div>
     </section>
 
-    <section class="section band" id="preview">
+    <section class="section" id="preview">
       <div class="wrap">
-        <h2>2. Read the other pane</h2>
-        <p class="section-intro">The right pane is the live split preview. Most of the document updates as you type. Two things do not behave like the rest.</p>
-        <div class="grid-2">
-          <article class="card">
-            <h3>What updates as you type</h3>
-            <p>Headings, paragraphs, lists, links, tables, and fenced code show up from the Markdown on the left. On a wide screen the panes sit side by side. Use the preview to check structure before you export.</p>
-          </article>
-          <article class="card">
-            <h3>Mermaid waits</h3>
-            <p>A mermaid block becomes an SVG after the first paint, not on the first paint. The first look at the page is still the fence. If you turn the preview off, the fence stays a code block. It is not a separate drawing tool. You edit the source inside the fence.</p>
-          </article>
-          <article class="card">
-            <h3>Math on</h3>
-            <p>KaTeX renders inline and display math in the preview. A centered equation is still a line of TeX in the editor. The preview is where it becomes a typeset formula. The source stays in the editor while math is on.</p>
-          </article>
-          <article class="card">
-            <h3>Math off</h3>
-            <p>Turning math off removes the formula and does not restore the TeX source in the preview. The dollar-sign line does not come back in that pane. If you need the source, it is still in the editor.</p>
-          </article>
+        <h2>Split preview</h2>
+        <div class="frame" aria-hidden="true">
+          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
+          <div class="split">
+            <div class="pane src"><b># Notes</b>
+
+Write on the left.
+The preview is the same text.</div>
+            <div class="pane prev"><div class="doc-title">Notes</div><p>Write on the left. The preview is the same text.</p></div>
+          </div>
         </div>
+        <p class="note">The right pane is a view of the Markdown, not a second file. Headings, lists, links, tables, and fenced code update there as you type.</p>
+        <p class="note">If the preview looks wrong, the fix is in the source. The preview does not invent a sentence that is not in the Markdown.</p>
+      </div>
+    </section>
+
+    <section class="section" id="math-on">
+      <div class="wrap">
+        <h2>Math on</h2>
+        <div class="frame" aria-hidden="true">
+          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
+          <div class="split">
+            <div class="pane src"><b>$$E = mc^2$$</b></div>
+            <div class="pane prev"><p class="formula">E = mc²</p></div>
+          </div>
+        </div>
+        <p class="note">KaTeX renders inline and display math in the preview. The TeX stays in the editor.</p>
+        <p class="note">A display formula is still one line of source on the left. The preview is where it becomes a formula.</p>
+      </div>
+    </section>
+
+    <section class="section" id="math-off">
+      <div class="wrap">
+        <h2>Math off</h2>
+        <div class="frame" aria-hidden="true">
+          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
+          <div class="split">
+            <div class="pane src"><b>$$E = mc^2$$</b></div>
+            <div class="pane prev"><p class="gone">The formula is gone. The TeX line is not put back here.</p></div>
+          </div>
+        </div>
+        <p class="note">Turning math off removes the formula and does not restore the TeX source in the preview.</p>
+        <p class="note">The dollar-sign line is still in the editor. It does not come back in the preview pane.</p>
+      </div>
+    </section>
+
+    <section class="section" id="diagrams">
+      <div class="wrap">
+        <h2>A diagram, after the first paint</h2>
+        <div class="frame" aria-hidden="true">
+          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
+          <div class="split">
+            <div class="pane src"><b>```mermaid</b>
+graph TD
+  A --> B
+<b>```</b></div>
+            <div class="pane prev"><p>First paint: the fence is still source.</p><p>After that paint: the fence becomes an SVG.</p></div>
+          </div>
+        </div>
+        <p class="note">A mermaid block becomes an SVG after the first paint, not on the first paint.</p>
+        <p class="note">Turn the preview off and the fence stays a code block. There is no separate drawing tool.</p>
       </div>
     </section>
 
     <section class="section" id="video">
       <div class="wrap">
-        <h2>3. Put a video in the document</h2>
-        <p class="section-intro">YouTube insert is included. The preview shows the embed. The Markdown still holds the reference you typed.</p>
-        <div class="card">
-          <h3>What this is, and what it is not</h3>
-          <p>Use the insert control and paste a YouTube URL. The preview embeds that video in the document. This is not a video editor. It does not trim, caption, or re-encode the clip. It places the video in the page you are writing, next to the headings and lists already in the source.</p>
+        <h2>YouTube in the document</h2>
+        <div class="frame" aria-hidden="true">
+          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Preview</span></div></div>
+          <div class="video-box prev"><strong>Embedded video</strong><p>A YouTube URL, shown in the preview. The Markdown still holds the reference.</p></div>
         </div>
+        <p class="note">YouTube insert is included. The preview shows the embed.</p>
+        <p class="note">This is not a video editor. It does not trim, caption, or re-encode the clip.</p>
       </div>
     </section>
 
     <section class="section" id="export">
       <div class="wrap">
-        <h2>4. Save a copy out</h2>
-        <p class="section-intro">The button name is shorter than the file it writes. Read this before you send a file to someone else.</p>
-        <div class="grid-2">
-          <article class="card">
-            <h3>PDF</h3>
-            <p>PDF export is a picture of the preview. The page is letter size, portrait, with a three-quarter inch margin. It is a picture of the preview pane, not a text PDF you can select and search. A diagram or a formula appears only as it looks in that picture.</p>
-          </article>
-          <article class="card">
-            <h3>Word</h3>
-            <p>The Word button saves Word-compatible HTML as a .doc file. It is not an OOXML .docx package, and it does not include Track Changes or other Word review markup. Opening it in Word is not the same as receiving a native Word document.</p>
-          </article>
-          <article class="card">
-            <h3>HTML</h3>
-            <p>HTML export is a separate save of the rendered document as a web file. Use it when the next step is a browser, not a word processor. It is not the same button as the Word save.</p>
-          </article>
-          <article class="card">
-            <h3>Markdown</h3>
-            <p>You can also save the raw Markdown. That file is the source. It is the copy to keep if you want to edit the document again later. Export does not replace that source with the preview.</p>
-          </article>
+        <h2>What the PDF and Word buttons save</h2>
+        <div class="frame" aria-hidden="true">
+          <div class="file-box">
+            <div class="file-row">
+              <div class="file"><div class="ext">.pdf</div><p>A picture of the preview. Letter, portrait, three-quarter inch margin.</p></div>
+              <div class="file"><div class="ext">.doc</div><p>Word-compatible HTML, saved under a .doc name.</p></div>
+            </div>
+          </div>
+        </div>
+        <p class="note">PDF export is a picture of the preview. It is not a text PDF you can select and search.</p>
+        <p class="note">The Word button saves Word-compatible HTML as a .doc file. It is not an OOXML package, and it does not include Track Changes.</p>
+      </div>
+    </section>
+
+    <section class="section" id="limits">
+      <div class="wrap">
+        <h2>Limits</h2>
+        <div class="limits">
+          <div class="limit"><strong>Not a text PDF</strong><p>The PDF is a picture of the preview.</p></div>
+          <div class="limit"><strong>Not a native Word file</strong><p>The Word button writes HTML under a .doc name.</p></div>
+          <div class="limit"><strong>HTML and Markdown</strong><p>HTML export is a separate save. Raw Markdown is the source to keep if you want to edit again.</p></div>
+          <div class="limit"><strong>Not full offline use</strong><p>A page that already loaded can appear again if the network drops. That is not the same as opening the editor with no network from the start.</p></div>
         </div>
       </div>
     </section>
@@ -141,7 +172,6 @@
     <section class="section" id="faq">
       <div class="wrap">
         <h2>Questions</h2>
-        <p class="section-intro">The same four answers as the editor page, so there is one version to quote.</p>
         <div class="faq">
           <details open>
             <summary>Does Markups require an account?</summary>
