@@ -293,7 +293,9 @@ test.describe('Stress preview visual QA', () => {
           })(),
           sample: txt.slice(0, 120),
         };
-      }).filter((m) => m.err || m.h < 80);
+      // A compact but visible Mermaid SVG is valid. Only flag actual syntax
+      // errors or a missing/zero-height rendered diagram, not an arbitrary 80px cutoff.
+      }).filter((m) => m.err || m.h === 0);
     });
 
     // --- Typing flicker test (append via executeEdits — never replace whole model) ---
@@ -624,13 +626,13 @@ test.describe('Stress preview visual QA', () => {
 
     fs.writeFileSync(REPORT_MD, mdLines.join('\n'));
 
-    // Soft assertions — collect evidence; fail only on critical/major
+    // Collect evidence and fail for genuine critical/major findings.
     const blockers = findings.filter((f) => f.severity === 'critical' || f.severity === 'major');
     expect(sectionResults.filter((s) => s.present).length, 'sections present').toBeGreaterThan(25);
-    // Don't hard-fail the whole run on known product gaps — report is the deliverable.
-    // Still assert the doc loaded and basic structure rendered.
+    // Basic structure and zero major defects are both release gates.
     expect(audit.headings.h1).toBeGreaterThan(5);
     expect(audit.tables).toBeGreaterThan(3);
     console.log('STRESS_QA blockers:', blockers.length, blockers.map((b) => b.finding));
+    expect(blockers, 'Critical or major stress-preview defects must not be ignored').toEqual([]);
   });
 });
