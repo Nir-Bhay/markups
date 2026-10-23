@@ -37,11 +37,36 @@ for (const entry of readdirSync(__dirname, { withFileTypes: true })) {
     collectHtmlInputs(resolve(__dirname, folder), input);
 });
 
+// Vite dev/preview normally SPA-falls back to root index.html for extensionless
+// multi-page URLs. Keep local URLs aligned with Vercel cleanUrls and canonical URLs.
+const publicHtmlRoutes = new Set(Object.values(input)
+    .filter((file) => file !== input.main && file.endsWith('index.html'))
+    .map((file) => '/' + relative(__dirname, resolve(file, '..')).split(sep).join('/')));
+
+function rewriteCleanHtmlRoute(req, _res, next) {
+    const raw = req.url || '/';
+    const q = raw.indexOf('?');
+    const path = (q >= 0 ? raw.slice(0, q) : raw).replace(/\/$/, '');
+    if (publicHtmlRoutes.has(path)) {
+        req.url = path + '/index.html' + (q < 0 ? '' : raw.slice(q));
+    }
+    next();
+}
+
 export default defineConfig(({ mode }) => {
     const useModularEntry = mode === 'modular' || process.env.MARKUPS_ENTRY === 'modular';
 
     return {
         plugins: [
+            {
+                name: 'markups-clean-html-routes',
+                configureServer(server) {
+                    server.middlewares.use(rewriteCleanHtmlRoute);
+                },
+                configurePreviewServer(server) {
+                    server.middlewares.use(rewriteCleanHtmlRoute);
+                }
+            },
             {
                 name: 'markups-entry-selector',
                 transformIndexHtml(html) {

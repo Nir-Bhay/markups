@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
-const STRESS_PATH = path.resolve(ROOT, 'markups-markdown-preview-stress-test.md');
+const STRESS_PATH = path.resolve(ROOT, 'public/qa/markups-markdown-preview-stress-test.md');
 const REPORT_JSON = path.resolve(ROOT, 'docs/qa/stress-preview-report.json');
 const REPORT_MD = path.resolve(ROOT, 'docs/qa/stress-preview-report.md');
 const SHOT_DIR = path.resolve(ROOT, 'docs/qa/stress-shots');
