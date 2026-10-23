@@ -1,3 +1,12 @@
+# Current candidate amendment — 24 October 2026
+
+The following original audit records baseline behavior. This review branch now loads GA4 and
+Vercel Insights only on markups.dev, configures GA4 with query/fragment-free page_location and
+origin-only referrer, and stops loading editor Clarity pending verified masking review.
+Tests prove script gating and queued GA configuration; actual vendor network payloads, enhanced
+measurement settings, consent requirements and historical replay collection were not verified.
+No historical document/API-key leak is asserted. CSP tightening remains a separate reviewed task.
+
 # Security, privacy, correctness and trust review — engineering checklist
 
 This is NOT a penetration test or legal opinion. Treat every claim as triaged and check existing SECURITY.md and verified runtime before changes.

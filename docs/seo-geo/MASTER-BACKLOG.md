@@ -81,3 +81,25 @@ PM/audit: docs/seo-geo/** and run evidence. All changes must be small independen
 
 ## Workflow for each ticket
 Before: assign, verify main and branch SHA, link source and reproducible failing case. During: implementation plus the narrowest passing test, peer review for claims. After: run complete branch tests, preview verification, attach evidence and change ticket TODO to VERIFIED only when proof exists. No fabricated checkmarks.
+
+## Continuation — 24 October 2026 (new isolated branch)
+
+Statuses here describe source/local verification only. Nothing is fixed in production by a held branch.
+
+| Ticket | Priority | Status | Work / evidence |
+|---|---|---|---|
+| M-056 | P1 | SOURCE COMPLETE | Correct overlooked live-preview fidelity/schema and unsupported mobile/speed/syntax claims; fixture links |
+| M-057 | P1 | LOCAL VERIFIED | Canonical-host-only tracker bootstrap; minimized GA4 URL config; unverified editor Clarity removed; six bootstrap tests. Vendor-network verification remains owner gate |
+| M-058 | P1 | LOCAL VERIFIED | Genuine Document-mode edit activation; three callback regressions plus existing session-dedup tests |
+| M-059 | P1 | LOCAL VERIFIED / FINAL CI PENDING | Built-dist browser mode with separate dev-only media regressions; exact new branch QA and per-ref concurrency |
+| M-060 | P2 | LOCAL VERIFIED | Root/public crawler parity gate; built asset/canonical validation; 16 sitemap URLs; zero static/built errors |
+| M-061 | P1 | LOCAL VERIFIED / FINAL CI PENDING | Replace clipped product FAQ with native About/details, mobile guide links and real interaction screenshots |
+| M-062 | P1 | OWNER BLOCKED | Correct Vercel project found but scoped detail 403; no production settings/logs/WAF review |
+| M-063 | P1 | PREPARED | Seven-day plan, owner action list, original content/correction drafts and tracked unsent distribution actions |
+| M-064 | P1 | LOCAL VERIFIED / FINAL CI PENDING | Audited lockfile/range updates; npm audit zero. Renderer and export browser checks rerun; final run log governs release |
+
+See runs/2026-10-24-discovery-review.md for dated verification, test limitations and remaining release gates.
+
+| M-065 | P1 | LOCAL VERIFIED | Actual modular entry selected before HTML parsing, build module assertion (Windows-normalized), two black-box UI/route smoke tests; full feature parity unclaimed |
+| M-066 | P2 | LOCAL VERIFIED | Deferred spell dictionary with disabled/toggle/retry tests; main ~1795→1220 kB; optional ELK cost documented, no Lighthouse claim |
+| M-067 | P1 | REGRESSION VERIFIED / FINAL CI PENDING | Long spellcheck menu preserves own scrolling and prevents focus scroll; native Window guard and dedicated browser/unit regressions |

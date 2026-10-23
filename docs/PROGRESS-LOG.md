@@ -108,3 +108,21 @@
   sourcemap warning). `npm run build` → clean in 1m39s; main 1137.53KB, monaco 2287.09KB.
 - Phase 1 Gate 0 remaining: storageService.initialize · events test · toc/search containers ·
   downloadBlob. Flags/ERROR/toast/backlinks/tabs-list CLOSED by parallel session (verified).
+
+## 2026-10-24 — discovery audit continued on a new held branch
+- Recovered growth head 81155bc and retained PR #71 work; main baseline 9458092d unchanged.
+- New branch growth/discovery-review-2026-10-24 has an exact-name Vercel Git deployment disable rule. No deploy/publish action authorized.
+- Corrected remaining public claims, visible guide discovery, production-only/minimized GA4 config, unverified editor replay and Document-mode activation; stronger crawler/built-site gates and real dist browser mode.
+- Source-only media tests separated from dist checks without dropping regression coverage; stress images use deterministic fixtures preserving dimensions.
+- Pre-dependency verification: lint, 575 unit tests, both builds and static/built audits pass; 2 source media browser tests pass. Final browser/health checks still in progress.
+- Dependency audit discovered new advisories; remediation is the next bounded work item. Exact evidence and unresolved owner tasks: docs/seo-geo/runs/2026-10-24-discovery-review.md and OWNER-ACTIONS-2026-10-24.md.
+
+## 2026-10-24 — final code review fixes verified locally
+- npm audit now 0; lint and repository health gate pass with 579 unit tests and both actual entries built. Real modular smoke 2/2; production media-source regressions 2/2.
+- Fixed pre-parse modular entry selection, Windows module assertion, warning-causing eager/dynamic export imports, menu own-scroll/focus dismissal with native Window guard, and production screenshot artifact ordering.
+- Deferred dictionary genuinely reduces initial main JS to ~1220 kB; optional dictionary and ELK payloads remain documented. No measured CWV/ranking gain claimed.
+- Code review head 4068efd; report/plan/owner actions/content pack and screenshots form the review handoff. Exact final branch CI must be checked live. No main or deployment changes.
+
+## 2026-10-24 — final local browser pass
+- Complete production-dist Chromium suite: 49/49 passed (2.5m), stress blockers 0. Latest true modular smoke 2/2; source-only media regressions 2/2. Health/lint/audit pass; 579 unit tests.
+- Actual desktop/mobile screenshots inspected and included with the review report. Final handoff commit changes only docs/screenshots after code 4068efd. Final remote-head CI is checked live, not inferred from ancestor checks.

@@ -174,3 +174,9 @@ suite + e2e green; bundle re-measured.
 No perf refactors before Phase 2–3 green · no piecemeal manager deletions before Phase 6 ·
 no new features until Phase 9 gate passes once · no edits on files the parallel session owns
 without a handoff · no line-number references in commit messages (they drift — use symbols).
+
+## 2026-10-24 discovery review addendum
+
+Current isolated execution: docs/seo-geo/SEVEN-DAY-PLAN-2026-10-24.md. Review report and owner actions live alongside it. Preserve main and hold publication/deployment. Final dependency/browser/health evidence is required before declaring the new candidate ready; live indexing/ranking measurements require a later owner-approved release.
+
+Completed locally: dependency audit remediation (zero findings), real modular entry selection/assertion, deferred spell dictionary, native menu scroll fix and health gates. The current report explains the optional ELK budget and narrower modular runtime smoke. Publication/indexing/AI visibility gates remain owner-dependent and are not marked complete.

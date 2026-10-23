@@ -1,3 +1,13 @@
+# Current branch route inventory — 24 October 2026
+
+The table below is the historical 23 October pre-fix baseline, not the candidate's current state.
+Current isolated build: 22 HTML pages, 16 canonical sitemap URLs. `/landing` is self-canonical
+and included in the sitemap; `/seo/compatibility-lab` is indexable and included; all four trust
+routes are build inputs and included. Internal growth playbook is excluded from dist.
+Root/public robots, sitemap and llms files are now checked for byte parity. Comparison/alternative
+and DOCX-explanation pages remain noindex. Production status requires separate authorized release
+and live checks. Build counts are verified in runs/2026-10-24-discovery-review.md.
+
 # Public route and canonical inventory (baseline 2026-10-23)
 
 Status = source markup unless LIVE specified. This is not a Google indexed-pages report. Clean URLs assumed from vercel.json. Confirm final HTTP status, cache, redirect and Google canonical in GSC.

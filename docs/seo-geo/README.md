@@ -1,3 +1,12 @@
+# Latest continuation — 24 October 2026
+
+Start with [the current review report](DISCOVERY-REVIEW-2026-10-24.md),
+[seven-day plan](SEVEN-DAY-PLAN-2026-10-24.md), and
+[owner-only action list](OWNER-ACTIONS-2026-10-24.md).
+Work is held on `growth/discovery-review-2026-10-24`, based on old growth head `81155bc`.
+Main is unchanged; publication/deployment is prohibited until separately authorized.
+Current evidence: [run log](runs/2026-10-24-discovery-review.md).
+
 # Markups SEO / GEO / Organic Growth Workspace
 
 **Baseline:** 2026-10-23. **Sprint:** 2026-10-23 to 2026-10-30. **Repo:** Nir-Bhay/markups. **Production:** https://markups.dev.
