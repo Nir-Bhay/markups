@@ -36,4 +36,6 @@ test('privacy policy accurately explains optional AI and share-link data handlin
   await expect(page.locator('#ai-and-sharing')).toContainText('endpoint you configure');
   await expect(page.locator('#ai-and-sharing')).toContainText('URL fragment');
   await expect(page.locator('#ai-and-sharing')).toContainText('session-only key');
+  await expect(page.getByText('editor_start', { exact: true })).toBeVisible();
+  await expect(page.getByText('export_completed', { exact: true })).toBeVisible();
 });
