@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "git": { "deploymentEnabled": { "growth/discovery-review-2026-10-24": false } },
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
