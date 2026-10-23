@@ -33,7 +33,7 @@ for (const entry of readdirSync(__dirname, { withFileTypes: true })) {
     }
 }
 
-['landing', 'seo', 'policy', 'strategy'].forEach((folder) => {
+['landing', 'seo', 'policy', 'strategy', 'privacy-policy', 'terms', 'cookie-policy', 'accessibility'].forEach((folder) => {
     collectHtmlInputs(resolve(__dirname, folder), input);
 });
 
