@@ -63,6 +63,11 @@ Statuses: TODO, IN_PROGRESS, BLOCKED, VERIFIED, DEFERRED. All default TODO. Prio
 - **M-051 P1 TEST IMPLEMENTED / CI PENDING:** Playwright downloads Word output, checks extension is .doc and file is HTML rather than ZIP/OOXML .docx.
 - **M-052 P2 MANUAL PENDING:** Inspect those files in at least one PDF/Word viewer for layout, pagination, link annotations and accessibility. File-signature checks alone are insufficient.
 
+## Canonical product identity — 2026-10-23
+- **M-053 P1 SOURCE FIX / CI PENDING:** AI Writer system prompt still identified Markups by markups.vercel.app; changed to canonical https://markups.dev/ and added a unit regression test. This does not alter the chosen AI provider or message content policy.
+- **M-054 P2 SOURCE FIX / CI PENDING:** Removed remaining DOCX-promotional footer links from public PDF/HTML guides in favor of the honest Compatibility Lab, keeping the separately marked noindex DOCX explanatory page in source.
+- **M-055 P1 EXTERNAL BLOCKED:** Live Awesome Markdown Editors and LibHunt listings still point to the old domain. The owner's existing upstream issue #109 cannot be updated via the connected GitHub app (403 on third-party repository). Requires website editor/authorized GitHub account or independent maintainer review.
+
 ## Dependency and execution order
 M-001 → M-003 → M-011 → safe preview. M-002 → M-023 → M-011. M-004 → M-001 and M-027. M-005 → M-007 → M-013. M-009/M-010 → M-015/M-016 (credible content). M-013/M-014 → M-031/M-032. M-017/M-018/M-019/M-020 happen ONLY after accurate canonical destination and a working product/preview.
 
