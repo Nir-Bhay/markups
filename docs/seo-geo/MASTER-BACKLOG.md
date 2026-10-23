@@ -47,6 +47,12 @@ Statuses: TODO, IN_PROGRESS, BLOCKED, VERIFIED, DEFERRED. All default TODO. Prio
 - **M-039 P1 INDEX:** Run GSC URL Inspection for root, landing, primary SEO guides and legal routes, save reasons privately.
 - **M-040 P1 ANALYTICS:** Keep site vs URL impressions separately; ensure GA4 connected account is actually Markups before using counts.
 - **M-041 P1 CONTENT:** Publish original technical documentation and pursue genuine third-party discovery, not promised one-week #1 rankings.
+## Compatibility Lab implementation — 2026-10-23
+- **M-042 P1 CONTENT/QA:** Publish a real, downloadable sample Markdown design note with Mermaid flowchart, table, KaTeX and code. Distinct learning intent; no fabricated benchmark ranking.
+- **M-043 P1 QA:** Assert real editor can render sample Mermaid SVG, KaTeX, table, code; browser route and fixture HTTP 200.
+- **M-044 P1 INDEX:** Add approved canonical lab route to sitemap and direct landing / resource links. After reviewed production release inspect Google-selected canonical and index status; avoid claiming search visibility before Search Console confirms.
+- **M-045 P2 RESEARCH:** Compare other products only when independently tested under the same fixture with screenshots, dates and version/methodology; this first lab is NOT an untested cross-product comparison.
+
 ## Dependency and execution order
 M-001 → M-003 → M-011 → safe preview. M-002 → M-023 → M-011. M-004 → M-001 and M-027. M-005 → M-007 → M-013. M-009/M-010 → M-015/M-016 (credible content). M-013/M-014 → M-031/M-032. M-017/M-018/M-019/M-020 happen ONLY after accurate canonical destination and a working product/preview.
 

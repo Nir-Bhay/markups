@@ -60,3 +60,20 @@ test('landing exposes six accessible, crawlable guide links across mobile layout
   await expect(page.locator('.desktop-nav')).toBeHidden();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
 });
+
+test('Compatibility Lab is crawlable with real Markdown fixture and honest export limits', async ({ page, request }) => {
+  const response = await page.goto('/seo/compatibility-lab');
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole('heading', { name: 'Markdown Compatibility Lab' })).toBeVisible();
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://markups.dev/seo/compatibility-lab');
+  await expect(page.getByText('image-based PDF', { exact: false })).toBeVisible();
+  await expect(page.getByText('not a native', { exact: false })).toBeVisible();
+  const download = await request.get('/qa/markdown-compatibility-fixture.md');
+  expect(download.ok()).toBeTruthy();
+  const body = await download.text();
+  for (const token of ['flowchart LR', '$$', '| Field | Type | Required |', 'function percentage(']) {
+    expect(body).toContain(token);
+  }
+  await page.goto('/landing');
+  await expect(page.locator('a[href="/seo/compatibility-lab"]')).toBeVisible();
+});
