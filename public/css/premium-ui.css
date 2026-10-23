@@ -9262,3 +9262,7 @@ a:focus-visible,
     height: 96px;
   }
 }
+/* Visible product overview on roomy editor headers (keep mobile workspace intact). */
+.header-tour-link{display:inline-flex;align-items:center;white-space:nowrap;padding:5px 8px;border:1px solid var(--border-light);border-radius:7px;color:var(--text-secondary);text-decoration:none;font-size:11px;font-weight:600}
+.header-tour-link:hover,.header-tour-link:focus-visible{color:var(--accent-primary,#4bb980);border-color:currentColor}
+@media(max-width:1150px){.header-tour-link{display:none}}
