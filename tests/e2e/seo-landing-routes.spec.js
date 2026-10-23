@@ -39,3 +39,20 @@ test('privacy policy accurately explains optional AI and share-link data handlin
   await expect(page.getByText('editor_start', { exact: true })).toBeVisible();
   await expect(page.getByText('export_completed', { exact: true })).toBeVisible();
 });
+
+test('landing exposes six accessible, crawlable guide links across mobile layouts',async({page})=>{
+  await page.setViewportSize({width:375,height:812});
+  const response=await page.goto('/landing');
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole('heading',{name:'Less searching. More creating.'})).toBeVisible();
+  const cards=page.locator('#guides a.resource-card');
+  await expect(cards).toHaveCount(6);
+  const targets=[
+    '/seo/cheatsheet','/seo/examples/mermaid','/seo/examples/math',
+    '/seo/tutorials/markdown-to-pdf','/seo/markdown-to-html','/seo/markdown-live-preview-editor'
+  ];
+  for(const target of targets){
+    await expect(page.locator('#guides a.resource-card[href="'+target+'"]')).toHaveCount(1);
+  }
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+});
