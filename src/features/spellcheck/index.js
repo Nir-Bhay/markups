@@ -6,9 +6,6 @@
  */
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import Typo from 'typo-js';
-import aff from './dict/en_US.aff?raw';
-import dic from './dict/en_US.dic?raw';
 import { collectSpellTargets } from './engine.js';
 
 const OWNER = 'spellcheck';
@@ -46,15 +43,17 @@ export function loadDictionary() {
     if (dictionary) return Promise.resolve(dictionary);
     if (!loading) {
         loading = new Promise((resolve) => {
-            const start = () => {
-                dictionary = new Typo('en_US', aff, dic);
-                resolve(dictionary);
-            };
             if (typeof requestIdleCallback === 'function') {
-                requestIdleCallback(start, { timeout: 1500 });
+                requestIdleCallback(resolve, { timeout: 1500 });
             } else {
-                setTimeout(start, 0);
+                setTimeout(resolve, 0);
             }
+        }).then(() => import('./dictionary.js')).then(({ createDictionary }) => {
+            dictionary = createDictionary();
+            return dictionary;
+        }).catch((error) => {
+            loading = null; // A failed fetch/initialization can be retried by a later edit.
+            throw error;
         });
     }
     return loading;
@@ -105,6 +104,10 @@ export function refreshSpellMarkers() {
 
 function schedule() {
     clearTimeout(timer);
+    if (!isSpellcheckEnabled()) {
+        refreshSpellMarkers();
+        return;
+    }
     timer = setTimeout(() => {
         loadDictionary().then(() => refreshSpellMarkers()).catch(() => {});
     }, 200);
@@ -178,5 +181,6 @@ export function toggleSpellcheck() {
     } catch {
         // ignore storage failures
     }
-    refreshSpellMarkers();
+    if (isSpellcheckEnabled()) schedule();
+    else refreshSpellMarkers();
 }

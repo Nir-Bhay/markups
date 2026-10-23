@@ -145,7 +145,7 @@ async function evaluateSuite(page, suite) {
           if (cs.overflowY === 'visible' && cs.overflowX === 'visible') return true;
           return el.scrollHeight <= el.clientHeight + 8;
         })],
-        ['strut styles preserved', [...root.querySelectorAll('.katex .strut')].some((s) => s.getAttribute('style')?.includes('height'))],
+        ['strut styles preserved', [...root.querySelectorAll('.katex .strut, .katex .katex-strut')].some((s) => s.getAttribute('style')?.includes('height'))],
         ['no katex-error class', q('.katex-error') === 0],
         ['aligned or matrix content rendered', /∇|det|π|rho|varepsilon|pmatrix|aligned/i.test(root.textContent || '') || q('.katex-display') >= 2],
       ],

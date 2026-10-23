@@ -10,7 +10,10 @@ export default defineConfig({
     testDir: './tests/e2e',
     // These two white-box regressions import /src and must run on Vite dev.
     // CI runs them separately; built-output checks must never expose source files.
-    testIgnore: builtPreview ? ['**/image-ir-update.spec.js', '**/video-customize.spec.js'] : [],
+    testIgnore: [
+        ...(builtPreview ? ['**/image-ir-update.spec.js', '**/video-customize.spec.js'] : []),
+        ...(entryLabel === 'production' ? ['**/modular-smoke.spec.js'] : [])
+    ],
     timeout: 60_000,
     expect: {
         timeout: 8_000

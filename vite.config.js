@@ -75,9 +75,23 @@ export default defineConfig(({ mode }) => {
             },
             {
                 name: 'markups-entry-selector',
-                transformIndexHtml(html) {
-                    if (!useModularEntry) return html;
-                    return html.replace('src="/src/main.js"', 'src="/src/main.modular.js"');
+                // Select the real entry before Vite parses HTML module scripts.
+                transformIndexHtml: {
+                    order: 'pre',
+                    handler(html) {
+                        if (!useModularEntry) return html;
+                        return html.replace('src="/src/main.js"', 'src="/src/main.modular.js"');
+                    }
+                },
+                generateBundle(_options, bundle) {
+                    const expected = resolve(__dirname, useModularEntry ? 'src/main.modular.js' : 'src/main.js');
+                    const unexpected = resolve(__dirname, useModularEntry ? 'src/main.js' : 'src/main.modular.js');
+                    const modules = new Set(Object.values(bundle)
+                        .filter((item) => item.type === 'chunk')
+                        .flatMap((chunk) => Object.keys(chunk.modules)));
+                    if (!modules.has(expected) || modules.has(unexpected)) {
+                        this.error('Build entry mismatch: expected only ' + expected);
+                    }
                 }
             }
         ],

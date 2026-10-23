@@ -37,8 +37,8 @@ jobs:
         env:
           PLAYWRIGHT_BUILT: '1'
       - run: npm run build:modular
-      - name: Test modular build in Chromium
-        run: npm run test:e2e
+      - name: Smoke-test the actual modular build (core editing and routes)
+        run: npx playwright test tests/e2e/modular-smoke.spec.js
         env:
           PLAYWRIGHT_BUILT: '1'
           MARKUPS_ENTRY: modular

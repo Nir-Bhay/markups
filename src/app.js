@@ -17,7 +17,6 @@ import { DEFAULT_CONTENT } from './config/default-content.js';
 import { runMigration } from './core/storage/migration.js';
 import { autosaveManager } from './services/autosave/index.js';
 import { errorHandler } from './utils/errorHandler.js';
-import { _showLoading, _hideLoading } from './ui/loading/index.js';
 
 // UI Components
 import { toast } from './ui/toast/index.js';

@@ -19,6 +19,7 @@ for(const path of required){
 }
 if(existsSync(join(root,'index.html'))) {
   const home=readFileSync(join(root,'index.html'),'utf8');
+  if (/<link[^>]*rel=["']modulepreload["'][^>]*href=["'][^"']*\/elk-/i.test(home)) failures.push('Optional ELK layout must not be preloaded by the homepage');
   if(!home.includes('markups.dev')) failures.push('home missing canonical brand');
 }
 for(const path of required.filter(x=>x.endsWith('index.html'))) {

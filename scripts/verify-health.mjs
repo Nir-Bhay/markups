@@ -91,7 +91,11 @@ function assertChunkBudgets(label, output) {
             ? 2400
             : fileName.startsWith('main-')
                 ? 1300
-                : 850;
+                // Mermaid 12's optional ELK layout engine is a separate lazy vendor chunk.
+                // It is not part of the initial editor path; the built-page gate checks that.
+                : fileName.startsWith('elk-')
+                    ? 1500
+                    : 850;
 
         if (Number.isFinite(sizeKb) && sizeKb > maxKb) {
             budgetViolations.push(`${fileName}: ${sizeKb.toFixed(2)} kB > ${maxKb} kB`);

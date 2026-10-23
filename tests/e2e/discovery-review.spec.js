@@ -25,7 +25,7 @@ test('Mobile navigation includes the product walkthrough and compatibility guide
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto('/');
     await page.waitForFunction(() => !!window.editor);
-    await page.locator('#mobile-menu-toggle').click();
+    await page.locator('#mobile-header-menu').click();
     await expect(page.locator('#mobile-nav-drawer a[href="/landing"]')).toBeVisible();
     mkdirSync(screenshotDir, { recursive: true });
     await page.screenshot({ path: `${screenshotDir}/guides-mobile.png` });
