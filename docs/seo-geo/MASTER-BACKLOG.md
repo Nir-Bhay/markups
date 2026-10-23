@@ -40,6 +40,13 @@ Statuses: TODO, IN_PROGRESS, BLOCKED, VERIFIED, DEFERRED. All default TODO. Prio
 | M-034 | P3 | Engineering | Decompose production main.js after growth sprint | impact map, modular-entry parity, regression gates |
 | M-035 | P3 | Maintenance | Remove root/public duplicate crawler files only after build precedence tests | no regressions in robots/sitemap/llms HTTP responses |
 
+## New confirmed Search Console/public-release tickets — 2026-10-23
+- **M-036 P0 EXTERNAL OWNER ACTION:** Remove incorrectly submitted robots.txt from Search Console Sitemaps list (not from website); Windsor cannot write.
+- **M-037 P1 EXTERNAL OWNER ACTION:** Inspect actual sitemap.xml warning, validate branch sitemap on production after approved release and resubmit.
+- **M-038 P1 BUILD:** Stop publishing the internal global-growth-playbook as public HTML; replace cheatsheet link; built artifact must not exist.
+- **M-039 P1 INDEX:** Run GSC URL Inspection for root, landing, primary SEO guides and legal routes, save reasons privately.
+- **M-040 P1 ANALYTICS:** Keep site vs URL impressions separately; ensure GA4 connected account is actually Markups before using counts.
+- **M-041 P1 CONTENT:** Publish original technical documentation and pursue genuine third-party discovery, not promised one-week #1 rankings.
 ## Dependency and execution order
 M-001 → M-003 → M-011 → safe preview. M-002 → M-023 → M-011. M-004 → M-001 and M-027. M-005 → M-007 → M-013. M-009/M-010 → M-015/M-016 (credible content). M-013/M-014 → M-031/M-032. M-017/M-018/M-019/M-020 happen ONLY after accurate canonical destination and a working product/preview.
 

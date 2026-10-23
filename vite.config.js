@@ -10,6 +10,12 @@ function collectHtmlInputs(rootDir, inputs) {
     for (const entry of readdirSync(rootDir, { withFileTypes: true })) {
         const fullPath = resolve(rootDir, entry.name);
 
+        // Keep the internal strategy document in Git, not in the public app.
+        // A noindex directive is NOT access control.
+        if (relative(__dirname, fullPath).split(sep).join('/') === 'seo/global-growth-playbook') {
+            continue;
+        }
+
         if (entry.isDirectory()) {
             collectHtmlInputs(fullPath, inputs);
             continue;

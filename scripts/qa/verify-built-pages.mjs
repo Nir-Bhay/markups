@@ -11,6 +11,9 @@ const required = [
  'image/og-image.png'
 ];
 const failures=[];
+if (existsSync(join(root, 'seo/global-growth-playbook/index.html'))) {
+  failures.push('Internal growth playbook must not be emitted in public dist');
+}
 for(const path of required){
   if(!existsSync(join(root,path))) failures.push('missing: dist/'+path);
 }
