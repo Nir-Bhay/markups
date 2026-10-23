@@ -69,3 +69,9 @@ test('preview toolbar control uses the existing view-mode flow', async ({ page }
     await expect(page.locator('body')).toHaveClass(/view-split/);
     await expect(previewButton).toHaveAttribute('aria-pressed', 'false');
 });
+
+
+test('export UI labels Word-compatible HTML as .doc, not native DOCX', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('button[data-format="docx"] .btn-text')).toHaveText('Word (.doc)');
+});

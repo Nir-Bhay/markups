@@ -379,7 +379,7 @@ Start typing here to begin — this welcome content will disappear automatically
 | Images & links | Drag-drop or \`![alt](url)\` |
 | Math equations (LaTeX) | \`$E=mc^2$\` |
 | Diagrams (Mermaid) | Fenced \`mermaid\` blocks |
-| Export to PDF, HTML, DOCX, PNG | Click **Export** ↗ |
+| Export to PDF, HTML, Word (.doc), PNG | Click **Export** ↗ |
 | Multiple tabs | Click **+** in the tab bar |
 
 ## Quick Examples
@@ -3637,7 +3637,7 @@ ${content}
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    showToast(`DOCX exported: ${filename}`, 'success');
+    showToast(`Word (.doc) exported: ${filename}`, 'success');
         trackExportCompleted('doc');
 };
 
@@ -4064,7 +4064,7 @@ const updateExportUI = (format) => {
         pdf: { text: 'Export PDF', icon: 'picture_as_pdf', label: '' },
         html: { text: 'Export HTML', icon: 'html', label: 'HTML Preview' },
         markdown: { text: 'Download Markdown', icon: 'download', label: 'Markdown file' },
-        docx: { text: 'Export DOCX', icon: 'description', label: 'Word Document' },
+        docx: { text: 'Export Word (.doc)', icon: 'description', label: 'Word-compatible HTML' },
         txt: { text: 'Export Text', icon: 'text_snippet', label: 'Plain Text Preview' },
         png: { text: 'Export Image', icon: 'image', label: 'Image Preview' },
         print: { text: 'Print Document', icon: 'print', label: 'Print Preview' }
@@ -4909,13 +4909,13 @@ ${content}
         a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
-        showToast(`DOCX exported: ${filename}`, 'success');
+        showToast(`Word (.doc) exported: ${filename}`, 'success');
         trackExportCompleted('doc');
         hideExportLoading();
     } catch (err) {
         console.error('DOCX export error:', err);
-        failExportLoading('Failed to export DOCX');
-        showToast('Failed to export DOCX', 'error');
+        failExportLoading('Failed to export Word (.doc)');
+        showToast('Failed to export Word (.doc)', 'error');
     }
 };
 
