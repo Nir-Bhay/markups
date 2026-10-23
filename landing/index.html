@@ -1,216 +1,182 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>How Markups works</title>
-  <meta name="description" content="A walkthrough of the Markups editor: split preview, math, diagrams, video, and what each export saves.">
-  <link rel="canonical" href="https://markups.dev/">
-  <meta name="robots" content="index, follow">
-  <meta property="og:title" content="How Markups works">
-  <meta property="og:description" content="A walkthrough of the Markups editor: split preview, math, diagrams, video, and what each export saves.">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c1222">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <title>Free Online Markdown Editor with Live Preview | Markups</title>
+  <meta name="description" content="Write Markdown in your browser with Markups: Monaco editing, live preview, Mermaid diagrams, KaTeX math and flexible exports. Free, open source and no signup.">
+  <link rel="canonical" href="https://markups.dev/landing">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Markups">
+  <meta property="og:title" content="Markups — Markdown that keeps up with your ideas">
+  <meta property="og:description" content="A free, no-signup Markdown editor with live preview, diagrams, math and browser-based writing.">
   <meta property="og:url" content="https://markups.dev/landing">
   <meta property="og:image" content="https://markups.dev/image/og-image.png">
+  <meta property="og:image:alt" content="Markups Markdown editor">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="How Markups works">
-  <meta name="twitter:description" content="A walkthrough of the Markups editor: split preview, math, diagrams, video, and what each export saves.">
+  <meta name="twitter:title" content="Markups — Free Online Markdown Editor">
+  <meta name="twitter:description" content="Write, preview and export Markdown in your browser. Free and open source.">
   <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
-  <link rel="icon" href="/favicon.ico">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./tour.css">
+  <link rel="stylesheet" href="/landing/landing-v2.css">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@graph":[
+      {"@type":"WebPage","@id":"https://markups.dev/landing#page","url":"https://markups.dev/landing","name":"Free Online Markdown Editor with Live Preview | Markups","description":"Learn how Markups lets you edit, preview and export Markdown in your browser without signing up.","isPartOf":{"@id":"https://markups.dev/#website"},"about":{"@id":"https://markups.dev/#app"},"inLanguage":"en"},
+      {"@type":"WebSite","@id":"https://markups.dev/#website","url":"https://markups.dev/","name":"Markups"},
+      {"@type":"WebApplication","@id":"https://markups.dev/#app","name":"Markups","url":"https://markups.dev/","applicationCategory":"ProductivityApplication","operatingSystem":"Web browser","description":"Free open-source browser Markdown editor with Monaco, live preview, Mermaid and KaTeX.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://github.com/Nir-Bhay/markups/blob/main/LICENSE"},
+      {"@type":"FAQPage","@id":"https://markups.dev/landing#faq","mainEntity":[
+        {"@type":"Question","name":"Does Markups require an account?","acceptedAnswer":{"@type":"Answer","text":"No. The editor opens in your browser with no account or signup."}},
+        {"@type":"Question","name":"Does Markups support Mermaid diagrams and math?","acceptedAnswer":{"@type":"Answer","text":"Yes. Markups renders Mermaid diagrams and KaTeX math in the Markdown preview."}},
+        {"@type":"Question","name":"Is the exported PDF selectable text?","acceptedAnswer":{"@type":"Answer","text":"No. Markups currently exports an image-based PDF of the preview, not a searchable or selectable text PDF."}},
+        {"@type":"Question","name":"Does Markups export native DOCX files?","acceptedAnswer":{"@type":"Answer","text":"No. The Word-compatible export is HTML saved with a .doc extension, not a native .docx file."}}
+      ]}
+    ]
+  }
+  </script>
+  <script type="module" src="/landing/landing-v2.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
-  <header class="nav">
-    <div class="nav-inner">
-      <a class="brand" href="#main">Markups</a>
-      <nav class="nav-links" aria-label="On this page">
-        <a href="#session">Session</a>
-        <a href="#preview">Preview</a>
-        <a href="#math-on">Math</a>
-        <a href="#diagrams">Diagrams</a>
-        <a href="#video">Video</a>
-        <a href="#export">Export</a>
-        <a href="#limits">Limits</a>
-        <a href="#faq">FAQ</a>
+  <header class="site-header">
+    <div class="container nav-inner">
+      <a class="brand" href="/landing" aria-label="Markups home"><span class="brand-mark" aria-hidden="true">M<span>.</span></span><span>markups<span class="brand-dot">.</span></span></a>
+      <nav class="desktop-nav" aria-label="Primary navigation">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#use-cases">Use cases</a>
+        <a href="#faq">FAQs</a>
       </nav>
-      <a class="btn" href="https://markups.dev/">Open the editor</a>
+      <div class="nav-actions">
+        <a class="nav-github" href="https://github.com/Nir-Bhay/markups" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+        <a class="btn btn-primary btn-small" href="/" data-cta="nav">Open editor <span aria-hidden="true">↗</span></a>
+      </div>
     </div>
   </header>
+
   <main id="main">
     <section class="hero">
-      <div class="wrap">
-        <p class="kicker">Product walkthrough</p>
-        <h1>How Markups works</h1>
-        <p class="lede">One editor, one preview, no account. This page shows each state. The button opens the real editor.</p>
-        <a class="btn" href="https://markups.dev/">Open the editor</a>
-      </div>
-    </section>
-
-    <section class="section" id="session">
-      <div class="wrap">
-        <h2>A session, with no account</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span class="on">Write</span><span>Split</span><span>Preview</span></div></div>
-          <div class="pane src"><b># </b>
-The document starts here.
-There is no signup in front of it.</div>
+      <div class="hero-orb hero-orb-one" aria-hidden="true"></div><div class="hero-orb hero-orb-two" aria-hidden="true"></div>
+      <div class="container hero-grid">
+        <div class="hero-content">
+          <div class="eyebrow"><span class="eyebrow-light"></span> FREE & OPEN SOURCE <span class="eyebrow-divider">/</span> NO SIGNUP</div>
+          <h1>Your Markdown.<br><span>Without the friction.</span></h1>
+          <p class="hero-lead">Write in a familiar code editor. See every heading, diagram and equation take shape alongside it. Export when you are ready — all in your browser.</p>
+          <div class="hero-actions"><a href="/" class="btn btn-primary btn-large" data-cta="hero">Start writing for free <span aria-hidden="true">↗</span></a><a href="#preview" class="btn btn-outline btn-large">Explore the editor <span aria-hidden="true">↓</span></a></div>
+          <p class="hero-note"><span class="note-check" aria-hidden="true">✓</span>No account needed <span class="note-separator">·</span> <span class="note-check" aria-hidden="true">✓</span>Markdown stays editable <span class="note-separator">·</span> <span class="note-check" aria-hidden="true">✓</span>MIT licensed</p>
         </div>
-        <p class="note">The editor opens in the browser. There is no account and no signup form.</p>
-        <p class="note">The left pane is the Monaco editor. What you type stays Markdown.</p>
-      </div>
-    </section>
-
-    <section class="section" id="preview">
-      <div class="wrap">
-        <h2>Split preview</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
-          <div class="split">
-            <div class="pane src"><b># Notes</b>
-
-Write on the left.
-The preview is the same text.</div>
-            <div class="pane prev"><div class="doc-title">Notes</div><p>Write on the left. The preview is the same text.</p></div>
-          </div>
+        <div class="hero-decor" aria-hidden="true">
+          <span class="float-card float-card-a"><span class="sparkle">✳</span> Write once</span>
+          <span class="float-card float-card-b">Markdown <span class="float-symbol">→</span> preview</span>
+          <span class="float-brace">{ }</span>
+          <span class="float-star">✦</span>
         </div>
-        <p class="note">The right pane is a view of the Markdown, not a second file. Headings, lists, links, tables, and fenced code update there as you type.</p>
-        <p class="note">If the preview looks wrong, the fix is in the source. The preview does not invent a sentence that is not in the Markdown.</p>
       </div>
+      <div class="container hero-bottom"><span>BUILT FOR DEVELOPERS & DEEP THINKERS</span><span class="hero-bottom-line"></span><span>SCROLL TO EXPLORE <span aria-hidden="true">↓</span></span></div>
     </section>
 
-    <section class="section" id="math-on">
-      <div class="wrap">
-        <h2>Math on</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
-          <div class="split">
-            <div class="pane src"><b>$$E = mc^2$$</b></div>
-            <div class="pane prev"><p class="formula">E = mc²</p></div>
-          </div>
+    <section class="showcase-section" id="preview" aria-labelledby="showcase-heading">
+      <div class="container">
+        <div class="section-topline"><span class="section-kicker">01 / THE EXPERIENCE</span><span class="topline-rule"></span><span>THOUGHTFULLY SIMPLE</span></div>
+        <div class="showcase-title-grid"><div><h2 id="showcase-heading">The editor and the output.<br><span>Finally, side by side.</span></h2></div><p>Stay in the flow of writing while your document comes to life. The preview below illustrates different content you can create in the real editor.</p></div>
+        <div class="editor-frame" aria-label="Illustrative Markdown editor interface">
+          <div class="editor-topbar"><div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div><div class="editor-tabs" role="tablist" aria-label="Preview sample">
+            <button type="button" class="sample-tab" role="tab" id="tab-readme" aria-selected="true" aria-controls="sample-readme" data-sample="readme">README.md</button>
+            <button type="button" class="sample-tab" role="tab" id="tab-mermaid" aria-selected="false" aria-controls="sample-mermaid" data-sample="mermaid" tabindex="-1">Diagram.md</button>
+            <button type="button" class="sample-tab" role="tab" id="tab-math" aria-selected="false" aria-controls="sample-math" data-sample="math" tabindex="-1">Math.md</button>
+          </div><div class="editor-topbar-label"><span class="live-dot"></span> Illustrative preview</div></div>
+          <section class="sample-case" id="sample-readme" role="tabpanel" aria-labelledby="tab-readme" data-panel="readme">
+            <div class="editor-pane"><div class="pane-heading"><span><span class="pane-icon">#</span> MARKDOWN SOURCE</span><button class="copy-button" type="button" data-copy="readme" aria-label="Copy README Markdown">Copy source</button></div><pre><code><span class="code-muted">01  </span><span class="code-purple">#</span> Project Atlas
+<span class="code-muted">02  </span>
+<span class="code-muted">03  </span>Write the next big thing.
+<span class="code-muted">04  </span>
+<span class="code-muted">05  </span><span class="code-purple">##</span> What's inside
+<span class="code-muted">06  </span>- <span class="code-green">[x]</span> Live preview
+<span class="code-muted">07  </span>- <span class="code-green">[x]</span> Mermaid diagrams
+<span class="code-muted">08  </span>- <span class="code-purple">[ ]</span> Ship something great
+<span class="code-muted">09  </span>
+<span class="code-muted">10  </span><span class="code-purple">**</span>Write. Preview. Share.<span class="code-purple">**</span></code></pre></div>
+            <div class="preview-pane"><div class="pane-heading"><span><span class="preview-dot">◉</span> LIVE PREVIEW</span><span>DOCUMENT</span></div><div class="rendered"><span class="mini-label">DOCUMENTATION</span><h3>Project Atlas</h3><p>Write the next big thing.</p><hr><h4>What's inside</h4><p class="render-check"><span>☑</span> Live preview</p><p class="render-check"><span>☑</span> Mermaid diagrams</p><p class="render-check unchecked"><span>□</span> Ship something great</p><p class="render-strong">Write. Preview. Share.</p></div></div>
+          </section>
+          <section class="sample-case" id="sample-mermaid" role="tabpanel" aria-labelledby="tab-mermaid" data-panel="mermaid" hidden>
+            <div class="editor-pane"><div class="pane-heading"><span><span class="pane-icon">#</span> MARKDOWN SOURCE</span><button class="copy-button" type="button" data-copy="mermaid" aria-label="Copy Mermaid Markdown">Copy source</button></div><pre><code><span class="code-muted">01  </span><span class="code-purple">#</span> How we ship
+<span class="code-muted">02  </span>
+<span class="code-muted">03  </span>Flowchart for our release.
+<span class="code-muted">04  </span>
+<span class="code-muted">05  </span><span class="code-green">&#96;&#96;&#96;mermaid</span>
+<span class="code-muted">06  </span>flowchart LR
+<span class="code-muted">07  </span>  A[Write] --&gt; B[Review]
+<span class="code-muted">08  </span>  B --&gt; C[Ship]
+<span class="code-muted">09  </span><span class="code-green">&#96;&#96;&#96;</span></code></pre></div>
+            <div class="preview-pane"><div class="pane-heading"><span><span class="preview-dot">◉</span> LIVE PREVIEW</span><span>DIAGRAM</span></div><div class="rendered"><span class="mini-label">ARCHITECTURE</span><h3>How we ship</h3><p>Flowchart for our release.</p><div class="diagram-flow" aria-label="Write then review then ship"><span>Write</span><b aria-hidden="true">→</b><span>Review</span><b aria-hidden="true">→</b><span>Ship</span></div><p class="diagram-note">Mermaid flowcharts render from Markdown source.</p></div></div>
+          </section>
+          <section class="sample-case" id="sample-math" role="tabpanel" aria-labelledby="tab-math" data-panel="math" hidden>
+            <div class="editor-pane"><div class="pane-heading"><span><span class="pane-icon">#</span> MARKDOWN SOURCE</span><button class="copy-button" type="button" data-copy="math" aria-label="Copy equation Markdown">Copy source</button></div><pre><code><span class="code-muted">01  </span><span class="code-purple">#</span> Beautiful equations
+<span class="code-muted">02  </span>
+<span class="code-muted">03  </span>Math belongs in your notes.
+<span class="code-muted">04  </span>
+<span class="code-muted">05  </span><span class="code-green">$$</span>
+<span class="code-muted">06  </span>E = mc^2
+<span class="code-muted">07  </span><span class="code-green">$$</span>
+<span class="code-muted">08  </span>
+<span class="code-muted">09  </span>Rendered with KaTeX.</code></pre></div>
+            <div class="preview-pane"><div class="pane-heading"><span><span class="preview-dot">◉</span> LIVE PREVIEW</span><span>MATHEMATICS</span></div><div class="rendered"><span class="mini-label">EQUATIONS</span><h3>Beautiful equations</h3><p>Math belongs in your notes.</p><div class="math-equation" aria-label="E equals m c squared">E = mc<sup>2</sup></div><p>Rendered with KaTeX.</p></div></div>
+          </section>
+          <div class="editor-status"><span><span class="status-circle"></span> Sample content · Not an interactive editor</span><a href="/">Open the real Markups editor <span aria-hidden="true">↗</span></a></div>
         </div>
-        <p class="note">KaTeX renders inline and display math in the preview. The TeX stays in the editor.</p>
-        <p class="note">A display formula is still one line of source on the left. The preview is where it becomes a formula.</p>
+        <p class="copy-feedback" id="copy-feedback" role="status" aria-live="polite"></p>
       </div>
     </section>
 
-    <section class="section" id="math-off">
-      <div class="wrap">
-        <h2>Math off</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
-          <div class="split">
-            <div class="pane src"><b>$$E = mc^2$$</b></div>
-            <div class="pane prev"><p class="gone">The formula is gone. The TeX line is not put back here.</p></div>
-          </div>
-        </div>
-        <p class="note">Turning math off removes the formula and does not restore the TeX source in the preview.</p>
-        <p class="note">The dollar-sign line is still in the editor. It does not come back in the preview pane.</p>
-      </div>
-    </section>
-
-    <section class="section" id="diagrams">
-      <div class="wrap">
-        <h2>A diagram, after the first paint</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
-          <div class="split">
-            <div class="pane src"><b>```mermaid</b>
-graph TD
-  A --> B
-<b>```</b></div>
-            <div class="pane prev"><p>First paint: the fence is still source.</p><p>After that paint: the fence becomes an SVG.</p></div>
-          </div>
-        </div>
-        <p class="note">A mermaid block becomes an SVG after the first paint, not on the first paint.</p>
-        <p class="note">Turn Mermaid Diagrams off in Settings, Preview, and the fence stays a code block. There is no separate drawing tool.</p>
-      </div>
-    </section>
-
-    <section class="section" id="video">
-      <div class="wrap">
-        <h2>YouTube in the document</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Preview</span></div></div>
-          <div class="video-box prev"><strong>Embedded video</strong><p>A YouTube URL, shown in the preview. The Markdown still holds the reference.</p></div>
-        </div>
-        <p class="note">YouTube insert is included. The preview shows the embed.</p>
-        <p class="note">This is not a video editor. It does not trim, caption, or re-encode the clip.</p>
-      </div>
-    </section>
-
-    <section class="section" id="export">
-      <div class="wrap">
-        <h2>What the PDF and Word buttons save</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="file-box">
-            <div class="file-row">
-              <div class="file"><div class="ext">.pdf</div><p>A picture of the preview. Letter, portrait, three-quarter inch margin.</p></div>
-              <div class="file"><div class="ext">.doc</div><p>Word-compatible HTML, saved under a .doc name.</p></div>
-            </div>
-          </div>
-        </div>
-        <p class="note">PDF export is a picture of the preview. It is not a text PDF you can select and search.</p>
-        <p class="note">The Word button saves Word-compatible HTML as a .doc file. It is not an OOXML package, and it does not include Track Changes.</p>
-      </div>
-    </section>
-
-    <section class="section" id="limits">
-      <div class="wrap">
-        <h2>Limits</h2>
-        <div class="limits">
-          <div class="limit"><strong>Not a text PDF</strong><p>The PDF is a picture of the preview.</p></div>
-          <div class="limit"><strong>Not a native Word file</strong><p>The Word button writes HTML under a .doc name.</p></div>
-          <div class="limit"><strong>HTML and Markdown</strong><p>HTML export is a separate save. Raw Markdown is the source to keep if you want to edit again.</p></div>
-          <div class="limit"><strong>Not full offline use</strong><p>A page that already loaded can appear again if the network drops. That is not the same as opening the editor with no network from the start.</p></div>
+    <section class="features-section" id="features" aria-labelledby="features-heading">
+      <div class="container">
+        <div class="section-topline"><span class="section-kicker">02 / GOOD TOOLS, NO NOISE</span><span class="topline-rule"></span><span>EVERYDAY CAPABILITIES</span></div>
+        <div class="split-heading"><div><h2 id="features-heading">Everything for the draft.<br><span>Nothing in your way.</span></h2></div><p>Comfortable writing, clear structure and modern Markdown features in a tool you can open instantly.</p></div>
+        <div class="feature-grid">
+          <article class="feature-card feature-card-large"><span class="feature-index">01 / WRITE</span><div class="feature-icon icon-mint">⌘</div><h3>Code-editor precision.</h3><p>A familiar Monaco-powered editing experience with Markdown syntax and shortcuts. Write without fighting the interface.</p><div class="feature-art code-art" aria-hidden="true"><span><b>01</b> # A better way to write</span><span><b>02</b> ## Ideas in motion</span><span><b>03</b> - Keep your thoughts flowing</span><span><b>04</b> **Make it readable**</span><i></i></div></article>
+          <article class="feature-card"><span class="feature-index">02 / SEE</span><div class="feature-icon icon-blue">◈</div><h3>Preview as you type.</h3><p>Headings, code blocks, tables and links take shape next to your Markdown source.</p></article>
+          <article class="feature-card"><span class="feature-index">03 / EXPLAIN</span><div class="feature-icon icon-yellow">◇</div><h3>Diagrams and math.</h3><p>Use Mermaid for flows and KaTeX for equations. Keep the source in plain-text Markdown.</p></article>
+          <article class="feature-card"><span class="feature-index">04 / ORGANIZE</span><div class="feature-icon icon-lilac">▣</div><h3>Multiple documents.</h3><p>Work with tabs and local browser draft storage. Export important work for a durable backup.</p></article>
+          <article class="feature-card feature-card-accent"><span class="feature-index">05 / TAKE IT WITH YOU</span><div class="feature-icon icon-black">↗</div><h3>Export on your terms.</h3><p>Save Markdown and standalone HTML, or export a visual PDF of the preview. The Word button produces a Word-compatible .doc, not native .docx.</p><a href="#export" class="feature-link">Understand formats <span aria-hidden="true">↗</span></a></article>
         </div>
       </div>
     </section>
 
-    <section class="section" id="faq">
-      <div class="wrap">
-        <h2>Questions</h2>
-        <div class="faq">
-          <details open>
-            <summary>Does Markups require an account?</summary>
-            <p>No. There is no account.</p>
-          </details>
-          <details>
-            <summary>What do the PDF and Word buttons save?</summary>
-            <p>PDF export is a picture of the preview. The Word button saves Word-compatible HTML as a .doc file.</p>
-          </details>
-          <details>
-            <summary>When does a mermaid block become an SVG?</summary>
-            <p>A mermaid block becomes an SVG after the first paint, not on the first paint.</p>
-          </details>
-          <details>
-            <summary>What happens if math is turned off?</summary>
-            <p>Turning math off removes the formula and does not restore the TeX source. YouTube insert is included.</p>
-          </details>
-        </div>
+    <section class="workflow-section" id="how-it-works" aria-labelledby="workflow-heading">
+      <div class="container workflow-grid">
+        <div class="workflow-title"><span class="section-kicker">03 / YOUR WORKFLOW</span><h2 id="workflow-heading">From thought<br>to document.<br><span>In three moves.</span></h2><p>There is no setup ceremony. Start with text, check the result, and save the source you own.</p><a href="/" class="btn btn-primary" data-cta="workflow">Try the editor <span aria-hidden="true">↗</span></a></div>
+        <ol class="workflow-steps"><li><span class="workflow-number">01</span><div><h3>Open and write</h3><p>Visit the editor and start typing or paste a Markdown document. No registration step.</p></div><span class="step-arrow" aria-hidden="true">↗</span></li><li><span class="workflow-number">02</span><div><h3>See ideas take shape</h3><p>Check the live preview, diagrams and math. Edit the Markdown itself whenever you need a change.</p></div><span class="step-arrow" aria-hidden="true">↗</span></li><li><span class="workflow-number">03</span><div><h3>Save the outcome</h3><p>Download your Markdown source or another available export. Keep your own backup of important drafts.</p></div><span class="step-arrow" aria-hidden="true">↗</span></li></ol>
       </div>
     </section>
 
-    <section class="section">
-      <div class="wrap">
-        <div class="cta">
-          <div>
-            <h2>Open the editor</h2>
-            <p>The writing happens on the main page, not here.</p>
-          </div>
-          <a class="btn" href="https://markups.dev/">Open the editor</a>
-        </div>
+    <section class="usecase-section" id="use-cases" aria-labelledby="usecase-heading">
+      <div class="container">
+        <div class="section-topline"><span class="section-kicker">04 / MAKE SOMETHING USEFUL</span><span class="topline-rule"></span><span>YOUR NEXT DOCUMENT</span></div>
+        <div class="split-heading"><div><h2 id="usecase-heading">One editor.<br><span>So many starting points.</span></h2></div><p>Whether it is a README or a lecture note, Markdown makes the important part your ideas — not formatting.</p></div>
+        <div class="usecase-grid"><a href="/seo/online-markdown-editor" class="usecase-card"><span class="usecase-symbol">01 ↗</span><h3>README files</h3><p>Clear project documentation, formatted code blocks and checklists.</p><span class="usecase-link">Explore Markdown editing ↗</span></a><a href="/seo/examples/mermaid" class="usecase-card"><span class="usecase-symbol">02 ↗</span><h3>Architecture notes</h3><p>Describe workflows and software systems with Mermaid diagrams.</p><span class="usecase-link">See diagram examples ↗</span></a><a href="/seo/examples/math" class="usecase-card"><span class="usecase-symbol">03 ↗</span><h3>Math & study notes</h3><p>Write equations in Markdown and view them typeset with KaTeX.</p><span class="usecase-link">See math examples ↗</span></a></div>
       </div>
     </section>
+
+    <section class="export-section" id="export" aria-labelledby="export-heading">
+      <div class="container export-grid"><div><span class="section-kicker">05 / KNOW WHAT YOU GET</span><h2 id="export-heading">Useful exports.<br><span>Clear expectations.</span></h2><p>Markups is upfront about output formats so you can choose the right document for the next step.</p><a href="/seo/markdown-to-html" class="text-link">Read the HTML export guide ↗</a></div>
+        <div class="export-list"><div class="export-row"><div class="export-format">.md</div><div><h3>Markdown source</h3><p>Keep plain-text source for future editing.</p></div><span>↗</span></div><div class="export-row"><div class="export-format">.html</div><div><h3>HTML document</h3><p>Save a standalone HTML output.</p></div><span>↗</span></div><div class="export-row"><div class="export-format">.pdf</div><div><h3>Visual PDF</h3><p>An image of the preview, not selectable/searchable text.</p></div><span>↗</span></div><div class="export-row"><div class="export-format">.doc</div><div><h3>Word-compatible HTML</h3><p>Saved with a .doc extension. Not a native .docx file.</p></div><span>↗</span></div></div></div>
+    </section>
+
+    <section class="faq-section" id="faq" aria-labelledby="faq-heading"><div class="container faq-grid"><div><span class="section-kicker">06 / GOOD QUESTIONS</span><h2 id="faq-heading">A little more<br><span>clarity.</span></h2><p>Here is what you should know before you start writing.</p></div><div class="faq-list">
+      <details><summary>Is Markups free, and do I have to create an account?<span aria-hidden="true">+</span></summary><p>Markups is free to use and open source. You can open the browser editor without signing up.</p></details>
+      <details><summary>Will my Markdown be uploaded to a server?<span aria-hidden="true">+</span></summary><p>Normal editing stores drafts in your browser. Optional AI features can send content you choose to a configured model provider, and sharing/exporting can move content out of the browser. Review the <a href="/privacy-policy">privacy policy</a> for the details.</p></details>
+      <details><summary>Does Markups support Mermaid and KaTeX?<span aria-hidden="true">+</span></summary><p>Yes. Mermaid diagrams and KaTeX equations can be rendered in the preview while their source stays in your Markdown document.</p></details>
+      <details><summary>Is the PDF selectable and is Word export a true DOCX?<span aria-hidden="true">+</span></summary><p>Not currently. PDF export is based on a picture of the preview. Word-compatible export saves HTML using a .doc extension rather than native DOCX.</p></details>
+      <details><summary>Can I use the editor with no internet connection?<span aria-hidden="true">+</span></summary><p>A previously loaded page may be available from browser cache, but a reliable cold-start offline experience is not guaranteed. Export Markdown to keep a backup.</p></details>
+      <details><summary>Where can I inspect the source code?<span aria-hidden="true">+</span></summary><p>The project is MIT licensed. See the public <a href="https://github.com/Nir-Bhay/markups" target="_blank" rel="noopener noreferrer">GitHub repository</a> for code, issues and development instructions.</p></details>
+    </div></div></section>
+
+    <section class="final-cta"><div class="container cta-inner"><div><span class="section-kicker">READY WHEN YOU ARE</span><h2>Open a blank page.<br><span>Make something brilliant.</span></h2><p>Your next README, diagram or idea is one click away. No account, no setup.</p></div><a class="btn btn-dark btn-large" href="/" data-cta="bottom">Start writing now <span aria-hidden="true">↗</span></a><div class="cta-sparkle" aria-hidden="true">✳</div></div></section>
   </main>
-  <footer>
-    <div class="wrap">
-      <a href="https://markups.dev/">Editor</a>
-      · <a href="https://markups.dev/license">MIT license</a>
-      · <a href="https://github.com/Nir-Bhay/markups">Source</a>
-    </div>
-  </footer>
+
+  <footer class="footer"><div class="container"><div class="footer-main"><div><a class="brand footer-brand" href="/landing"><span class="brand-mark" aria-hidden="true">M<span>.</span></span><span>markups<span class="brand-dot">.</span></span></a><p>A lighter way to write technical documents.<br>Free, open source and made for the web.</p></div><div class="footer-column"><h3>PRODUCT</h3><a href="/">Editor</a><a href="#features">Features</a><a href="/seo/cheatsheet">Markdown cheatsheet</a><a href="/seo/markdown-live-preview-editor">Live preview guide</a></div><div class="footer-column"><h3>RESOURCES</h3><a href="/seo/examples/mermaid">Mermaid examples</a><a href="/seo/examples/math">Math examples</a><a href="/seo/markdown-to-pdf">Markdown to PDF</a><a href="https://github.com/Nir-Bhay/markups" target="_blank" rel="noopener noreferrer">GitHub source ↗</a></div><div class="footer-column"><h3>TRUST</h3><a href="/privacy-policy">Privacy policy</a><a href="/terms">Terms</a><a href="/cookie-policy">Cookies</a><a href="/accessibility">Accessibility</a><a href="/license">MIT license</a></div></div><div class="footer-bottom"><span>© 2026 Markups. Built for the joy of making things.</span><span>Made for the open web <span aria-hidden="true">✦</span></span></div></div></footer>
 </body>
 </html>
