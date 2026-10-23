@@ -38,6 +38,16 @@ describe('features/app-context-menu', () => {
         expect(manager.menu).toBe(first);
     });
 
+    it('keeps the menu open for its own scroll, but closes on page scroll', () => {
+        manager.initialize();
+        manager.menu.className = 'app-context-menu visible';
+        manager.menu.hidden = false;
+        manager.menu.dispatchEvent(new Event('scroll'));
+        expect(manager.menu.classList.contains('visible')).toBe(true);
+        window.dispatchEvent(new Event('scroll'));
+        expect(manager.menu.classList.contains('visible')).toBe(false);
+    });
+
     it('dispose() closes and resets initialized flag', () => {
         manager.initialize();
         manager.dispose();

@@ -71,7 +71,11 @@ class AppContextMenuManager {
 
         this._boundClick = (event) => this._handleDocumentClick(event);
         this._boundKeydown = (event) => this._handleDocumentKeydown(event);
-        this._boundScroll = () => this.close();
+        this._boundScroll = (event) => {
+            // Scrolling within a long menu must not dismiss it before an item is chosen.
+            if (event.target instanceof Node && this.menu?.contains(event.target)) return;
+            this.close();
+        };
         this._boundResize = () => this.close();
         this._boundContextMenu = (event) => this._handleContextMenu(event);
 
@@ -194,7 +198,7 @@ class AppContextMenuManager {
             const firstItem = this.menu.querySelector('.app-context-item');
             if (firstItem) {
                 this._focusIndex = 0;
-                firstItem.focus();
+                firstItem.focus({ preventScroll: true });
             }
         });
     }

@@ -84,8 +84,8 @@ export default defineConfig(({ mode }) => {
                     }
                 },
                 generateBundle(_options, bundle) {
-                    const expected = resolve(__dirname, useModularEntry ? 'src/main.modular.js' : 'src/main.js');
-                    const unexpected = resolve(__dirname, useModularEntry ? 'src/main.js' : 'src/main.modular.js');
+                    const expected = resolve(__dirname, useModularEntry ? 'src/main.modular.js' : 'src/main.js').split(sep).join('/');
+                    const unexpected = resolve(__dirname, useModularEntry ? 'src/main.js' : 'src/main.modular.js').split(sep).join('/');
                     const modules = new Set(Object.values(bundle)
                         .filter((item) => item.type === 'chunk')
                         .flatMap((chunk) => Object.keys(chunk.modules)));

@@ -4,6 +4,15 @@
  * @module services/export
  */
 
+// These services are already synchronous public re-exports. Reuse their bindings;
+// dynamic imports here cannot make them lazy and caused misleading Rollup warnings.
+import { pdfExporter } from './pdf.js';
+import { htmlExporter } from './html.js';
+import { markdownExporter } from './markdown.js';
+import { docxExporter } from './docx.js';
+import { markdownToPlainText } from './txt.js';
+import { downloadFile } from '../../utils/file.js';
+
 export { pdfExporter, PDFExporter } from './pdf.js';
 export { htmlExporter, HTMLExporter } from './html.js';
 export { markdownExporter, MarkdownExporter } from './markdown.js';
@@ -32,7 +41,6 @@ export const exportManager = {
      * @param {Object} options - Export options
      */
     async toPDF(markdown, filename = 'document.pdf', options = {}) {
-        const { pdfExporter } = await import('./pdf.js');
         return pdfExporter.exportAndDownload(markdown, filename, options);
     },
 
@@ -43,7 +51,6 @@ export const exportManager = {
      * @param {Object} options - Export options
      */
     async toHTML(markdown, filename = 'document.html', options = {}) {
-        const { htmlExporter } = await import('./html.js');
         return htmlExporter.exportAndDownload(markdown, filename, options);
     },
 
@@ -54,7 +61,6 @@ export const exportManager = {
      * @param {Object} options - Export options
      */
     async toMarkdown(markdown, filename = 'document.md', options = {}) {
-        const { markdownExporter } = await import('./markdown.js');
         return markdownExporter.exportAndDownload(markdown, filename, options);
     },
 
@@ -64,7 +70,6 @@ export const exportManager = {
      * @param {string} filename - Output filename
      */
     async toDocx(markdown, filename = 'document.doc') {
-        const { docxExporter } = await import('./docx.js');
         return docxExporter.export(markdown, filename);
     },
 
@@ -76,8 +81,6 @@ export const exportManager = {
      * @param {Object} options - Converter options (wordWrap, includeFrontmatter, title, dateStr)
      */
     async toTxt(markdown, filename = 'document.txt', options = {}) {
-        const { markdownToPlainText } = await import('./txt.js');
-        const { downloadFile } = await import('../../utils/file.js');
         const plainText = markdownToPlainText(markdown, options);
         const blob = new Blob([plainText], { type: 'text/plain;charset=utf-8' });
         downloadFile(blob, filename);
@@ -91,7 +94,6 @@ export const exportManager = {
      * @param {string} [title='document'] - Window title
      */
     async print(markdown, title = 'document') {
-        const { htmlExporter } = await import('./html.js');
         const content = htmlExporter.getContent(markdown);
         const printWindow = window.open('', '_blank', 'width=900,height=700');
         if (!printWindow) return false;
@@ -118,7 +120,6 @@ export const exportManager = {
      * @param {string} markdown - Markdown content
      */
     async copyAsHTML(markdown) {
-        const { htmlExporter } = await import('./html.js');
         const html = htmlExporter.getContent(markdown);
 
         try {
