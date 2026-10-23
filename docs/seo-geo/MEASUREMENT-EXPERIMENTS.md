@@ -44,3 +44,12 @@ Consent/configuration: do not introduce new trackers without reviewing current n
 
 ## Acceptance
 Analytics event appears for real interaction, deduplicates re-renders, works without requiring an account, respects privacy, doesn't leak draft text/API keys in URLs or GA4 params. Reconcile analytics against browser network requests.
+
+## Activation measurement (branch-only until approved release)
+
+The connected Markups GA4 property currently reports only generic browser events; genuine editor activation cannot be calculated from pageviews. This sprint adds two strictly allowlisted events in src/utils/productAnalytics.js, with Vitest tests:
+
+- editor_start: first non-flush, non-programmatic Monaco edit per browser session; empty payload; no document text.
+- export_completed: after successful export code path for formats pdf/html/md/doc/txt/png; ONLY export_format allowlist. No filenames, document titles, content, URLs or API keys.
+
+Events are emitted only on markups.dev when the existing GA4 gtag integration is available. No new analytics vendor or cookies introduced. Do not label an event as a confirmed user download/receipt: it indicates the export routine reached the success branch. Privacy/legal review of the existing tracker and any consent requirements is still a release gate. Existing GA4 data cannot retroactively report editor activation; measure from deployment onwards.

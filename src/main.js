@@ -5,6 +5,7 @@ import { marked } from 'marked';
 import 'github-markdown-css/github-markdown-light.css';
 import exportCss from './styles/export.css?raw';
 import { sanitizePreviewHtml, ensurePreviewLinksOpenInNewTab, escapeHtml, sanitizeMarkdownAlt } from './utils/sanitize.js';
+import { trackEditorStartOnce, trackExportCompleted } from './utils/productAnalytics.js';
 import { safeBase64FromArrayBuffer } from './utils/file.js';
 import { modesManager } from './features/modes/index.js';
 import { setupSpellcheck } from './features/spellcheck/index.js';
@@ -1076,6 +1077,12 @@ const setupEditor = () => {
     };
 
     editor?.onDidChangeModelContent((e) => {
+        // Count one genuine edit per browser session; do not transmit draft text.
+        // Monaco setValue() produces a flush event, which is not a user edit.
+        if (!isProgrammaticChange && !isApplyingPreviewEdit && !e.isFlush && e.changes?.length) {
+            trackEditorStartOnce();
+        }
+
         // Auto-clear welcome content on first real user keystroke
         if (!isApplyingPreviewEdit && isShowingWelcome && !isProgrammaticChange && e.changes && e.changes.length > 0) {
             const change = e.changes[0];
@@ -3484,6 +3491,7 @@ const downloadMarkdown = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast(`Downloaded: ${filename}`, 'success');
+        trackExportCompleted('md');
 };
 
 const exportToPDF = async () => {
@@ -3512,6 +3520,7 @@ const exportToPDF = async () => {
 
         await html2pdf().set(options).from(element).save();
         showToast(`PDF exported: ${filename}`, 'success');
+        trackExportCompleted('pdf');
     } catch (_) {
         showToast('Failed to export PDF', 'error');
     }
@@ -3592,6 +3601,7 @@ ${document.getElementById('output').innerHTML}
     a.click();
     URL.revokeObjectURL(url);
     showToast(`HTML exported: ${filename}`, 'success');
+        trackExportCompleted('html');
 };
 
 const exportToDOCX = () => {
@@ -3628,6 +3638,7 @@ ${content}
     a.click();
     URL.revokeObjectURL(url);
     showToast(`DOCX exported: ${filename}`, 'success');
+        trackExportCompleted('doc');
 };
 
 // Export as Plain Text
@@ -3651,6 +3662,7 @@ const exportToTXT = () => {
     a.click();
     URL.revokeObjectURL(url);
     showToast(`Text exported: ${filename}`, 'success');
+        trackExportCompleted('txt');
 };
 
 // Export as PNG Image
@@ -3669,6 +3681,7 @@ const exportToPNG = async () => {
         link.href = canvas.toDataURL('image/png');
         link.click();
         showToast('Image exported successfully!', 'success');
+        trackExportCompleted('png');
     } catch (_) {
         showToast('Failed to export image', 'error');
     }
@@ -4521,6 +4534,7 @@ const exportToPDFWithOptions = async () => {
         workbench = null;
         activeExportAbort = null;
         showToast(`PDF exported: ${filename}`, 'success');
+        trackExportCompleted('pdf');
         hideExportLoading();
     } catch (err) {
         destroyExportWorkbench(workbench);
@@ -4603,6 +4617,7 @@ ${content}
         a.click();
         URL.revokeObjectURL(url);
         showToast(`HTML exported: ${filename}`, 'success');
+        trackExportCompleted('html');
         hideExportLoading();
     } catch (err) {
         console.error('HTML export error:', err);
@@ -4686,6 +4701,7 @@ const exportToPNGWithOptions = async () => {
         link.click();
         activeExportAbort = null;
         showToast(`Image exported: ${filename}`, 'success');
+        trackExportCompleted('png');
         hideExportLoading();
     } catch (err) {
         if (wrapper.parentNode) document.body.removeChild(wrapper);
@@ -4794,6 +4810,7 @@ const downloadMarkdownWithOptions = () => {
         a.click();
         URL.revokeObjectURL(url);
         showToast(`Markdown downloaded: ${filename}`, 'success');
+        trackExportCompleted('md');
         hideExportLoading();
     } catch (err) {
         console.error('Markdown export error:', err);
@@ -4893,6 +4910,7 @@ ${content}
         a.click();
         URL.revokeObjectURL(url);
         showToast(`DOCX exported: ${filename}`, 'success');
+        trackExportCompleted('doc');
         hideExportLoading();
     } catch (err) {
         console.error('DOCX export error:', err);
@@ -4943,6 +4961,7 @@ const exportToTXTWithOptions = () => {
         a.click();
         URL.revokeObjectURL(url);
         showToast(`Text exported: ${filename}`, 'success');
+        trackExportCompleted('txt');
         hideExportLoading();
     } catch (err) {
         console.error('TXT export error:', err);
