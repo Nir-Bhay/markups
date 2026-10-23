@@ -56,7 +56,10 @@ for (const [route, file] of htmlByPath) {
   const url = origin + route;
   if (!title) report('error', rel, 'missing nonempty title');
   if (!h1) report('warning', rel, 'missing H1 in statically rendered HTML');
-  if (!canonical) report('error', rel, 'missing canonical');
+  // Error pages and other deliberately noindex pages do not need a canonical.
+  // Do not force a bogus canonical for /404 just to pass an SEO check.
+  if (!canonical && !noindex) report('error', rel, 'missing canonical on indexable page');
+  if (route === '/404' && !noindex) report('error', rel, '404 page must be noindex');
   if (canonical && !canonical.startsWith(origin + '/')) report('error', rel, 'off-domain canonical: ' + canonical);
   if (canonical && seenCanonicals.has(canonical) && canonical !== origin + '/') {
     report('warning', rel, 'shared canonical with ' + seenCanonicals.get(canonical));
