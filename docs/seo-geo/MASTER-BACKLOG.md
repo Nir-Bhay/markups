@@ -58,6 +58,11 @@ Statuses: TODO, IN_PROGRESS, BLOCKED, VERIFIED, DEFERRED. All default TODO. Prio
 - **M-047 P1 TEST WRITTEN / CI PENDING:** Add browser regression that PDF guides clearly explain image-based output and avoid unsupported absolute claims.
 - **M-048 P2 SOURCE FIX COMPLETE / CI PENDING:** Remove misleading DOCX references in HTML guide; link to true Compatibility Lab.
 - **M-049 P2 PENDING:** Download/open real browser exports in PDF viewers, verify link annotations, text selection, long-document breaks; implementation/content review is not a substitute.
+## Download integrity QA — 2026-10-23
+- **M-050 P1 TEST IMPLEMENTED / CI PENDING:** Playwright exports an actual small PDF from the editor, validates download and nonempty PDF magic bytes; does not falsely claim selectable text or perfect page fidelity.
+- **M-051 P1 TEST IMPLEMENTED / CI PENDING:** Playwright downloads Word output, checks extension is .doc and file is HTML rather than ZIP/OOXML .docx.
+- **M-052 P2 MANUAL PENDING:** Inspect those files in at least one PDF/Word viewer for layout, pagination, link annotations and accessibility. File-signature checks alone are insufficient.
+
 ## Dependency and execution order
 M-001 → M-003 → M-011 → safe preview. M-002 → M-023 → M-011. M-004 → M-001 and M-027. M-005 → M-007 → M-013. M-009/M-010 → M-015/M-016 (credible content). M-013/M-014 → M-031/M-032. M-017/M-018/M-019/M-020 happen ONLY after accurate canonical destination and a working product/preview.
 
