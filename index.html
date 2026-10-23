@@ -71,40 +71,41 @@
             "Word-compatible .doc export",
             "link share",
             "YouTube insert",
-            "Mermaid after the first paint"
+            "Mermaid diagram preview"
         ]
     }
     </script>
 
-    <!-- Analytics (skipped on localhost so local console stays clean) -->
+    <!-- Existing analytics: canonical production only; minimize configured GA4 URLs. -->
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag() { dataLayer.push(arguments); }
         window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
         window.__MARKUPS_LOCAL__ = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+        window.__MARKUPS_ANALYTICS_ALLOWED__ = location.hostname === 'markups.dev';
     </script>
     <script>
         (function () {
-            if (window.__MARKUPS_LOCAL__) return;
+            if (!window.__MARKUPS_ANALYTICS_ALLOWED__) return;
             var gtagScript = document.createElement('script');
             gtagScript.async = true;
             gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-8WMNRN5GFM';
             document.head.appendChild(gtagScript);
             gtag('js', new Date());
-            gtag('config', 'G-8WMNRN5GFM');
+            // Shared documents live in #s=...; query strings can also contain user data.
+            var referrerOrigin = '';
+            try { referrerOrigin = document.referrer ? new URL(document.referrer).origin + '/' : ''; } catch (_) {}
+            gtag('config', 'G-8WMNRN5GFM', {
+                page_location: location.origin + location.pathname,
+                page_referrer: referrerOrigin,
+                page_title: 'Markups — Markdown editor'
+            });
         })();
     </script>
-    <script>
-        (function (c, l, a, r, i, t, y) {
-            if (window.__MARKUPS_LOCAL__) return;
-            c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
-            t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
-            y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
-        })(window, document, "clarity", "script", "uwrtfye6w8");
-    </script>
+    <!-- Session replay disabled on the editor pending verified document/key masking. -->
     <script>
         (function () {
-            if (window.__MARKUPS_LOCAL__) return;
+            if (!window.__MARKUPS_ANALYTICS_ALLOWED__) return;
             var script = document.createElement('script');
             script.defer = true;
             script.src = '/_vercel/insights/script.js';
@@ -134,37 +135,24 @@
     <script type="module" src="/src/main.js"></script>
 
         <style>
-        /* The editor fills the viewport, so clip this block instead of hiding it. */
-        .crawl-summary {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            clip-path: inset(50%);
-            border: 0;
-        }
+        /* Product explanation stays available without covering the editor until opened. */
+        .editor-about { position: relative; }
+        .editor-about > summary { cursor: pointer; font-size: 12px; white-space: nowrap; }
+        .editor-about-panel { position: fixed; top: 64px; left: 12px; z-index: 10000;
+            box-sizing: border-box; width: 380px; max-width: calc(100vw - 24px);
+            max-height: calc(100dvh - 88px); overflow: auto; padding: 20px;
+            border: 1px solid #94a3b8; border-radius: 12px; background: #fff; color: #172033;
+            box-shadow: 0 12px 36px #0003; font: 14px/1.6 system-ui, sans-serif; }
+        .editor-about-panel h1 { font-size: 20px; line-height: 1.3; margin: 0 0 12px; }
+        .editor-about-panel h2 { font-size: 16px; margin: 16px 0 8px; }
+        .editor-about-panel a { color: #1d4ed8; text-decoration: underline; }
+        .editor-about-panel ul { padding-left: 20px; }
+
     </style>
 </head>
 
 <body class="view-split">
-    <section class="crawl-summary">
-        <h1>Free online Markdown editor</h1>
-        <p>A free online Markdown editor in the browser, with live split preview and no signup.</p>
-        <p>PDF export is a picture of the preview. The Word button saves Word-compatible HTML as a .doc file. A mermaid block becomes an SVG after the first paint, not on the first paint. Turning math off removes the formula and does not restore the TeX source.</p>
-        <h2>Common questions</h2>
-        <h3>Does Markups require an account?</h3>
-        <p>No. There is no account.</p>
-        <h3>What do the PDF and Word buttons save?</h3>
-        <p>PDF export is a picture of the preview. The Word button saves Word-compatible HTML as a .doc file.</p>
-        <h3>When does a mermaid block become an SVG?</h3>
-        <p>A mermaid block becomes an SVG after the first paint, not on the first paint.</p>
-        <h3>What happens if math is turned off?</h3>
-        <p>Turning math off removes the formula and does not restore the TeX source. YouTube insert is included.</p>
-        <p><a href="/landing">Landing</a></p>
-    </section>
+
 
     <!-- Skip Navigation Link (accessibility) -->
     <a href="#editor" class="skip-nav-link" id="skip-nav-link">Skip to editor</a>
@@ -175,7 +163,26 @@
         <div class="header-brand">
             <div class="brand-logo">M</div>
             <span class="brand-name">Markups</span>
-            <a class="header-tour-link" href="/landing" title="Explore Markups features and guides">About ↗</a>
+            <details class="editor-about">
+                <summary>About &amp; guides</summary>
+                <section class="editor-about-panel" aria-label="About Markups">
+                    <h1>Free online Markdown editor</h1>
+                    <p>Write README files and technical notes in your browser, with Monaco editing,
+                        live preview, Mermaid diagrams and KaTeX math. No signup required.</p>
+                    <p>Normal editing stores drafts in your browser. Optional AI Writer sends selected
+                        text to your chosen provider. Export your work to keep a separate backup.</p>
+                    <h2>Try a documented workflow</h2>
+                    <ul>
+                        <li><a href="/landing">Features and product walkthrough</a></li>
+                        <li><a href="/seo/compatibility-lab">Test diagrams, math and exports</a></li>
+                        <li><a href="/seo/cheatsheet">Markdown cheatsheet</a></li>
+                        <li><a href="/seo/markdown-to-html">Export standalone HTML</a></li>
+                    </ul>
+                    <p>PDF export is image-based; selectable text and clickable links are not guaranteed.
+                        Word export is Word-compatible HTML saved as .doc, not native .docx.</p>
+                    <p><a href="/privacy-policy">Privacy</a> · <a href="/accessibility">Accessibility</a></p>
+                </section>
+            </details>
         </div>
 
         <!-- Browser-style file tabs between brand and actions -->
@@ -2440,6 +2447,9 @@
                 </svg>
             </button>
         </div>
+
+        <a class="mobile-nav-item" href="/landing">About &amp; guides</a>
+        <a class="mobile-nav-item" href="/seo/compatibility-lab">Test diagrams, math and exports</a>
 
         <!-- Documents Section -->
         <div class="mobile-drawer-section">

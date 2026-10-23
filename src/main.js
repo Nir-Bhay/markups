@@ -2674,6 +2674,7 @@ const applyMarkdownFromPreviewEdit = (markdown) => {
 
     hasEdited = true;
     setHasEdited(true);
+    trackEditorStartOnce();
     updateStats(markdown);
 };
 

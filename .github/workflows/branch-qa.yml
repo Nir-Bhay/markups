@@ -1,14 +1,14 @@
 name: Branch QA (no deployment)
 on:
   push:
-    branches: [growth/seo-geo-audit-2026-10]
+    branches: [growth/seo-geo-audit-2026-10, growth/discovery-review-2026-10-24]
   pull_request:
     branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: markups-branch-qa
+  group: markups-branch-qa-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   quality:
@@ -29,15 +29,27 @@ jobs:
       - run: npm run build
       - run: node scripts/qa/verify-built-pages.mjs
       - run: node scripts/qa/audit-built-site.mjs
-      - run: npm run build:modular
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - name: Source-module media regressions (dev server required)
+        run: npx playwright test tests/e2e/image-ir-update.spec.js tests/e2e/video-customize.spec.js
+      - name: Test production build in Chromium
+        run: npm run test:e2e
+        env:
+          PLAYWRIGHT_BUILT: '1'
+      - run: npm run build:modular
+      - name: Test modular build in Chromium
+        run: npm run test:e2e
+        env:
+          PLAYWRIGHT_BUILT: '1'
+          MARKUPS_ENTRY: modular
       - name: Capture landing screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: markups-landing-responsive-screenshots
-          path: test-results/landing-screenshots/
+          path: |
+            test-results/landing-screenshots/
+            test-results/discovery-screenshots/
           if-no-files-found: ignore
           retention-days: 7
       - name: Failure traces

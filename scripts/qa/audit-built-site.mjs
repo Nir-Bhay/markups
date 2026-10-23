@@ -76,9 +76,18 @@ for (const [route, file] of htmlByPath) {
     try { parsed = new URL(value, url); } catch { continue; }
     if (parsed.origin !== origin) continue;
     const pathname = decodeURIComponent(parsed.pathname).replace(/\/+$/, '') || '/';
-    if (pathname.includes('/assets/') || pathname.endsWith('.css') || pathname.endsWith('.js') || pathname.endsWith('.png') || pathname.endsWith('.svg') || pathname.endsWith('.ico')) continue;
     const target = htmlByPath.has(pathname) || existsSync(join(root, pathname.slice(1)));
     if (!target) report('error', rel, 'broken same-domain link: ' + value);
+  }
+  for (const value of attributes(html, 'src')) {
+    if (!value || /^(?:data:|blob:)/i.test(value)) continue;
+    let parsed;
+    try { parsed = new URL(value, url); } catch { continue; }
+    // Vercel injects this platform script at runtime, outside dist.
+    if (parsed.origin !== origin || parsed.pathname.startsWith('/_vercel/')) continue;
+    if (!existsSync(join(root, decodeURIComponent(parsed.pathname).slice(1)))) {
+      report('error', rel, 'broken same-domain resource: ' + value);
+    }
   }
   const og = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)?.[1];
   if (og) {
@@ -101,6 +110,11 @@ for (const loc of locs) {
   }
   const route = new URL(loc).pathname.replace(/\/+$/, '') || '/';
   const file = htmlByPath.get(route);
+  if (file) {
+    const html = readFileSync(file, 'utf8');
+    const canonical = html.match(/<link\b[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i)?.[1];
+    if (canonical !== loc) report('error', 'sitemap.xml', 'sitemap URL differs from page canonical: ' + loc);
+  }
   if (!file && !existsSync(join(root, route.slice(1)))) {
     report('error', 'sitemap.xml', 'listed route absent from dist: ' + route);
   }

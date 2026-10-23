@@ -89,6 +89,18 @@ test.describe('Stress preview visual QA', () => {
     fs.mkdirSync(SHOT_DIR, { recursive: true });
     fs.mkdirSync(path.dirname(REPORT_JSON), { recursive: true });
 
+    // Deterministic image fixtures: this tests rendering, not a third-party CDN's uptime.
+    // Preserve the requested dimensions so landscape/square/portrait layout probes remain real.
+    await page.route('https://picsum.photos/**', async (route) => {
+      const match = new URL(route.request().url()).pathname.match(/\/(\d+)\/(\d+)$/);
+      if (!match) return route.abort();
+      const width = Number(match[1]);
+      const height = Number(match[2]);
+      await route.fulfill({
+        contentType: 'image/svg+xml',
+        body: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#dbeafe"/><path d="M0 ${height}L${width / 2} ${height / 3}L${width} ${height}" fill="#93c5fd"/><text x="20" y="40" font-size="24" fill="#172033">Local QA fixture ${width} × ${height}</text></svg>`
+      });
+    });
     const markdown = fs.readFileSync(STRESS_PATH, 'utf8');
     await waitForApp(page);
     await setMarkdown(page, markdown, 'Markups Markdown Preview Stress Test');

@@ -24,6 +24,7 @@ const entries = [
   ['/seo/markdown-to-pdf', 'seo/markdown-to-pdf/index.html'],
   ['/seo/markdown-to-html', 'seo/markdown-to-html/index.html'],
   ['/seo/markdown-live-preview-editor', 'seo/markdown-live-preview-editor/index.html'],
+  ['/seo/compatibility-lab', 'seo/compatibility-lab/index.html'],
   ['/seo/cheatsheet', 'seo/cheatsheet/index.html'],
   ['/seo/examples/mermaid', 'seo/examples/mermaid/index.html'],
   ['/seo/examples/math', 'seo/examples/math/index.html'],
@@ -73,6 +74,12 @@ if (!has('public/robots.txt') || !has('public/llms.txt')) note('error', 'MISSING
 if (!urlSet.has('https://markups.dev/')) note('error', 'HOME_NOT_IN_SITEMAP', 'https://markups.dev/');
 for (const path of ['/privacy-policy','/terms','/accessibility','/cookie-policy']) {
   if (!urlSet.has('https://markups.dev' + path)) note('warning', 'TRUST_URL_NOT_IN_SITEMAP', path + ' — optional after route is live');
+}
+// Vite publishes public/; duplicate root crawler files must not silently drift.
+for (const name of ['robots.txt', 'sitemap.xml', 'llms.txt']) {
+  if (has(name) && get(name) !== get('public/' + name)) {
+    note('error', 'CRAWLER_SOURCE_DRIFT', name + ' differs from public/' + name);
+  }
 }
 const out = { checked: entries.length, errors: issues.length, warnings: warnings.length, issues, warnings, scope: 'repository-only static check, NOT deployed HTTP or Google indexing' };
 process.stdout.write(JSON.stringify(out, null, 2) + '\n');
