@@ -33,7 +33,7 @@ test('landing links to real editor and correct Open Graph asset',async({page})=>
 test('privacy policy accurately explains optional AI and share-link data handling', async ({ page }) => {
   await page.goto('/privacy-policy');
   await expect(page.getByRole('heading', { name: 'Optional AI Writer and document sharing' })).toBeVisible();
-  await expect(page.locator('#ai-and-sharing')).toContainText('configured');
+  await expect(page.locator('#ai-and-sharing')).toContainText('endpoint you configure');
   await expect(page.locator('#ai-and-sharing')).toContainText('URL fragment');
   await expect(page.locator('#ai-and-sharing')).toContainText('session-only key');
 });
