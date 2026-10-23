@@ -16,3 +16,6 @@
 .resource-action{color:#287a4e;font-size:12px;font-weight:700;margin-top:auto;padding-top:20px}
 @media(max-width:820px){.resources-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.resource-card{padding:24px;min-height:220px}}
 @media(max-width:610px){.resources-section{padding:76px 0}.resources-grid{grid-template-columns:1fr}.resource-card{min-height:180px}.resource-card h3{margin:18px 0 8px}}
+
+/* Keep the expanded Guides navigation from squeezing medium tablet headers. */
+@media(max-width:950px){.desktop-nav{display:none}}

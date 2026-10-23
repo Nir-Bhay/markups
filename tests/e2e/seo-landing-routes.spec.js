@@ -55,4 +55,8 @@ test('landing exposes six accessible, crawlable guide links across mobile layout
     await expect(page.locator('#guides a.resource-card[href="'+target+'"]')).toHaveCount(1);
   }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+  // Five-link desktop navigation must not squeeze the header on small tablets.
+  await page.setViewportSize({width:860,height:950});
+  await expect(page.locator('.desktop-nav')).toBeHidden();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
 });
