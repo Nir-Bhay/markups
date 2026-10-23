@@ -77,3 +77,16 @@ test('Compatibility Lab is crawlable with real Markdown fixture and honest expor
   await page.goto('/landing');
   await expect(page.locator('a[href="/seo/compatibility-lab"]')).toBeVisible();
 });
+
+test('PDF content matches raster export behavior and avoids unsupported guarantees', async ({ page }) => {
+  for (const route of ['/seo/markdown-to-pdf','/seo/tutorials/markdown-to-pdf']) {
+    const response = await page.goto(route);
+    expect(response?.status()).toBe(200);
+    const content = await page.locator('main').innerText();
+    expect(content).toMatch(/image-based/i);
+    expect(content).not.toMatch(/90% of layout issues|clickable links in the PDF|under a minute|what you see is what you get|without breaking layout/i);
+    const jsonLd = await page.locator('script[type="application/ld+json"]').textContent();
+    expect(() => JSON.parse(jsonLd)).not.toThrow();
+    expect(jsonLd).not.toMatch(/without breaking layout|all render correctly/i);
+  }
+});

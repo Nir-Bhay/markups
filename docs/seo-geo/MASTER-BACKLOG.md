@@ -53,6 +53,11 @@ Statuses: TODO, IN_PROGRESS, BLOCKED, VERIFIED, DEFERRED. All default TODO. Prio
 - **M-044 P1 INDEX:** Add approved canonical lab route to sitemap and direct landing / resource links. After reviewed production release inspect Google-selected canonical and index status; avoid claiming search visibility before Search Console confirms.
 - **M-045 P2 RESEARCH:** Compare other products only when independently tested under the same fixture with screenshots, dates and version/methodology; this first lab is NOT an untested cross-product comparison.
 
+## Export-copy correctness — 2026-10-23
+- **M-046 P1 SOURCE FIX COMPLETE / CI PENDING:** Reconciled PDF guides and FAQ/HowTo JSON-LD with raster output. Removed assertions of clickable PDF links, perfect preview fidelity, '90%' checks, guaranteed page breaks and unlimited file capability.
+- **M-047 P1 TEST WRITTEN / CI PENDING:** Add browser regression that PDF guides clearly explain image-based output and avoid unsupported absolute claims.
+- **M-048 P2 SOURCE FIX COMPLETE / CI PENDING:** Remove misleading DOCX references in HTML guide; link to true Compatibility Lab.
+- **M-049 P2 PENDING:** Download/open real browser exports in PDF viewers, verify link annotations, text selection, long-document breaks; implementation/content review is not a substitute.
 ## Dependency and execution order
 M-001 → M-003 → M-011 → safe preview. M-002 → M-023 → M-011. M-004 → M-001 and M-027. M-005 → M-007 → M-013. M-009/M-010 → M-015/M-016 (credible content). M-013/M-014 → M-031/M-032. M-017/M-018/M-019/M-020 happen ONLY after accurate canonical destination and a working product/preview.
 
