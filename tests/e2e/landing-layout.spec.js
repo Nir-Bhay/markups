@@ -36,3 +36,17 @@ test('landing metadata and resource destinations resolve on local app server', a
     expect(response.status(), link).toBe(200);
   }
 });
+
+test('mobile menu replaces hidden navigation links on phones and tablets', async ({ page }) => {
+  for (const width of [320, 375, 860]) {
+    await page.setViewportSize({ width, height: 812 });
+    await page.goto('/landing');
+    const menu = page.locator('.mobile-menu');
+    await expect(menu.locator('summary')).toBeVisible();
+    await menu.locator('summary').click();
+    await expect(menu.locator('nav a[href="#guides"]')).toBeVisible();
+    await expect(menu.locator('nav a[href="#faq"]')).toBeVisible();
+    const size = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
+    expect(size.scroll, JSON.stringify(size)).toBeLessThanOrEqual(size.viewport + 2);
+  }
+}
