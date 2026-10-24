@@ -63,4 +63,4 @@ test('Word-compatible .doc preserves structured fraction MathML without browser-
   const html = readFileSync(await download.path(), 'utf8');
   expect(html).toMatch(/<math[\s>]/i);
   expect(html).not.toContain('class="katex-html"');
-}
+});
