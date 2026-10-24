@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { setMarkdown, waitForApp, getMarkdown } from './helpers.js';
 
-const shots = path.join(process.env.USERPROFILE, 'spell-shots');
+const shots = path.join(process.env.RUNNER_TEMP || process.env.USERPROFILE || os.tmpdir(), 'spell-shots');
 fs.mkdirSync(shots, { recursive: true });
 
 const sample = [

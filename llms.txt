@@ -1,15 +1,19 @@
 # Markups
 
-> A free online Markdown editor in the browser, with live split preview and no signup.
+> Free, open-source, browser Markdown editor with Monaco editing and live preview. No signup.
 
 - [Editor](https://markups.dev/)
-- [License](https://markups.dev/license)
-- [Online Markdown editor](https://markups.dev/seo/online-markdown-editor)
-- [Markdown to PDF](https://markups.dev/seo/markdown-to-pdf)
+- [Product overview](https://markups.dev/landing)
+- [Source / MIT license](https://github.com/Nir-Bhay/markups)
+- [Privacy policy](https://markups.dev/privacy-policy)
+- [Online Markdown editor guide](https://markups.dev/seo/online-markdown-editor)
+- [Markdown to PDF (image-based)](https://markups.dev/seo/markdown-to-pdf)
 - [Markdown to HTML](https://markups.dev/seo/markdown-to-html)
 - [Live preview](https://markups.dev/seo/markdown-live-preview-editor)
 - [Cheatsheet](https://markups.dev/seo/cheatsheet)
-- [Mermaid example](https://markups.dev/seo/examples/mermaid)
-- [Math example](https://markups.dev/seo/examples/math)
-- [Markdown to PDF tutorial](https://markups.dev/seo/tutorials/markdown-to-pdf)
-- [Source](https://github.com/Nir-Bhay/markups)
+- [Mermaid examples](https://markups.dev/seo/examples/mermaid)
+- [KaTeX math examples](https://markups.dev/seo/examples/math)
+- [PDF tutorial](https://markups.dev/seo/tutorials/markdown-to-pdf)
+
+## Important limitations
+PDF export is image-based, not searchable/selectable text. Word-compatible .doc is not native .docx. Normal writing uses browser storage; optional AI features can send user-selected text to model providers.

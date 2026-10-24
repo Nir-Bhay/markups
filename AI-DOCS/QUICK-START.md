@@ -38,7 +38,10 @@ npm run test:e2e
 
 ## Current release blockers
 
-- Playwright has no tests under `tests/e2e/`.
-- `npm run test:coverage` needs `@vitest/coverage-v8`.
+- Playwright specs exist under `tests/e2e/`; run and inspect before release.
+- `@vitest/coverage-v8` is declared; the actual test run still needs verification.
 - `npm run verify:health` must remain cross-platform.
 - Production and modular entry points still coexist.
+
+## Growth branch quality gates
+Run `node scripts/qa/check-seo-geo-static.mjs`, `npm run build`, `node scripts/qa/verify-built-pages.mjs` and browser tests. See docs/seo-geo/README.md.

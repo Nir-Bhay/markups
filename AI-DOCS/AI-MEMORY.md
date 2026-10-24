@@ -42,7 +42,7 @@ or deleting public-site content.
 
 - User-controlled names must be escaped before `innerHTML` insertion.
 - Storage quota failures must not be swallowed.
-- E2E coverage is currently absent.
+- E2E tests are present in tests/e2e/; run them to confirm status.
 - Coverage requires `@vitest/coverage-v8`.
 - Keep `main.js` and `main.modular.js` until the entry-point decision is made.
 
@@ -54,4 +54,4 @@ or deleting public-site content.
 4. Make one bounded change at a time.
 5. Run lint, unit tests, both builds, and relevant browser tests.
 
-Last reviewed: 2026-09-08.
+Last reviewed: 2026-10-23 (growth branch source refresh).
