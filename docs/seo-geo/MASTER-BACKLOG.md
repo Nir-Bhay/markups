@@ -54,18 +54,18 @@ Statuses: TODO, IN_PROGRESS, BLOCKED, VERIFIED, DEFERRED. All default TODO. Prio
 - **M-045 P2 RESEARCH:** Compare other products only when independently tested under the same fixture with screenshots, dates and version/methodology; this first lab is NOT an untested cross-product comparison.
 
 ## Export-copy correctness — 2026-10-23
-- **M-046 P1 SOURCE FIX COMPLETE / CI PENDING:** Reconciled PDF guides and FAQ/HowTo JSON-LD with raster output. Removed assertions of clickable PDF links, perfect preview fidelity, '90%' checks, guaranteed page breaks and unlimited file capability.
-- **M-047 P1 TEST WRITTEN / CI PENDING:** Add browser regression that PDF guides clearly explain image-based output and avoid unsupported absolute claims.
-- **M-048 P2 SOURCE FIX COMPLETE / CI PENDING:** Remove misleading DOCX references in HTML guide; link to true Compatibility Lab.
+- **M-046 P1 SOURCE FIX COMPLETE / CI VERIFIED ON 81155bc:** Reconciled PDF guides and FAQ/HowTo JSON-LD with raster output. Removed assertions of clickable PDF links, perfect preview fidelity, '90%' checks, guaranteed page breaks and unlimited file capability.
+- **M-047 P1 TEST / CI VERIFIED ON 81155bc:** Add browser regression that PDF guides clearly explain image-based output and avoid unsupported absolute claims.
+- **M-048 P2 SOURCE FIX COMPLETE / CI VERIFIED ON 81155bc:** Remove misleading DOCX references in HTML guide; link to true Compatibility Lab.
 - **M-049 P2 PENDING:** Download/open real browser exports in PDF viewers, verify link annotations, text selection, long-document breaks; implementation/content review is not a substitute.
 ## Download integrity QA — 2026-10-23
-- **M-050 P1 TEST IMPLEMENTED / CI PENDING:** Playwright exports an actual small PDF from the editor, validates download and nonempty PDF magic bytes; does not falsely claim selectable text or perfect page fidelity.
-- **M-051 P1 TEST IMPLEMENTED / CI PENDING:** Playwright downloads Word output, checks extension is .doc and file is HTML rather than ZIP/OOXML .docx.
+- **M-050 P1 TEST / CI VERIFIED ON 81155bc:** Playwright exports an actual small PDF from the editor, validates download and nonempty PDF magic bytes; does not falsely claim selectable text or perfect page fidelity.
+- **M-051 P1 TEST / CI VERIFIED ON 81155bc:** Playwright downloads Word output, checks extension is .doc and file is HTML rather than ZIP/OOXML .docx.
 - **M-052 P2 MANUAL PENDING:** Inspect those files in at least one PDF/Word viewer for layout, pagination, link annotations and accessibility. File-signature checks alone are insufficient.
 
 ## Canonical product identity — 2026-10-23
-- **M-053 P1 SOURCE FIX / CI PENDING:** AI Writer system prompt still identified Markups by markups.vercel.app; changed to canonical https://markups.dev/ and added a unit regression test. This does not alter the chosen AI provider or message content policy.
-- **M-054 P2 SOURCE FIX / CI PENDING:** Removed remaining DOCX-promotional footer links from public PDF/HTML guides in favor of the honest Compatibility Lab, keeping the separately marked noindex DOCX explanatory page in source.
+- **M-053 P1 SOURCE FIX / CI VERIFIED ON 81155bc:** AI Writer system prompt still identified Markups by markups.vercel.app; changed to canonical https://markups.dev/ and added a unit regression test. This does not alter the chosen AI provider or message content policy.
+- **M-054 P2 SOURCE FIX / CI VERIFIED ON 81155bc:** Removed remaining DOCX-promotional footer links from public PDF/HTML guides in favor of the honest Compatibility Lab, keeping the separately marked noindex DOCX explanatory page in source.
 - **M-055 P1 EXTERNAL BLOCKED:** Live Awesome Markdown Editors and LibHunt listings still point to the old domain. The owner's existing upstream issue #109 cannot be updated via the connected GitHub app (403 on third-party repository). Requires website editor/authorized GitHub account or independent maintainer review.
 
 ## Dependency and execution order
@@ -81,3 +81,9 @@ PM/audit: docs/seo-geo/** and run evidence. All changes must be small independen
 
 ## Workflow for each ticket
 Before: assign, verify main and branch SHA, link source and reproducible failing case. During: implementation plus the narrowest passing test, peer review for claims. After: run complete branch tests, preview verification, attach evidence and change ticket TODO to VERIFIED only when proof exists. No fabricated checkmarks.
+
+## Verification refresh — 2026-10-24
+- **M-011 branch CI: VERIFIED on application SHA `81155bcabd0ef7586529d4cd98d5ef751991eae0`.** GitHub Actions https://github.com/Nir-Bhay/markups/actions/runs/39988242957 passed static SEO, lint, 566 Vitest, both builds, built-page audit, 46 Playwright, PDF/Word downloaded-file signatures and screenshot capture. Every newer head needs its own green run.
+- **M-029 stale QA documentation: SOURCE FIXED.** `docs/seo-geo/QA-RELEASE-GATES.md` now distinguishes the successful CI from unverified preview. Evidence: `docs/seo-geo/runs/2026-10-24-branch-qa.md`. Do not mark full G3 preview gate VERIFIED.
+- **G3 / M-001 preview portion: BLOCKED by preview authentication.** PR #71 Vercel bot reports READY but read-only `/landing`, `/privacy-policy`, `/seo/compatibility-lab` checks returned `login_required`. Vercel project/deployment API calls for the actual team returned 403 pending owner team grant. Production was not changed.
+- **M-036, M-037, M-039: OWNER GSC ACTIONS remain BLOCKED.** **M-049/M-052:** full PDF/Word viewer visual, pagination, link, selection and accessibility tests remain open. CI does not validate those properties.
