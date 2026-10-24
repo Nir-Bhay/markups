@@ -30,3 +30,6 @@
 .mobile-menu nav a:hover,.mobile-menu nav a:focus-visible{color:#101827;background:var(--mint)}
 @media(max-width:950px){.mobile-menu{display:block}.nav-actions{gap:9px}}
 @media(max-width:390px){.nav-inner{gap:8px}.nav-actions .btn-small{padding:9px 10px;gap:4px}.brand{font-size:20px;gap:6px}.brand-mark{width:30px;height:30px}}
+
+/* Small phones: anchor the expanded drawer to the viewport, not the narrow Menu button. */
+@media(max-width:390px){.mobile-menu nav{position:fixed;left:10px;right:10px;top:73px;width:auto;max-width:none}}
