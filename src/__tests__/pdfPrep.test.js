@@ -62,6 +62,20 @@ describe('pdfPrep helpers', () => {
         }
     });
 
+    it('pads display math in PDF workbench to prevent clipped fractions', () => {
+        const source = document.createElement('div');
+        source.innerHTML = '<p>Math</p><span class="katex-display"><span class="katex">1/2</span></span>';
+        const workbench = createExportWorkbench(source, { widthCss: '7.5in' });
+        try {
+            const math = workbench.querySelector('.katex-display');
+            expect(math.style.paddingTop).toBe('14px');
+            expect(math.style.paddingBottom).toBe('18px');
+            expect(math.style.minHeight).toBe('3em');
+        } finally {
+            destroyExportWorkbench(workbench);
+        }
+    });
+
     it('ignores app chrome outside the export subtree', () => {
         const root = document.createElement('div');
         const outsider = document.createElement('div');
