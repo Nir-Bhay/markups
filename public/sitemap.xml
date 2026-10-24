@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://markups.dev/</loc><lastmod>2026-10-23</lastmod></url>
-  <url><loc>https://markups.dev/landing</loc><lastmod>2026-10-23</lastmod></url>
+  <url><loc>https://markups.dev/landing</loc><lastmod>2026-10-24</lastmod></url>
   <url><loc>https://markups.dev/license</loc><lastmod>2026-09-19</lastmod></url>
   <url><loc>https://markups.dev/privacy-policy</loc><lastmod>2026-10-23</lastmod></url>
   <url><loc>https://markups.dev/terms</loc><lastmod>2026-10-23</lastmod></url>
   <url><loc>https://markups.dev/cookie-policy</loc><lastmod>2026-10-23</lastmod></url>
   <url><loc>https://markups.dev/accessibility</loc><lastmod>2026-10-23</lastmod></url>
-  <url><loc>https://markups.dev/seo/online-markdown-editor</loc><lastmod>2026-09-19</lastmod></url>
+  <url><loc>https://markups.dev/seo/online-markdown-editor</loc><lastmod>2026-10-24</lastmod></url>
   <url><loc>https://markups.dev/seo/markdown-to-pdf</loc><lastmod>2026-10-23</lastmod></url>
   <url><loc>https://markups.dev/seo/markdown-to-html</loc><lastmod>2026-10-23</lastmod></url>
   <url><loc>https://markups.dev/seo/markdown-live-preview-editor</loc><lastmod>2026-09-19</lastmod></url>
@@ -16,4 +16,5 @@
   <url><loc>https://markups.dev/seo/examples/mermaid</loc><lastmod>2026-09-19</lastmod></url>
   <url><loc>https://markups.dev/seo/examples/math</loc><lastmod>2026-09-19</lastmod></url>
   <url><loc>https://markups.dev/seo/tutorials/markdown-to-pdf</loc><lastmod>2026-10-23</lastmod></url>
+  <url><loc>https://markups.dev/seo/markdown-readme-template</loc><lastmod>2026-10-24</lastmod></url>
 </urlset>
