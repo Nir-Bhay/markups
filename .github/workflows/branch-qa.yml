@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: markups-branch-qa
+  group: markups-branch-qa-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   quality:
