@@ -1744,6 +1744,14 @@ flowchart LR
 
 # Accessibility Probes
 
+## Same-origin image reliability probes
+
+These stable local assets verify Markdown image loading even when third-party sample hosts are unavailable in CI. External image examples elsewhere in this stress document remain intentional.
+
+![Local UI image probe](/image/sample.webp)
+![Local square image probe](/image/icon-192.png)
+![Local social preview probe](/image/og-image.png)
+
 ## Images with good alt text
 
 ![A rectangular placeholder image used to verify the Markdown image renderer](https://picsum.photos/seed/accessibility-alt/640/360)

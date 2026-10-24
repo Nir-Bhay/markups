@@ -4,6 +4,8 @@
 
 - [Editor](https://markups.dev/)
 - [Product overview](https://markups.dev/landing)
+- [Editable README template with Mermaid and math](https://markups.dev/seo/markdown-readme-template)
+- [Download sample README.md source](https://markups.dev/qa/markdown-readme-template.md)
 - [Source / MIT license](https://github.com/Nir-Bhay/markups)
 - [Privacy policy](https://markups.dev/privacy-policy)
 - [Online Markdown editor guide](https://markups.dev/seo/online-markdown-editor)
@@ -14,6 +16,7 @@
 - [Mermaid examples](https://markups.dev/seo/examples/mermaid)
 - [KaTeX math examples](https://markups.dev/seo/examples/math)
 - [PDF tutorial](https://markups.dev/seo/tutorials/markdown-to-pdf)
+- [Compatibility Lab and downloadable QA fixture](https://markups.dev/seo/compatibility-lab)
 
 ## Important limitations
 PDF export is image-based, not searchable/selectable text. Word-compatible .doc is not native .docx. Normal writing uses browser storage; optional AI features can send user-selected text to model providers.

@@ -472,7 +472,19 @@ test.describe('Stress preview visual QA', () => {
     }
     if (audit.katexError > 0) add('major', 'Math', `${audit.katexError} KaTeX errors`);
     if (audit.clippedMath > 0) add('minor', 'Math', `${audit.clippedMath} display math blocks metric-clipped (>4px)`, 'overflow may still be visible');
-    if (audit.imagesLoaded < 3) add('major', 'Images', `Only ${audit.imagesLoaded}/${audit.images.length} images loaded (naturalWidth>0)`);
+    // Third-party picsum.photos URLs can be unreachable on CI runners;
+    // require locally served images to load, but report remote failures separately.
+    const localImages = audit.images.filter((img) =>
+      /\/image\/(sample\.webp|icon-192\.png|og-image\.png)(?:[?#]|$)/.test(img.src));
+    const localLoaded = localImages.filter((img) => img.naturalW > 0).length;
+    if (localImages.length !== 3 || localLoaded !== 3) {
+      add('major', 'Images', `Only ${localLoaded}/3 same-origin image probes loaded`);
+    }
+    const externalFailures = audit.images.filter((img) =>
+      img.src.startsWith('https://picsum.photos/') && img.naturalW === 0);
+    if (externalFailures.length) {
+      add('info', 'Remote images', `${externalFailures.length} picsum.photos image(s) unavailable in test browser; investigate outbound network independently`);
+    }
     // Raw <video> is intentionally forbidden by sanitize.js — expected product behavior.
     if (audit.videos.length === 0) {
       add(
