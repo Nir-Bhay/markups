@@ -285,6 +285,14 @@ export function createExportWorkbench(sourceElement, { widthCss, className = 'ma
 
     const clone = sourceElement.cloneNode(true);
     stripExportChrome(clone);
+    // Fractions and display math extend outside ordinary line-box geometry.
+    // Give html2canvas's cropped PDF bands space to include full KaTeX glyphs.
+    clone.querySelectorAll('.katex-display').forEach((node) => {
+        node.style.setProperty('overflow', 'visible', 'important');
+        node.style.setProperty('padding-top', '14px');
+        node.style.setProperty('padding-bottom', '18px');
+        node.style.setProperty('min-height', '3em');
+    });
     workbench.appendChild(clone);
     host.appendChild(workbench);
     document.body.appendChild(host);
