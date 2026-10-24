@@ -49,4 +49,4 @@ test('mobile menu replaces hidden navigation links on phones and tablets', async
     const size = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
     expect(size.scroll, JSON.stringify(size)).toBeLessThanOrEqual(size.viewport + 2);
   }
-}
+});
