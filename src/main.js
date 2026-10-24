@@ -89,7 +89,7 @@ Prism.languages.html = Prism.languages.html || Prism.languages.markup;
 
 // Mermaid for diagrams
 import mermaid from 'mermaid';
-mermaid.initialize({ startOnLoad: false, theme: 'default', suppressErrors: true, securityLevel: 'strict' });
+mermaid.initialize({ startOnLoad: false, theme: 'default', suppressErrors: true, securityLevel: 'strict', flowchart: { htmlLabels: false }, htmlLabels: false });
 
 // KaTeX for math
 import 'katex/dist/katex.min.css';
@@ -2153,6 +2153,8 @@ const highlightText = () => {
 
 // Convert generation token — drops stale RAF/deferred work when typing continues
 let _convertToken = 0;
+// Mermaid's global renderer must not overlap old and newly restored tabs.
+let _mermaidRenderQueue = Promise.resolve();
 
 /**
  * Walk markdown and return start line (1-based) + type for each top-level block.
@@ -2595,15 +2597,19 @@ const convert = (markdown) => {
                     pre.replaceWith(div);
                 });
 
-                mermaid.run({
-                    nodes: outputElement.querySelectorAll('.mermaid')
-                }).then(() => {
+                const mermaidNodes = [...outputElement.querySelectorAll('.mermaid')];
+                _mermaidRenderQueue = _mermaidRenderQueue.catch(() => {}).then(async () => {
+                    // Switching files restores #output while Mermaid is still processing.
+                    // Serialize globally so stale runs never overwrite a newer diagram.
+                    if (token !== _convertToken || mermaidNodes.some(node => !node.isConnected)) return;
+                    await mermaid.run({ nodes: mermaidNodes });
                     if (token !== _convertToken) return;
                     normalizeMermaidPreviewErrors(outputElement);
                     annotateSourceLines(outputElement, renderableMarkdown);
                     scrollSync.scheduleRebuildAnchors();
-                }).catch(() => {
+                }).catch((err) => {
                     if (token !== _convertToken) return;
+                    console.warn('Mermaid preview rendering failed:', err);
                     normalizeMermaidPreviewErrors(outputElement);
                     scrollSync.scheduleRebuildAnchors();
                 });
@@ -4463,6 +4469,27 @@ const exportToPDFWithOptions = async () => {
             'tabloid': [11, 17]
         };
 
+        // Wait for a diagram render before cloning the preview. An earlier tab
+        // navigation may leave a tiny Mermaid error-icon SVG in its place.
+        await _mermaidRenderQueue.catch(() => {});
+        const diagramIsMissing = (node) => {
+            const svg = node.querySelector('svg');
+            if (!svg) return true;
+            const box = svg.getBoundingClientRect();
+            return box.width < 32 || box.height < 32;
+        };
+        const unreadyDiagrams = [...element.querySelectorAll('.mermaid')].filter(diagramIsMissing);
+        if (unreadyDiagrams.length) {
+            unreadyDiagrams.forEach(node => {
+                node.textContent = node.dataset.mermaidCode || node.textContent || '';
+                node.removeAttribute('data-processed');
+            });
+            await mermaid.run({ nodes: unreadyDiagrams });
+        }
+        if ([...element.querySelectorAll('.mermaid')].some(diagramIsMissing)) {
+            throw new Error('Diagram is not rendered yet. Check Mermaid preview and retry PDF export.');
+        }
+
         const widthCss = orientation === 'landscape' ? '10in' : '7.5in';
         updateExportProgress(18, 'Cloning preview for export...');
         workbench = createExportWorkbench(element, { widthCss });
@@ -4487,6 +4514,10 @@ const exportToPDFWithOptions = async () => {
         if (svgStats.skipped > 0 && svgStats.converted === 0 && svgStats.total > 0) {
             // Fallback sync pass for any leftover SVGs
             convertSVGsToImages(workbench);
+        }
+        // Warn instead of shipping an apparently successful blank-diagram PDF.
+        if (workbench.querySelector('.mermaid > svg, .mermaid-diagram > svg')) {
+            throw new Error('Diagram could not be embedded into PDF; export HTML or retry.');
         }
 
         if (signal.aborted) throw new DOMException('Export cancelled', 'AbortError');
@@ -4823,7 +4854,15 @@ const downloadMarkdownWithOptions = () => {
 const exportToDOCXWithOptions = () => {
     const title = getActiveDocTitle();
     const filename = getExportFilename('doc');
-    const content = document.getElementById('output').innerHTML;
+    const wordClone = document.getElementById('output').cloneNode(true);
+    // Word-compatible HTML does not ship KaTeX's browser CSS. Preserve
+    // semantic MathML instead of exporting visually flattened fractions.
+    // This is NOT a native DOCX equation guarantee.
+    wordClone.querySelectorAll('.katex').forEach(node => {
+        const math = node.querySelector('math');
+        if (math) node.replaceWith(math.cloneNode(true));
+    });
+    const content = wordClone.innerHTML;
 
     showExportLoading('Generating Word document...', 40);
 
