@@ -47,3 +47,20 @@ test('Word export is HTML wrapped as .doc and is not mislabeled native DOCX', as
   expect(html).toContain('Export smoke test');
   expect(bytes.subarray(0, 2).toString('latin1')).not.toBe('PK'); // DOCX is ZIP/OOXML.
 });
+
+test('Word-compatible .doc preserves structured fraction MathML without browser-only KaTeX spans', async ({ page }) => {
+  test.setTimeout(60_000);
+  await waitForApp(page);
+  const source = ['# Math QA', '', '$$', String.raw`\frac{a}{b}=c`, '$$', ''].join('\n');
+  await setMarkdown(page, source);
+  await expect(page.locator('#output .katex').first()).toBeVisible({ timeout: 30_000 });
+  await page.locator('#export-btn').click();
+  await page.locator('.export-format-btn[data-format="docx"]').click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 40_000 }),
+    page.locator('#export-confirm-btn').click()
+  ]);
+  const html = readFileSync(await download.path(), 'utf8');
+  expect(html).toMatch(/<math[\s>]/i);
+  expect(html).not.toContain('class="katex-html"');
+}
