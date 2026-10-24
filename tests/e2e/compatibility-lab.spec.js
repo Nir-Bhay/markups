@@ -27,7 +27,7 @@ test('Compatibility Lab has no horizontal overflow on narrow viewports', async (
     expect(size.scroll, JSON.stringify(size)).toBeLessThanOrEqual(width + 2);
     expect(size.body, JSON.stringify(size)).toBeLessThanOrEqual(width + 2);
   }
-}
+});
 
 test('Mermaid remains rendered after leaving and reopening an editor tab', async ({ page }) => {
   test.setTimeout(90_000);
@@ -54,4 +54,4 @@ test('Mermaid remains rendered after leaving and reopening an editor tab', async
   const restored = page.locator('#output .mermaid svg').first();
   await expect(restored).toBeVisible({ timeout: 30_000 });
   await expect.poll(() => restored.evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThan(40);
-}
+});
