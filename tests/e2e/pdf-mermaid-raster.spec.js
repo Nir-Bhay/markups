@@ -21,6 +21,11 @@ test('Mermaid PDF workbench converts a visible diagram to decoded nonblank PNG',
   await expect.poll(async () => page.locator('#output .mermaid svg').first().evaluate(
     el => el.getBoundingClientRect().width
   )).toBeGreaterThan(150);
+  // Mermaid may place an initial SVG container into the DOM before populating
+  // its renderable viewBox/paths; wait for the actual final SVG, not its shell.
+  await expect.poll(async () => page.locator('#output .mermaid svg').first().evaluate(
+    el => Boolean(el.getAttribute('viewBox')) && el.querySelectorAll('g').length > 0
+  ), { timeout: 30_000 }).toBe(true);
 
   const result = await page.evaluate(async () => {
     const { createExportWorkbench, convertMermaidSvgsToImages, destroyExportWorkbench } =
