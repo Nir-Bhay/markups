@@ -46,7 +46,17 @@ test('mobile menu replaces hidden navigation links on phones and tablets', async
     await menu.locator('summary').click();
     await expect(menu.locator('nav a[href="#guides"]')).toBeVisible();
     await expect(menu.locator('nav a[href="#faq"]')).toBeVisible();
-    const size = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
+    const size = await page.evaluate(() => {
+      const bounds = document.querySelector('.mobile-menu nav')?.getBoundingClientRect();
+      return {
+        viewport: document.documentElement.clientWidth,
+        scroll: document.documentElement.scrollWidth,
+        menuLeft: bounds?.left,
+        menuRight: bounds?.right
+      };
+    });
     expect(size.scroll, JSON.stringify(size)).toBeLessThanOrEqual(size.viewport + 2);
+    expect(size.menuLeft, JSON.stringify(size)).toBeGreaterThanOrEqual(-1);
+    expect(size.menuRight, JSON.stringify(size)).toBeLessThanOrEqual(size.viewport + 1);
   }
 });
