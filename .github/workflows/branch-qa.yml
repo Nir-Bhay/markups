@@ -1,9 +1,9 @@
 name: Branch QA (no deployment)
 on:
   push:
-    branches: [growth/seo-geo-audit-2026-10]
+    branches: [growth/seo-geo-audit-2026-10, fix/markups-browser-qa-2026-10-24]
   pull_request:
-    branches: [main]
+    branches: [main, growth/seo-geo-audit-2026-10]
   workflow_dispatch:
 permissions:
   contents: read
