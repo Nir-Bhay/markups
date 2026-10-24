@@ -1228,7 +1228,7 @@ marked.use(markedHighlight({
 // Configure marked with KaTeX
 marked.use(markedKatex({
     throwOnError: false,
-    output: 'html' // or 'mathml'
+    output: 'htmlAndMathml' // semantic MathML for accessibility and Word-compatible export
 }));
 
 // Configure GFM Extensions
