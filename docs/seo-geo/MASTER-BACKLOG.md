@@ -15,7 +15,7 @@ Statuses: TODO, IN_PROGRESS, BLOCKED, VERIFIED, DEFERRED. All default TODO. Prio
 | M-009 | P1 | Content | Reconcile PDF selective text/link/page-break claims vs actual exports | fixture outputs + copy corrections, no unverified promise |
 | M-010 | P1 | Product | Test native DOCX claims; preserve explicit .doc limitation until actual implementation | Downloaded file type and Word/LibreOffice inspection; documentation truthful |
 | M-011 | P1 | QA | Gate existing E2E + unit + both Vite builds + lint + health script | captured versions/exits, no waived failures |
-| M-012 | P1 | Docs | Fix stale AGENTS / AI-DOCS navigation assertions | documented code map matches tree; outdated 'no E2E' gone |
+| M-012 | P1 | Docs | Fix stale AGENTS / AI-DOCS navigation assertions (source corrected 2026-10-25; CI pending final head) | documented code map matches tree; outdated 'no E2E' gone |
 | M-013 | P1 | SEO | GSC property, query/URL breakdown and Bing index report | 28-day pre-sprint baseline exported and stored outside repo if private |
 | M-014 | P1 | Growth | Instrument qualified editor_start, export_success, save and outbound CTA using privacy-aware analytics | event appears in analytics, no raw text/keys/PII transmitted |
 | M-015 | P1 | Product evidence | Reproducible Markups-vs-competitor comparison; feature/date/source and screenshot each | no fabricated rankings, cited product facts, objective matrix |
@@ -87,3 +87,7 @@ Before: assign, verify main and branch SHA, link source and reproducible failing
 - **M-029 stale QA documentation: SOURCE FIXED.** `docs/seo-geo/QA-RELEASE-GATES.md` now distinguishes the successful CI from unverified preview. Evidence: `docs/seo-geo/runs/2026-10-24-branch-qa.md`. Do not mark full G3 preview gate VERIFIED.
 - **G3 / M-001 preview portion: BLOCKED by preview authentication.** PR #71 Vercel bot reports READY but read-only `/landing`, `/privacy-policy`, `/seo/compatibility-lab` checks returned `login_required`. Vercel project/deployment API calls for the actual team returned 403 pending owner team grant. Production was not changed.
 - **M-036, M-037, M-039: OWNER GSC ACTIONS remain BLOCKED.** **M-049/M-052:** full PDF/Word viewer visual, pagination, link, selection and accessibility tests remain open. CI does not validate those properties.
+
+## M-012 agent navigation refresh — 2026-10-25
+- Updated `AGENTS.md` in commit `fe1107e55251915e48166cb29a86ae82dd1539ce`: code-review-graph only when available/current, GitHub source fallback, no stale fixed line counts, Vitest + Playwright coverage documented. The two AI-DOCS navigation files already acknowledged Playwright.
+- Source read-back passed; final-head GitHub Actions check pending. Evidence: `docs/seo-geo/runs/2026-10-25-agent-navigation.md`. This is **not** a preview/production pass.
