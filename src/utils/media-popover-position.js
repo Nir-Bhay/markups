@@ -1,4 +1,23 @@
 /**
+ * Measure the bottom edge of app chrome (header + formatting toolbar) so
+ * floating bars can stay below it. Shared by the video popover and the
+ * image-resize toolbar so the two never drift.
+ * @param {number} [margin]
+ * @returns {number}
+ */
+export function getChromeBottom(margin = 8) {
+    let bottom = margin;
+    const header = typeof document !== 'undefined' ? document.querySelector('.premium-header') : null;
+    const formatBar = typeof document !== 'undefined' ? document.querySelector('.premium-toolbar') : null;
+    if (header) bottom = Math.max(bottom, header.getBoundingClientRect().bottom + 8);
+    if (formatBar) {
+        const barRect = formatBar.getBoundingClientRect();
+        if (barRect.height > 0) bottom = Math.max(bottom, barRect.bottom + 8);
+    }
+    return bottom;
+}
+
+/**
  * Position a fixed media layout bar next to its anchor element.
  * Measures after temporarily making the popover measurable (even if hidden).
  * Prefers above/below based on available viewport space and flips when needed.
@@ -15,14 +34,7 @@ export function positionMediaPopover(popover, anchor, options = {}) {
     const margin = Number.isFinite(options.margin) ? options.margin : 12;
 
     // Stay below app chrome (header + formatting toolbar) when possible.
-    let chromeBottom = margin;
-    const header = typeof document !== 'undefined' ? document.querySelector('.premium-header') : null;
-    const formatBar = typeof document !== 'undefined' ? document.querySelector('.premium-toolbar') : null;
-    if (header) chromeBottom = Math.max(chromeBottom, header.getBoundingClientRect().bottom + 8);
-    if (formatBar) {
-        const barRect = formatBar.getBoundingClientRect();
-        if (barRect.height > 0) chromeBottom = Math.max(chromeBottom, barRect.bottom + 8);
-    }
+    const chromeBottom = getChromeBottom(margin);
 
     const wasHidden = popover.classList.contains('hidden');
     const prevVisibility = popover.style.visibility;
@@ -50,7 +62,13 @@ export function positionMediaPopover(popover, anchor, options = {}) {
     let top = placeBelow
         ? rect.bottom + gap
         : rect.top - height - gap;
-    top = Math.min(Math.max(chromeBottom, top), Math.max(chromeBottom, vh - height - margin));
+    if (placeBelow) {
+        // Below the anchor: only need to stay in the viewport (top edge).
+        top = Math.max(margin, Math.min(top, vh - height - margin));
+    } else {
+        // Above the anchor: never slide under the header/toolbar.
+        top = Math.min(Math.max(chromeBottom, top), vh - height - margin);
+    }
 
     let left = rect.left + rect.width / 2 - width / 2;
     left = Math.min(Math.max(margin, left), Math.max(margin, vw - width - margin));

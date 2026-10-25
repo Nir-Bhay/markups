@@ -566,6 +566,16 @@
                         d="M6.586 4.672A3 3 0 007.414 9.5l.775-.776a2 2 0 01-.896-3.346L9.12 3.55a2 2 0 112.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 10-4.243-4.243L6.586 4.672z" />
                 </svg>
             </button>
+            <button class="toolbar-btn" id="toolbar-share" title="Share document" aria-label="Share document">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="18" cy="5" r="3"></circle>
+                    <circle cx="6" cy="12" r="3"></circle>
+                    <circle cx="18" cy="19" r="3"></circle>
+                    <line x1="8.6" y1="10.5" x2="15.4" y2="6.5"></line>
+                    <line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line>
+                </svg>
+            </button>
             <button class="toolbar-btn" id="toolbar-url" title="Format URL (auto-detect)" aria-label="Format URL">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path
@@ -1371,6 +1381,16 @@
                                     <span class="settings-toggle-slider"></span>
                                 </div>
                             </label>
+                            <label class="settings-toggle-item">
+                                <div class="settings-toggle-info">
+                                    <span class="settings-toggle-label">Front Matter Card</span>
+                                    <span class="settings-toggle-desc">Show YAML front matter as a metadata card</span>
+                                </div>
+                                <div class="settings-toggle">
+                                    <input type="checkbox" id="front-matter-checkbox" checked>
+                                    <span class="settings-toggle-slider"></span>
+                                </div>
+                            </label>
                         </div>
                     </section>
 
@@ -1488,6 +1508,12 @@
                                 <span class="shortcut-action">Open Export Modal</span>
                                 <div class="shortcut-keys">
                                     <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span class="shortcut-action">Command Palette</span>
+                                <div class="shortcut-keys">
+                                    <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>P</kbd>
                                 </div>
                             </div>
                         </div>
@@ -2557,6 +2583,22 @@
             </button>
         </div>
     </nav>
+
+    <!-- Command Palette -->
+    <div class="modal-overlay" id="command-palette-overlay"></div>
+    <div class="modal command-palette" id="command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
+        <div class="command-palette-input-wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="command-palette-input" placeholder="Type a command..." autocomplete="off"
+                spellcheck="false" aria-label="Search commands">
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="command-palette-list" id="command-palette-list" role="listbox"></ul>
+    </div>
 
     <!-- Slash Commands Menu -->
     <div id="slash-menu" class="slash-menu" style="display:none"></div>

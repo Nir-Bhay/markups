@@ -257,6 +257,10 @@ export const shareManager = {
             e.preventDefault();
             openShareModal(e.currentTarget);
         });
+        document.getElementById('toolbar-share')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            openShareModal(e.currentTarget);
+        });
         document.getElementById('mobile-share-nav-btn')?.addEventListener('click', (e) => {
             e.preventDefault();
             openShareModal(e.currentTarget);

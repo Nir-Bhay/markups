@@ -9,6 +9,7 @@ import { trackEditorStartOnce, trackExportCompleted } from './utils/productAnaly
 import { safeBase64FromArrayBuffer } from './utils/file.js';
 import { modesManager } from './features/modes/index.js';
 import { setupSpellcheck } from './features/spellcheck/index.js';
+import { blankFrontMatterLines, parseFrontMatter, renderFrontMatterCard } from './utils/front-matter.js';
 
 // html2pdf / html2canvas / jspdf — lazy-loaded on first export (P3-T1)
 let _html2pdf = null;
@@ -1652,7 +1653,7 @@ const setupLinter = () => {
 
 // Simple browser-based markdown linter
 const runLinter = () => {
-    const content = editor?.getValue() ?? '';
+    const content = blankFrontMatterLines(editor?.getValue() ?? '') ?? '';
     const lines = content.split('\n');
     const issues = [];
 
@@ -2474,6 +2475,14 @@ const convert = (markdown) => {
     let renderableMarkdown = resolvedMarkdown.replace(/(!\[[^\]]*\]\([^)]+\))\s*\{[^}]*\}/g, '$1');
     renderableMarkdown = stripVideoAttributeBlocks(renderableMarkdown);
 
+    const parsedFrontMatter = currentSettings.preview.frontMatterCard !== false
+        ? parseFrontMatter(renderableMarkdown)
+        : null;
+    const frontMatterCardHtml = parsedFrontMatter
+        ? renderFrontMatterCard(parsedFrontMatter.frontMatter)
+        : '';
+    if (parsedFrontMatter) renderableMarkdown = blankFrontMatterLines(renderableMarkdown);
+
     // Document Mode needs the original markdown (with attrs) for serialization.
     // Preview Mode uses renderableMarkdown (attrs stripped) for clean rendering.
     const documentModeMarkdown = resolvedMarkdown;
@@ -2524,7 +2533,7 @@ const convert = (markdown) => {
             captureMedia(f, () => wrap?.dataset?.sourceLine);
         });
 
-        outputElement.innerHTML = sanitized;
+        outputElement.innerHTML = frontMatterCardHtml + sanitized;
 
         // Feature 2: Custom CSS injection
         injectCustomCss(outputElement);
@@ -2880,7 +2889,8 @@ const copyHTMLToClipboard = async () => {
 
 // ----- stats utils -----
 
-const updateStats = (text) => {
+const updateStats = (rawText) => {
+    const text = blankFrontMatterLines(rawText) ?? '';
     // Strip markdown syntax before counting words (matches stats modal / GitHub)
     const stripped = text
         .replace(/```[\s\S]*?```/g, '')
@@ -5262,6 +5272,7 @@ const getDefaultSettings = () => ({
         syntaxHighlight: true,
         mathRendering: true,
         mermaid: true,
+        frontMatterCard: true,
         videoMode: 'smart',
         imageMode: 'smart'
     },
@@ -5392,6 +5403,7 @@ const setupSettingsModal = () => {
         setCheckbox('syntax-highlight-checkbox', currentSettings.preview.syntaxHighlight);
         setCheckbox('math-rendering-checkbox', currentSettings.preview.mathRendering);
         setCheckbox('mermaid-checkbox', currentSettings.preview.mermaid);
+        setCheckbox('front-matter-checkbox', currentSettings.preview.frontMatterCard !== false);
         setDropdown('video-mode-dropdown', currentSettings.preview.videoMode || 'smart');
 
         // Theme
@@ -5607,6 +5619,15 @@ const setupPreviewSettings = () => {
             markdownService.setMermaidEnabled(e.target.checked);
             updatePreview();
             showToast(e.target.checked ? 'Mermaid diagrams enabled' : 'Mermaid diagrams disabled', 'info', 1500);
+        });
+    }
+
+    const frontMatterCheckbox = document.getElementById('front-matter-checkbox');
+    if (frontMatterCheckbox) {
+        frontMatterCheckbox.addEventListener('change', (e) => {
+            currentSettings.preview.frontMatterCard = e.target.checked;
+            updatePreview();
+            showToast(e.target.checked ? 'Front matter card enabled' : 'Front matter card disabled', 'info', 1500);
         });
     }
 
@@ -6415,6 +6436,11 @@ const setupKeyboardShortcuts = () => {
             applyTheme(nextTheme);
             saveThemeSettings(nextTheme);
             showToast(`Theme: ${getThemeName(nextTheme)}`, 'info', 1500);
+        }
+        // Ctrl/Cmd + Shift + P: Open the command palette.
+        else if (ctrlKey && event.shiftKey && event.key.toLowerCase() === 'p') {
+            event.preventDefault();
+            toggleCommandPalette();
         }
         // Ctrl/Cmd + K: Reset
         else if (ctrlKey && event.key === 'k') {
@@ -7656,10 +7682,162 @@ const setupDivider = () => {
 };
 
 // ----- Global Escape Key Handler -----
+const PALETTE_THEME_CYCLE = ['vs', 'vs-dark', 'hc-black'];
+let paletteActiveIndex = 0;
+let paletteFiltered = [];
+
+const cyclePaletteTheme = () => {
+    const currentIndex = PALETTE_THEME_CYCLE.indexOf(currentTheme);
+    const nextTheme = PALETTE_THEME_CYCLE[(currentIndex + 1) % PALETTE_THEME_CYCLE.length];
+    currentTheme = nextTheme;
+    currentSettings.theme = nextTheme;
+    document.querySelectorAll('input[name="editor-theme"]').forEach((radio) => {
+        radio.checked = radio.value === nextTheme;
+    });
+    applyTheme(nextTheme);
+    saveThemeSettings(nextTheme);
+    showToast(`Theme: ${getThemeName(nextTheme)}`, 'info', 1500);
+};
+
+const buildPaletteCommands = () => [
+    { id: 'new-doc', title: 'New document', hint: 'Create an empty document', action: () => addNewTab() },
+    { id: 'save-md', title: 'Save as Markdown', hint: 'Ctrl+S', action: () => downloadMarkdown() },
+    { id: 'import', title: 'Import file', hint: 'Ctrl+O', action: () => importFile() },
+    { id: 'share', title: 'Share document', action: () => document.getElementById('share-btn')?.click() },
+    { id: 'copy-md', title: 'Copy Markdown', action: () => copyMarkdownToClipboard() },
+    { id: 'export-modal', title: 'Export…', hint: 'Ctrl+Shift+E', action: () => openExportModal() },
+    { id: 'export-pdf', title: 'Export to PDF', hint: 'Ctrl+P', action: () => exportToPDF() },
+    { id: 'export-html', title: 'Export to HTML', action: () => exportToHTML() },
+    { id: 'export-docx', title: 'Export to DOC', action: () => exportToDOCX() },
+    { id: 'export-png', title: 'Export to PNG', action: () => exportToPNG() },
+    { id: 'export-txt', title: 'Export to plain text', action: () => exportToTXT() },
+    { id: 'find-replace', title: 'Find & Replace', action: () => document.getElementById('find-replace-btn')?.click() },
+    { id: 'view-code', title: 'View: Editor only', action: () => setViewMode('code') },
+    { id: 'view-split', title: 'View: Split', action: () => setViewMode('split') },
+    { id: 'view-preview', title: 'View: Preview only', action: () => setViewMode('preview') },
+    { id: 'focus', title: 'Toggle Focus Mode', action: () => document.getElementById('focus-button')?.click() },
+    { id: 'typewriter', title: 'Toggle Typewriter Mode', action: () => document.getElementById('typewriter-button')?.click() },
+    { id: 'fullscreen', title: 'Toggle Fullscreen', action: () => toggleFullscreen() },
+    { id: 'theme-cycle', title: 'Cycle editor theme', hint: 'Ctrl+D', action: () => cyclePaletteTheme() },
+    { id: 'settings', title: 'Open Settings', action: () => document.getElementById('settings-btn')?.click() },
+    { id: 'help', title: 'Keyboard shortcuts', hint: 'Ctrl+H', action: () => document.getElementById('help-button')?.click() },
+    { id: 'reset-doc', title: 'Reset editor content', action: () => reset() }
+];
+
+const isCommandPaletteOpen = () => document.getElementById('command-palette')?.style.display === 'flex';
+
+const renderPaletteList = () => {
+    const list = document.getElementById('command-palette-list');
+    if (!list) return;
+    list.replaceChildren();
+    if (paletteFiltered.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'command-palette-empty';
+        empty.textContent = 'No matching commands';
+        list.appendChild(empty);
+        return;
+    }
+    paletteFiltered.forEach((command, index) => {
+        const item = document.createElement('li');
+        item.className = `command-palette-item${index === paletteActiveIndex ? ' active' : ''}`;
+        item.setAttribute('role', 'option');
+        item.innerHTML = '<span class="cmd-title"></span><span class="cmd-hint"></span>';
+        item.querySelector('.cmd-title').textContent = command.title;
+        item.querySelector('.cmd-hint').textContent = command.hint || '';
+        item.addEventListener('click', () => executePaletteCommand(command));
+        item.addEventListener('mousemove', () => {
+            paletteActiveIndex = index;
+            updatePaletteActiveItem();
+        });
+        list.appendChild(item);
+    });
+    list.children[paletteActiveIndex]?.scrollIntoView({ block: 'nearest' });
+};
+
+const updatePaletteActiveItem = () => {
+    const list = document.getElementById('command-palette-list');
+    list?.querySelectorAll('.command-palette-item').forEach((item, index) => {
+        item.classList.toggle('active', index === paletteActiveIndex);
+    });
+    list?.children[paletteActiveIndex]?.scrollIntoView({ block: 'nearest' });
+};
+
+const executePaletteCommand = (command) => {
+    closeCommandPalette();
+    try {
+        command.action();
+    } catch (error) {
+        console.error('Command failed:', command.id, error);
+        showToast('Command failed', 'error');
+    }
+};
+
+const filterPaletteCommands = (query) => {
+    const normalized = query.trim().toLowerCase();
+    paletteFiltered = buildPaletteCommands().filter((command) => (
+        !normalized || command.title.toLowerCase().includes(normalized) || (command.hint || '').toLowerCase().includes(normalized)
+    ));
+    paletteActiveIndex = 0;
+    renderPaletteList();
+};
+
+const openCommandPalette = () => {
+    const palette = document.getElementById('command-palette');
+    const overlay = document.getElementById('command-palette-overlay');
+    const input = document.getElementById('command-palette-input');
+    if (!palette || !input) return;
+    palette.style.display = 'flex';
+    if (overlay) overlay.style.display = 'block';
+    input.value = '';
+    filterPaletteCommands('');
+    input.focus();
+};
+
+const closeCommandPalette = () => {
+    const palette = document.getElementById('command-palette');
+    const overlay = document.getElementById('command-palette-overlay');
+    if (palette) palette.style.display = 'none';
+    if (overlay) overlay.style.display = 'none';
+};
+
+const toggleCommandPalette = () => (isCommandPaletteOpen() ? closeCommandPalette() : openCommandPalette());
+
+const setupCommandPalette = () => {
+    const input = document.getElementById('command-palette-input');
+    const overlay = document.getElementById('command-palette-overlay');
+    if (!input) return;
+    input.addEventListener('input', () => filterPaletteCommands(input.value));
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            event.stopPropagation();
+            if (paletteFiltered.length > 0) {
+                const direction = event.key === 'ArrowDown' ? 1 : -1;
+                paletteActiveIndex = (paletteActiveIndex + direction + paletteFiltered.length) % paletteFiltered.length;
+                updatePaletteActiveItem();
+            }
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            event.stopPropagation();
+            if (paletteFiltered[paletteActiveIndex]) executePaletteCommand(paletteFiltered[paletteActiveIndex]);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            closeCommandPalette();
+        }
+    });
+    overlay?.addEventListener('click', closeCommandPalette);
+};
+
 const setupGlobalEscapeKey = () => {
     trackedAddEventListener(document, 'keydown', (e) => {
         if (e.key === 'Escape') {
             let closed = false;
+
+            if (isCommandPaletteOpen()) {
+                closeCommandPalette();
+                closed = true;
+            }
 
             // Close all modals
             const modals = [
@@ -7820,6 +7998,7 @@ const initializeApp = async () => {
     setupKeyboardShortcuts();
     setupVimKeybindings();
     setupGlobalEscapeKey();
+    setupCommandPalette();
 
     const themeSettings = loadThemeSettings() || 'vs';
     initThemeSelector(themeSettings);

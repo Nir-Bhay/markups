@@ -65,8 +65,11 @@ export class ToolbarManager {
         }
 
         injectToolbarStyles();
-        this._setupKeyboardShortcuts();
         if (options.render !== false) {
+            // When the app renders its own static toolbar (render: false), main.js
+            // owns global keyboard shortcuts — registering these too would double-fire
+            // Ctrl+B/I/K and hijack Tab outside the editor.
+            this._setupKeyboardShortcuts();
             this.render();
         }
 
