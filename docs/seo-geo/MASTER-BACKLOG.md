@@ -15,7 +15,7 @@ Statuses: TODO, IN_PROGRESS, BLOCKED, VERIFIED, DEFERRED. All default TODO. Prio
 | M-009 | P1 | Content | Reconcile PDF selective text/link/page-break claims vs actual exports | fixture outputs + copy corrections, no unverified promise |
 | M-010 | P1 | Product | Test native DOCX claims; preserve explicit .doc limitation until actual implementation | Downloaded file type and Word/LibreOffice inspection; documentation truthful |
 | M-011 | P1 | QA | Gate existing E2E + unit + both Vite builds + lint + health script | captured versions/exits, no waived failures |
-| M-012 | P1 | Docs | Fix stale AGENTS / AI-DOCS navigation assertions (source corrected 2026-10-25; CI pending final head) | documented code map matches tree; outdated 'no E2E' gone |
+| M-012 | P1 VERIFIED (branch CI) | Docs | Fix stale AGENTS / AI-DOCS navigation assertions (source corrected 2026-10-25) | Source read-back and exact-head Branch QA success on 5a492331; Playwright E2E acknowledged; no preview/production claim |
 | M-013 | P1 | SEO | GSC property, query/URL breakdown and Bing index report | 28-day pre-sprint baseline exported and stored outside repo if private |
 | M-014 | P1 | Growth | Instrument qualified editor_start, export_success, save and outbound CTA using privacy-aware analytics | event appears in analytics, no raw text/keys/PII transmitted |
 | M-015 | P1 | Product evidence | Reproducible Markups-vs-competitor comparison; feature/date/source and screenshot each | no fabricated rankings, cited product facts, objective matrix |
@@ -90,4 +90,9 @@ Before: assign, verify main and branch SHA, link source and reproducible failing
 
 ## M-012 agent navigation refresh — 2026-10-25
 - Updated `AGENTS.md` in commit `fe1107e55251915e48166cb29a86ae82dd1539ce`: code-review-graph only when available/current, GitHub source fallback, no stale fixed line counts, Vitest + Playwright coverage documented. The two AI-DOCS navigation files already acknowledged Playwright.
-- Source read-back passed; final-head GitHub Actions check pending. Evidence: `docs/seo-geo/runs/2026-10-25-agent-navigation.md`. This is **not** a preview/production pass.
+- Source read-back passed; **exact-head GitHub Actions Branch QA passed on `5a4923319e6cb493c1cba1fae641496784f82b4c`**: https://github.com/Nir-Bhay/markups/actions/runs/40165629998 (completed success, quality job `121086149084`). Logs confirm 566/566 Vitest, 47/47 Playwright, static audit, lint, both builds and built-page audits passed. Evidence: `docs/seo-geo/runs/2026-10-25-agent-navigation.md`. This is **not** a preview/production pass.
+
+## 2026-10-26 exact-head verification / outstanding gates
+- **M-012 VERIFIED for branch-only documentation + CI** at pre-evidence SHA `5a4923319e6cb493c1cba1fae641496784f82b4c`; [successful Branch QA](https://github.com/Nir-Bhay/markups/actions/runs/40165629998) (quality job `121086149084`). Workflow completed successfully: static SEO audit, lint, 566 Vitest, both Vite builds, built-pages audits, 47 Playwright tests and screenshot capture. Commit status also reported Vercel success, which is **not** authenticated preview smoke evidence.
+- This backlog evidence edit creates a newer commit; its own exact-head CI must be checked separately before describing the newest head as green. No application source changed here.
+- Still open: owner Vercel team authorization and authenticated preview G3; GSC owner-only M-036/M-037/M-039; viewer-based PDF/Word M-049/M-052; owner privacy/security review; third-party listing M-055. Do not merge or claim indexing/ranking improvements from branch CI.
