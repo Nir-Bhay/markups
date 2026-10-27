@@ -14,5 +14,6 @@ test('Compatibility fixture renders HTML table, math and Mermaid flowchart in th
   await expect(output.locator('pre code').first()).toBeVisible();
   await expect(output.locator('.katex').first()).toBeVisible({ timeout: 25_000 });
   await expect(output.locator('.mermaid svg').first()).toBeVisible({ timeout: 30_000 });
+  await expect(output.locator('.mermaid svg math')).toHaveCount(2, { timeout: 30_000 });
   await expect(output).not.toContainText('Syntax error in text', { timeout: 10_000 });
 });

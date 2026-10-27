@@ -1,6 +1,6 @@
 # Security Policy — Markups
 
-> **Last Updated:** 2026-09-09
+> **Last Updated:** 2026-10-27
 > **Applies to:** Markups project (https://markups.dev) — Vite + Vercel deployment
 
 Thank you for helping keep Markups and its users safe. Markups is a
@@ -39,7 +39,7 @@ script-src 'self' 'unsafe-inline' 'unsafe-eval'
 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
 img-src 'self' data: blob: https:;
 font-src 'self' data: https://fonts.gstatic.com;
-connect-src 'self' https: wss:;
+connect-src 'self' https:;
 worker-src 'self' blob:;
 child-src 'self' blob: about:blank;
 frame-src 'self' about:blank blob: https://www.youtube-nocookie.com https://www.youtube.com;
@@ -57,7 +57,7 @@ manifest-src 'self';
 | `script-src 'unsafe-inline'` | Monaco Editor injects inline scripts at runtime and uses blob: workers. Required for live editing. |
 | `script-src 'unsafe-eval'` | Monaco, Mermaid, and KaTeX use `eval` / `new Function` to render dynamic content. |
 | `script-src https://cdn.jsdelivr.net` | KaTeX, Mermaid, and other vendor libraries may be loaded from jsDelivr in some flows. |
-| `connect-src` | Deployed allowlist (`vercel.json`): `openai.com`, `anthropic.com`, Google analytics hosts, `wss:`. Stricter than a blanket `https:` — custom/self-hosted AI endpoints are blocked by CSP in production unless allowlisted. The AI settings UI warns before a key follows a custom host. |
+| `connect-src` | The deployed policy allows `https:` on any host. This is broader than a host allowlist and supports user-selected AI endpoints and user-triggered HTTPS URL imports. The AI settings UI warns before a key is sent to a custom endpoint, but CSP does not restrict that endpoint by host. The source HTML meta policy also permits loopback and WebSocket connections for local Vite development; those sources are not in Vercel's response header. |
 | `frame-ancestors 'self'` | Clickjacking protection; allows same-origin iframes only. |
 
 > **Hardening roadmap:** A nonce-based CSP can replace
@@ -82,11 +82,11 @@ roll out immediately. The manifest is cached for 1 day.
 | **Mermaid** | Rendered inside a sandboxed DOMPurify-cleansed container with no inline event handlers. |
 | **KaTeX** | Trusted-types-friendly output; no `eval` of user content. |
 | **Image upload** | Images are read as data URLs and stored in IndexedDB; no upload to any third-party server. |
-| **External scripts** | Only Google Fonts CSS, Google Analytics (gtag), Microsoft Clarity, and Vercel Web Analytics are loaded. All have explicit allowances in CSP. |
+| **External scripts** | On the hosted editor page, Google Analytics (gtag), Microsoft Clarity, and Vercel Web Analytics load automatically; there is no in-app consent gate. Google Fonts CSS is also requested. These services can process technical and usage signals under their own policies. |
 | **External links** | All `target="_blank"` anchors include `rel="noopener noreferrer"` to prevent reverse-tabnabbing and Referrer leakage. Verified in both `index.html` and `landing/index.html`. |
 | **PWA / Service Worker** | `/sw.js` uses a cache-first strategy for static assets and a network-first strategy for HTML. |
 | **LocalStorage / IndexedDB** | No PII stored. All content stays client-side. |
-| **Cookies** | None set. (Analytics are cookieless / IP-anonymized.) |
+| **Cookies and analytics** | The app does not directly set its own cookies. The hosted editor loads Google Analytics and Microsoft Clarity without an in-app consent gate; those providers may use cookies or similar identifiers. Do not describe analytics as cookieless or IP-anonymized without a verified provider configuration. |
 | **3rd-party iframes** | User-requested YouTube/Vimeo previews are sandboxed and restricted by `frame-src`; arbitrary iframe HTML is not accepted. |
 | **AI API keys** | Stored in namespaced `localStorage` (plaintext, documented in-UI). Session-only mode keeps the key in memory and removes persisted copies. Custom endpoints require explicit `confirm()` consent; non-`http(s)` endpoints are rejected at `setConfig`. Settings `value=` attributes are HTML-escaped. |
 | **File import** | Extension allowlist (`.md/.markdown/.txt/.text`) enforced, 5 MB cap on files and URL imports, `http(s)`-only URLs. |
@@ -101,7 +101,7 @@ roll out immediately. The manifest is cached for 1 day.
 | Vite build target | `es2020` (smaller bundles, modern browsers only). |
 | Debugger stripping | `esbuild.drop = ['debugger']` in production. Console output is not globally stripped. |
 | Source maps | Disabled in production. Hidden `nosources` if needed for error reporting. |
-| Manual chunks | `monaco-editor`, `mermaid-vendor`, `katex-vendor`, `markdown-vendor`, `dom-utils`, `storage-vendor` for cacheable long-term chunks. |
+| Manual chunks | Monaco, Monaco find, PDF libraries, KaTeX, Prism/GitHub Markdown CSS, DOMPurify, Marked extensions, and Dexie are split into cacheable chunks; Mermaid uses Rollup's dynamic chunks. |
 
 ---
 
@@ -153,7 +153,7 @@ project and **are not** vulnerabilities:
 |---|---|
 | Storing Markdown in `localStorage` / `IndexedDB` | Core feature. Users explicitly choose to persist drafts. |
 | Loading Google Fonts | Subject to a privacy trade-off. Users can switch to system fonts in the UI. |
-| Loading Google Analytics / Microsoft Clarity | Anonymous, IP-anonymized, opt-out-able. The landing page exposes this in `privacy-policy`. |
+| Loading Google Analytics / Microsoft Clarity | The hosted editor loads these automatically without an in-app consent gate; providers may use cookies or similar identifiers. A consent and opt-out model remains a product/privacy decision. |
 | Allowing same-origin iframes (`frame-ancestors 'self'`) | PWA / embed support. |
 | `unsafe-eval` in CSP | Required for Monaco + Mermaid. See trade-offs above. |
 

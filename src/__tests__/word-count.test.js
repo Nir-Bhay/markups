@@ -11,7 +11,7 @@ describe('unified word count logic (M5)', () => {
 
     it('main.js updateStats strips markdown symbols before counting words', () => {
         const updateStatsBlock = mainJs.match(
-            /const updateStats = \(text\) => \{[\s\S]*?const wordCount = [\s\S]*?const charCount = /
+            /const updateStats = \((?:text|rawText)\) => \{[\s\S]*?const wordCount = [\s\S]*?const charCount = /
         );
         expect(updateStatsBlock).not.toBeNull();
         expect(updateStatsBlock[0]).toContain(".replace(/[#*_~`]/g, '')");
@@ -27,7 +27,7 @@ describe('unified word count logic (M5)', () => {
 
     it('both sites strip code blocks and inline code before word counting', () => {
         const updateStatsBlock = mainJs.match(
-            /const updateStats = \(text\) => \{[\s\S]*?const wordCount = [\s\S]*?const charCount = /
+            /const updateStats = \((?:text|rawText)\) => \{[\s\S]*?const wordCount = [\s\S]*?const charCount = /
         );
         expect(updateStatsBlock).not.toBeNull();
         expect(updateStatsBlock[0]).toContain(".replace(/```[\\s\\S]*?```/g, '')");

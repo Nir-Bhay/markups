@@ -3,7 +3,7 @@ import Storehouse from '../utils/storehouse-compat.js';
 
 describe('Storehouse compatibility layer', () => {
     it('reports a failed persistent write instead of hiding quota errors', () => {
-        const setItem = vi.spyOn(Object.getPrototypeOf(localStorage), 'setItem').mockImplementation(() => {
+        const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
             const error = new Error('Quota exceeded');
             error.name = 'QuotaExceededError';
             throw error;

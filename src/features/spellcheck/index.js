@@ -7,8 +7,6 @@
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import Typo from 'typo-js';
-import aff from './dict/en_US.aff?raw';
-import dic from './dict/en_US.dic?raw';
 import { collectSpellTargets } from './engine.js';
 
 const OWNER = 'spellcheck';
@@ -45,10 +43,19 @@ export function isSpellcheckEnabled() {
 export function loadDictionary() {
     if (dictionary) return Promise.resolve(dictionary);
     if (!loading) {
-        loading = new Promise((resolve) => {
-            const start = () => {
-                dictionary = new Typo('en_US', aff, dic);
-                resolve(dictionary);
+        loading = new Promise((resolve, reject) => {
+            const start = async () => {
+                try {
+                    const [affModule, dicModule] = await Promise.all([
+                        import('./dict/en_US.aff?raw'),
+                        import('./dict/en_US.dic?raw')
+                    ]);
+                    dictionary = new Typo('en_US', affModule.default, dicModule.default);
+                    resolve(dictionary);
+                } catch (error) {
+                    loading = null;
+                    reject(error);
+                }
             };
             if (typeof requestIdleCallback === 'function') {
                 requestIdleCallback(start, { timeout: 1500 });

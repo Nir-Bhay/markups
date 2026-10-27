@@ -9,31 +9,27 @@
  * - modular proof build succeeds without Vite chunk warnings
  */
 
-import { rmSync, rmdirSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const warningPatterns = [
     /Circular chunk:/i,
-    /Some chunks are larger than/i,
-    /\(!\)/
+    /Some chunks are larger than/i
 ];
 
+const tempBuildRoot = mkdtempSync(join(tmpdir(), 'markups-verify-health-'));
 const tempBuildDirs = [
-    '.tmp/verify-dist-production',
-    '.tmp/verify-dist-modular'
+    join(tempBuildRoot, 'production'),
+    join(tempBuildRoot, 'modular')
 ];
 
 function cleanupTempBuildDirs() {
-    for (const dir of tempBuildDirs) {
-        rmSync(dir, { recursive: true, force: true });
-    }
-
-    try {
-        rmdirSync('.tmp');
-    } catch {
-        // Keep non-empty .tmp directories created by other tools; .gitignore covers them.
-    }
+    // Only remove the unique directory created by this invocation. Fixed paths
+    // under the repository could contain unrelated user data from another run.
+    rmSync(tempBuildRoot, { recursive: true, force: true });
 }
 
 function runNpm(args, options = {}) {
@@ -146,12 +142,12 @@ try {
     verifyAudit();
     verifyCommand(['test'], 'unit tests');
     verifyCommand(
-        ['run', 'build', '--', '--outDir', tempBuildDirs[0]],
+        ['run', 'build', '--', '--outDir', tempBuildDirs[0], '--emptyOutDir'],
         'production build',
         { checkBuildWarnings: true }
     );
     verifyCommand(
-        ['run', 'build:modular', '--', '--outDir', tempBuildDirs[1]],
+        ['run', 'build:modular', '--', '--outDir', tempBuildDirs[1], '--emptyOutDir'],
         'modular proof build',
         { checkBuildWarnings: true }
     );

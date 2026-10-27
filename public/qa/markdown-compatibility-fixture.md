@@ -34,7 +34,7 @@ The latency budget is **250 ms** for the demo endpoint.
 
 ```mermaid
 flowchart LR
-  A[Write Markdown] --> B[Render preview]
+  A["Write $$x^2$$"] --> B["Render $$\frac{1}{2}$$ preview"]
   B --> C{Visual check}
   C -->|Pass| D[Export]
   C -->|Adjust| A
