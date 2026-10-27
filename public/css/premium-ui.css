@@ -2598,6 +2598,22 @@ body.dark-mode .header-tab .tab-name:hover {
   height: 14px;
 }
 
+#save-status.is-unsaved {
+  color: var(--accent-warning);
+}
+
+#save-status.is-saving {
+  color: var(--text-secondary);
+}
+
+#save-status.is-error {
+  color: var(--accent-error);
+}
+
+#save-status:not([data-state="saved"]) svg {
+  display: none;
+}
+
 /* ==================== VIEW MODES ==================== */
 /* Editor Only */
 body.view-editor .preview-pane,

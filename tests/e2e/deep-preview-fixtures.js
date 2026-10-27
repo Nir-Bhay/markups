@@ -42,7 +42,7 @@ $$
       { name: 'inline katex present', fn: (d) => d.querySelectorAll('.katex').length >= 2 },
       { name: 'display math blocks', fn: (d) => d.querySelectorAll('.katex-display').length >= 2 },
       { name: 'no clipped display math', fn: (d) => [...d.querySelectorAll('.katex-display')].every((el) => el.scrollHeight <= el.clientHeight + 2) },
-      { name: 'strut styles preserved', fn: (d) => [...d.querySelectorAll('.katex .strut')].some((s) => s.getAttribute('style')?.includes('height')) },
+      { name: 'strut styles preserved', fn: (d) => [...d.querySelectorAll('.katex .katex-strut, .katex .strut')].some((s) => s.getAttribute('style')?.includes('height')) },
       { name: 'no katex-error class', fn: (d) => d.querySelectorAll('.katex-error').length === 0 },
     ],
   },

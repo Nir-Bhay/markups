@@ -1,6 +1,7 @@
 // Tests for services/autosave/index.js — status, active-note, dispose.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AutosaveManager } from '../services/autosave/index.js';
+import { noteStorage } from '../core/storage/noteStorage.js';
 import { eventBus, EVENTS } from '../utils/eventBus.js';
 
 describe('services/autosave', () => {
@@ -53,6 +54,28 @@ describe('services/autosave', () => {
         manager._pendingContent = 'unsaved work';
         await manager._performSave();
         expect(manager.getStatus().status).toBe('unsaved');
+    });
+
+    it('keeps pending content when storage does not confirm a write', async () => {
+        const updateSpy = vi.spyOn(noteStorage, 'updateNote').mockResolvedValueOnce(null);
+        const onSaved = vi.fn();
+        const off = eventBus.on(EVENTS.DOCUMENT_SAVED, onSaved);
+
+        manager.setActiveNote(42);
+        manager._pendingContent = 'unsaved work';
+
+        try {
+            const result = await manager._performSave();
+
+            expect(result).toBe(false);
+            expect(manager._pendingContent).toBe('unsaved work');
+            expect(manager._pendingByNote.get('42')).toBe('unsaved work');
+            expect(manager.getStatus().status).toBe('error');
+            expect(onSaved).not.toHaveBeenCalled();
+        } finally {
+            off();
+            updateSpy.mockRestore();
+        }
     });
 
     it('tab switch stashes pending per note instead of bleeding across notes', async () => {

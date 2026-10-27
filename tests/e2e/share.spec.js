@@ -6,6 +6,8 @@ test.describe('no-server share', () => {
         await page.setViewportSize({ width: 1280, height: 900 });
         await page.goto('/');
         await expect(page.locator('#output')).toContainText('Welcome to Markups', { timeout: 20_000 });
+        await page.waitForFunction(() => typeof window.editor?.setValue === 'function', null, { timeout: 30_000 });
+        await page.waitForTimeout(250);
         await expect(page.locator('#share-btn')).toBeVisible();
 
         await page.locator('#share-btn').click();

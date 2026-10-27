@@ -9,7 +9,7 @@
  * - modular proof build succeeds without Vite chunk warnings
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -105,6 +105,32 @@ function assertChunkBudgets(label, output) {
     }
 }
 
+function assertMonacoUsesPatchedSanitizer(label, outputDir) {
+    const assetsDir = join(outputDir, 'assets');
+    const monacoBundleName = readdirSync(assetsDir).find((name) =>
+        name.startsWith('monaco-editor-') && name.endsWith('.js')
+    );
+
+    if (!monacoBundleName) {
+        throw new Error(`${label} did not emit the Monaco editor bundle`);
+    }
+
+    const monacoBundle = readFileSync(join(assetsDir, monacoBundleName), 'utf8');
+    const expectedSanitizerVersion = JSON.parse(
+        readFileSync(new URL('../node_modules/dompurify/package.json', import.meta.url), 'utf8')
+    ).version;
+
+    if (monacoBundle.includes('3.1.7')) {
+        throw new Error(`${label} still includes Monaco's stale bundled DOMPurify 3.1.7`);
+    }
+
+    if (!monacoBundle.includes(`version=\`${expectedSanitizerVersion}\``)) {
+        throw new Error(`${label} does not include the patched DOMPurify ${expectedSanitizerVersion}`);
+    }
+
+    process.stdout.write(`  ✓ ${label} Monaco bundle uses DOMPurify ${expectedSanitizerVersion}\n`);
+}
+
 function verifyAudit() {
     const result = runNpm(['audit', '--json'], { allowFailure: true });
 
@@ -116,7 +142,18 @@ function verifyAudit() {
         throw new Error(`Unable to parse npm audit JSON: ${error.message}`);
     }
 
-    const total = audit?.metadata?.vulnerabilities?.total ?? 0;
+    if (audit?.error || (result.status !== 0 && !audit?.metadata?.vulnerabilities)) {
+        const detail = audit?.error?.detail || audit?.error?.summary || audit?.message || `exit code ${result.status}`;
+        process.stdout.write(result.output);
+        throw new Error(`npm audit could not complete: ${detail}`);
+    }
+
+    const total = audit?.metadata?.vulnerabilities?.total;
+    if (typeof total !== 'number') {
+        process.stdout.write(result.output);
+        throw new Error('npm audit did not return vulnerability metadata');
+    }
+
     if (total > 0 || result.status !== 0) {
         process.stdout.write(JSON.stringify(audit, null, 2));
         process.stdout.write('\n');
@@ -126,11 +163,15 @@ function verifyAudit() {
     process.stdout.write('  ✓ npm audit found 0 vulnerabilities\n');
 }
 
-function verifyCommand(args, label, { checkBuildWarnings = false } = {}) {
+function verifyCommand(args, label, { checkBuildWarnings = false, sanitizerOutputDir = null } = {}) {
     const result = runNpm(args);
 
     if (checkBuildWarnings) {
         assertCleanBuild(label, result.output);
+    }
+
+    if (sanitizerOutputDir) {
+        assertMonacoUsesPatchedSanitizer(label, sanitizerOutputDir);
     }
 
     process.stdout.write(`  ✓ ${label} passed\n`);
@@ -144,12 +185,12 @@ try {
     verifyCommand(
         ['run', 'build', '--', '--outDir', tempBuildDirs[0], '--emptyOutDir'],
         'production build',
-        { checkBuildWarnings: true }
+        { checkBuildWarnings: true, sanitizerOutputDir: tempBuildDirs[0] }
     );
     verifyCommand(
         ['run', 'build:modular', '--', '--outDir', tempBuildDirs[1], '--emptyOutDir'],
         'modular proof build',
-        { checkBuildWarnings: true }
+        { checkBuildWarnings: true, sanitizerOutputDir: tempBuildDirs[1] }
     );
 
     process.stdout.write('\n✅ Repository health verification passed.\n');

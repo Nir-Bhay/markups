@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { db } from '../core/storage/database.js';
 import {
     recordVersion,
@@ -49,5 +49,19 @@ describe('core/storage/versionHistory', () => {
         expect(restored).toBe('old');
         expect((await noteStorage.getNote(note.id)).content).toBe('old');
         await noteStorage.deleteNote(note.id);
+    });
+
+    it('does not report a restore when the note write fails', async () => {
+        const note = await noteStorage.createNote({ title: 'S', content: 'new' });
+        const vid = await recordVersion(note.id, 'old', { force: true });
+        const updateSpy = vi.spyOn(noteStorage, 'updateNote').mockResolvedValueOnce(null);
+
+        try {
+            expect(await restoreVersion(note.id, vid, { noteStorage })).toBeNull();
+            expect((await noteStorage.getNote(note.id)).content).toBe('new');
+        } finally {
+            updateSpy.mockRestore();
+            await noteStorage.deleteNote(note.id);
+        }
     });
 });

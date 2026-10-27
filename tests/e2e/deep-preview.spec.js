@@ -9,7 +9,8 @@ import { fileURLToPath } from 'url';
 import { SUITES } from './deep-preview-fixtures.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REPORT_PATH = path.resolve(__dirname, '../../docs/qa/deep-preview-report.json');
+const QA_OUTPUT_DIR = process.env.RUNNER_TEMP || path.resolve(__dirname, '../../docs/qa');
+const REPORT_PATH = path.join(QA_OUTPUT_DIR, 'deep-preview-report.json');
 
 async function waitForApp(page) {
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -145,7 +146,7 @@ async function evaluateSuite(page, suite) {
           if (cs.overflowY === 'visible' && cs.overflowX === 'visible') return true;
           return el.scrollHeight <= el.clientHeight + 8;
         })],
-        ['strut styles preserved', [...root.querySelectorAll('.katex .strut')].some((s) => s.getAttribute('style')?.includes('height'))],
+        ['strut styles preserved', [...root.querySelectorAll('.katex .katex-strut, .katex .strut')].some((s) => s.getAttribute('style')?.includes('height'))],
         ['no katex-error class', q('.katex-error') === 0],
         ['aligned or matrix content rendered', /∇|det|π|rho|varepsilon|pmatrix|aligned/i.test(root.textContent || '') || q('.katex-display') >= 2],
       ],
@@ -336,7 +337,7 @@ test('deep preview QA across professional markdown suites', async ({ page }) => 
     mdLines.push('');
   }
   fs.writeFileSync(
-    path.resolve(__dirname, '../../docs/qa/deep-preview-report.md'),
+    path.join(QA_OUTPUT_DIR, 'deep-preview-report.md'),
     mdLines.join('\n')
   );
 

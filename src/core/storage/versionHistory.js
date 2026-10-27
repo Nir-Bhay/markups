@@ -74,7 +74,8 @@ export async function restoreVersion(noteId, versionId, { noteStorage }) {
     try {
         const version = await db.note_versions.get(versionId);
         if (!version || version.noteId !== Number(noteId)) return null;
-        await noteStorage.updateNote(Number(noteId), { content: version.content });
+        const updatedNote = await noteStorage.updateNote(Number(noteId), { content: version.content });
+        if (!updatedNote) return null;
         await recordVersion(Number(noteId), version.content, { force: true });
         return version.content;
     } catch {

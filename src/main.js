@@ -430,6 +430,8 @@ let activeDocId = null;
 let explorerManager = null;
 let backlinksPanel = null;
 let backlinksManager = null;
+let _localDocsBackupUnavailable = false;
+let _documentSaveFailureActive = false;
 
 const mapNoteToDocument = (note, node) => {
     const title = (node.name || note.title || 'Untitled').replace(/\.md$/i, '');
@@ -528,6 +530,7 @@ const initTabs = async () => {
     renderTabs();
     await syncTreeFromDocuments();
     loadActiveDocument();
+    setSaveStatus('saved');
 
     window.__markups_createFile = createFileInSelectedFolder;
 };
@@ -947,21 +950,45 @@ const saveCurrentDoc = async () => {
     doc.content = content;
     doc.title = title;
     doc.lastModified = Date.now();
-    lastSavedSnapshot.set(doc.id, { content, title });
+    setSaveStatus('saving');
 
     const noteId = doc.noteId;
-    if (noteId) {
-        await noteStorage.updateNote(noteId, {
+    if (!noteId) {
+        lastSavedSnapshot.delete(doc.id);
+        setSaveStatus('error');
+        if (!_documentSaveFailureActive) {
+            showToast('This document is not connected to local storage. Export a backup before leaving.', 'error');
+            _documentSaveFailureActive = true;
+        }
+        return;
+    }
+
+    try {
+        const updatedNote = await noteStorage.updateNote(noteId, {
             title: doc.title,
             content: doc.content
         });
+        if (!updatedNote) {
+            throw new Error('Note storage did not confirm the update');
+        }
         await fileTreeStorage.renameNode(doc.id, doc.title);
+    } catch (error) {
+        lastSavedSnapshot.delete(doc.id);
+        setSaveStatus('error');
+        console.error('Document autosave failed:', error);
+        if (!_documentSaveFailureActive) {
+            showToast('Save failed. Your changes are still open; press Ctrl+S to retry or export a backup.', 'error');
+            _documentSaveFailureActive = true;
+        }
+        return;
     }
 
+    lastSavedSnapshot.set(doc.id, { content, title });
+    _documentSaveFailureActive = false;
     saveDocsToStorage();
     renderTabs(); // Refresh titles
     syncTreeFromDocuments();
-    showAutosaveIndicator();
+    setSaveStatus(editor?.getValue() === content ? 'saved' : 'unsaved');
 };
 
 const loadActiveDocument = () => {
@@ -976,6 +1003,7 @@ const loadActiveDocument = () => {
             editor?.setValue(doc.content);
             editor?.setScrollTop(0);
         }
+        setSaveStatus('saved');
     }
 };
 
@@ -983,63 +1011,22 @@ const saveDocsToStorage = () => {
     const expiredAt = new Date(2099, 1, 1);
     try {
         const saved = Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
-        if (saved !== false) return;
-
-        const quotaError = new Error('Document storage quota exceeded');
-        quotaError.name = 'QuotaExceededError';
-        throw quotaError;
-    } catch (error) {
-        if (error?.name === 'QuotaExceededError' || String(error).includes('QuotaExceededError')) {
-            const before = documents.length;
-            const reduced = documents.slice(-5);
-            const evicted = documents.filter((d) => !reduced.some((r) => r.id === d.id));
-            documents = reduced;
-            const reducedIds = new Set(reduced.map((d) => d.id));
-            if (!reducedIds.has(activeDocId)) {
-                activeDocId = reduced.length > 0 ? reduced[0].id : null;
-                window.__markups_activeDocId = activeDocId;
-                if (activeDocId === null) {
-                    editor?.setValue('');
-                }
+        if (saved === false) {
+            if (!_localDocsBackupUnavailable) {
+                showToast('Browser backup storage is full. Your documents remain in the database; export a backup when possible.', 'warning');
             }
-            if (before !== reduced.length) {
-                // Phase 2.3: evicted docs must not linger in IndexedDB — otherwise
-                // the next reload rebuilds them from the tree and tabs/explorer
-                // fork permanently. Best-effort, never throws out of quota path.
-                void (async () => {
-                    try {
-                        for (const doc of evicted) {
-                            lastSavedSnapshot.delete(doc.id);
-                            try {
-                                const result = await fileTreeStorage.deleteNodeRecursive(doc.id);
-                                await Promise.allSettled(
-                                    result.deletedNoteIds.map((noteId) => noteStorage.deleteNote(noteId))
-                                );
-                            } catch (err) {
-                                console.error('quota-trim: IDB cleanup failed for', doc.id, err);
-                            }
-                        }
-                    } catch (err) {
-                        console.error('quota-trim: cleanup threw unexpectedly:', err);
-                    }
-                })();
-                renderTabs();
-                syncTreeFromDocuments();
-                loadActiveDocument();
-            }
-            try {
-                const saved = Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
-                if (saved === false) {
-                    showToast('Could not save documents. Browser storage is full.', 'error');
-                } else {
-                    showToast('Storage quota exceeded. Kept the most recent documents only.', 'warning');
-                }
-            } catch {
-                showToast('Could not save documents. Browser storage is full.', 'error');
-            }
-            return;
+            _localDocsBackupUnavailable = true;
+            return false;
         }
-        showToast('Document save failed. Please try again.', 'error');
+        _localDocsBackupUnavailable = false;
+        return true;
+    } catch (error) {
+        console.error('Could not update the local document backup:', error);
+        if (!_localDocsBackupUnavailable) {
+            showToast('Could not update the browser backup. Your documents remain in the database.', 'warning');
+        }
+        _localDocsBackupUnavailable = true;
+        return false;
     }
 };
 
@@ -1111,6 +1098,9 @@ const setupEditor = () => {
         if (changed) {
             hasEdited = true;
             setHasEdited(true);
+        }
+        if (!isProgrammaticChange && !e.isFlush) {
+            setSaveStatus('unsaved');
         }
         const value = editor?.getValue();
         if (!isApplyingPreviewEdit) {
@@ -5168,7 +5158,11 @@ const insertImageIntoEditor = (file, base64Image) => {
     // Generate short unique ID and store base64 in the image store (LRU-capped)
     const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
     imageStoreSet(imgId, base64Image);
-    saveImageStore();
+    if (!saveImageStore()) {
+        imageStore.delete(imgId);
+        showToast('Browser storage is full. The image was not inserted; export a backup or free up space first.', 'error');
+        return;
+    }
 
     // Insert short readable reference instead of enormous base64 string
     const markdown = `![${fileName}](markups-img:${imgId})`;
@@ -6918,6 +6912,25 @@ const _saveLastContent = (content) => {
     showAutosaveIndicator();
 };
 
+const setSaveStatus = (status) => {
+    const element = document.querySelector('#save-status');
+    const label = element?.querySelector('span');
+    if (!element || !label) return;
+
+    const labels = {
+        unsaved: 'Unsaved changes',
+        saving: 'Saving…',
+        saved: 'All changes saved',
+        error: 'Save failed — retry or export'
+    };
+
+    element.dataset.state = status;
+    element.classList.toggle('is-unsaved', status === 'unsaved');
+    element.classList.toggle('is-saving', status === 'saving');
+    element.classList.toggle('is-error', status === 'error');
+    label.textContent = labels[status] || labels.saved;
+};
+
 const showAutosaveIndicator = () => {
     const indicator = document.querySelector('#autosave-indicator');
     if (!indicator) return;
@@ -6975,7 +6988,7 @@ const loadImageStore = () => {
 const saveImageStore = () => {
     const expiredAt = new Date(2099, 1, 1);
     const obj = Object.fromEntries(imageStore);
-    Storehouse.setItem(localStorageNamespace, localStorageImagesKey, obj, expiredAt);
+    return Storehouse.setItem(localStorageNamespace, localStorageImagesKey, obj, expiredAt) !== false;
 };
 
 const resolveImageReferences = (text, forPreview = true) => {

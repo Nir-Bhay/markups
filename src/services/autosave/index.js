@@ -210,7 +210,10 @@ class AutosaveManager {
         this._setStatus('saving');
         eventBus.emit(EVENTS.DOCUMENT_SAVING, { noteId });
         try {
-            await noteStorage.updateNote(numericId, { content });
+            const updatedNote = await noteStorage.updateNote(numericId, { content });
+            if (!updatedNote) {
+                throw new Error('Note storage did not confirm the update');
+            }
             this._lastSavedContentByNote.set(String(noteId), content);
             this._pendingByNote.delete(String(noteId));
             if (String(this._activeNoteId) === String(noteId)) this._pendingContent = null;

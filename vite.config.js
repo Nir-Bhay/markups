@@ -4,6 +4,28 @@ import { resolve, relative, sep } from 'path';
 
 const projectRoot = import.meta.dirname;
 
+function monacoDompurifyResolver() {
+    return {
+        name: 'markups-monaco-dompurify',
+        enforce: 'pre',
+        resolveId(source, importer) {
+            const normalizedImporter = (importer || '').replace(/\\/g, '/');
+            const isMonacoBaseBrowser = normalizedImporter.includes(
+                '/node_modules/monaco-editor/esm/vs/base/browser/'
+            );
+            const isMonacoSanitizer = /^(?:\.{1,2}\/)+dompurify\/dompurify\.js$/.test(source);
+
+            if (isMonacoBaseBrowser && isMonacoSanitizer) {
+                // Monaco bundles a stale private DOMPurify copy that npm audit
+                // cannot see. Use the patched root dependency instead.
+                return resolve(projectRoot, 'src/core/editor/monaco-dompurify-compat.js');
+            }
+
+            return null;
+        }
+    };
+}
+
 function collectHtmlInputs(rootDir, inputs) {
     if (!existsSync(rootDir)) {
         return;
@@ -117,6 +139,7 @@ export default defineConfig(({ mode }) => {
 
     return {
         plugins: [
+            monacoDompurifyResolver(),
             {
                 name: 'markups-clean-html-routes',
                 configureServer(server) {
@@ -169,21 +192,15 @@ export default defineConfig(({ mode }) => {
             }
         },
         resolve: {
-            alias: [
-                {
-                    // Monaco 0.57 embeds DOMPurify 3.4.15. Resolve its sanitizer import to
-                    // the patched 3.4.17 package until Monaco publishes a fixed bundle.
-                    find: /[/\\]monaco-editor[/\\]esm[/\\]vs[/\\]base[/\\]browser[/\\]dompurify[/\\]dompurify\.js$/,
-                    replacement: resolve(projectRoot, 'node_modules/dompurify/dist/purify.es.mjs')
-                },
-                {
-                    // Prefer the ESM build; the package browser export is a UMD bundle.
-                    find: 'monaco-vim',
-                    replacement: resolve(projectRoot, 'node_modules/monaco-vim/dist/index.mjs')
-                }
-            ]
+            // Prefer the ESM build; the package browser export is a UMD bundle.
+            alias: {
+                'monaco-vim': resolve(projectRoot, 'node_modules/monaco-vim/dist/index.mjs')
+            }
         },
         optimizeDeps: {
+            rolldownOptions: {
+                plugins: [monacoDompurifyResolver()]
+            },
             include: [
                 'monaco-editor/esm/vs/editor/editor.api',
                 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution',

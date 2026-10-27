@@ -10,9 +10,10 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 const STRESS_PATH = path.resolve(ROOT, 'public/qa/markups-markdown-preview-stress-test.md');
-const REPORT_JSON = path.resolve(ROOT, 'docs/qa/stress-preview-report.json');
-const REPORT_MD = path.resolve(ROOT, 'docs/qa/stress-preview-report.md');
-const SHOT_DIR = path.resolve(ROOT, 'docs/qa/stress-shots');
+const QA_OUTPUT_DIR = process.env.RUNNER_TEMP || path.resolve(ROOT, 'docs/qa');
+const REPORT_JSON = path.join(QA_OUTPUT_DIR, 'stress-preview-report.json');
+const REPORT_MD = path.join(QA_OUTPUT_DIR, 'stress-preview-report.md');
+const SHOT_DIR = path.join(QA_OUTPUT_DIR, 'stress-shots');
 
 const SECTIONS = [
   { id: 'typography', title: 'Typography', token: 'Heading level 1' },
@@ -90,6 +91,15 @@ test.describe('Stress preview visual QA', () => {
     fs.mkdirSync(path.dirname(REPORT_JSON), { recursive: true });
 
     const markdown = fs.readFileSync(STRESS_PATH, 'utf8');
+    // The test only needs a valid remote image response to check rendering and layout.
+    // Stub Picsum so this browser audit stays deterministic when outbound network is unavailable.
+    await page.route('https://picsum.photos/**', async (route) => {
+      const dimensions = new URL(route.request().url()).pathname.match(/\/(\d+)\/(\d+)$/);
+      const width = Number(dimensions?.[1]) || 640;
+      const height = Number(dimensions?.[2]) || 360;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#dbeafe"/><path d="M0 ${height}L${width * 0.45} ${height * 0.35} ${width} ${height}Z" fill="#93c5fd"/></svg>`;
+      await route.fulfill({ status: 200, contentType: 'image/svg+xml', body: svg });
+    });
     await waitForApp(page);
     await setMarkdown(page, markdown, 'Markups Markdown Preview Stress Test');
 
