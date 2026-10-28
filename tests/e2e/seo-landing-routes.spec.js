@@ -24,6 +24,36 @@ test('landing sample tabs work via click and keyboard',async({page})=>{
   await expect(page.getByRole('tab',{name:'Math.md'})).toHaveAttribute('aria-selected','true');
   await expect(page.locator('#sample-math')).toBeVisible();
 });
+test('landing skip link and sample tabs work entirely from keyboard', async ({ page }) => {
+  await page.goto('/landing');
+  await page.keyboard.press('Tab');
+  const skip = page.getByRole('link', { name: 'Skip to content' });
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/landing\/?#main$/);
+
+  const readme = page.getByRole('tab', { name: 'README.md' });
+  const mermaid = page.getByRole('tab', { name: 'Diagram.md' });
+  const math = page.getByRole('tab', { name: 'Math.md' });
+  await readme.focus();
+  await readme.press('End');
+  await expect(math).toBeFocused();
+  await expect(math).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#sample-math')).toBeVisible();
+  await expect(page.locator('#sample-readme')).toBeHidden();
+
+  await math.press('ArrowLeft');
+  await expect(mermaid).toBeFocused();
+  await expect(mermaid).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#sample-mermaid')).toBeVisible();
+
+  await mermaid.press('Home');
+  await expect(readme).toBeFocused();
+  await expect(readme).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#sample-readme')).toBeVisible();
+});
+
 test('landing links to real editor and correct Open Graph asset',async({page})=>{
   await page.goto('/landing');
   await expect(page.getByRole('link',{name:/start writing for free/i})).toHaveAttribute('href','/');
