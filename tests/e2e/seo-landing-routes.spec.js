@@ -60,6 +60,18 @@ test('landing links to real editor and correct Open Graph asset',async({page})=>
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content','https://markups.dev/image/og-image.png');
 });
 
+test('Open Graph asset returns real PNG bytes with declared 1200x630 dimensions', async ({ request }) => {
+  const response = await request.get('/image/og-image.png');
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toMatch(/^image\/png(?:;|$)/i);
+  const bytes = await response.body();
+  expect(bytes.length).toBeGreaterThan(1024);
+  expect(bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))).toBeTruthy();
+  expect(bytes.toString('ascii', 12, 16)).toBe('IHDR');
+  expect(bytes.readUInt32BE(16)).toBe(1200);
+  expect(bytes.readUInt32BE(20)).toBe(630);
+});
+
 test('privacy policy accurately explains optional AI and share-link data handling', async ({ page }) => {
   await page.goto('/privacy-policy');
   await expect(page.getByRole('heading', { name: 'Optional AI Writer and document sharing' })).toBeVisible();
