@@ -6,9 +6,13 @@ test.describe('no-server share', () => {
         await page.setViewportSize({ width: 1280, height: 900 });
         await page.goto('/');
         await expect(page.locator('#output')).toContainText('Welcome to Markups', { timeout: 20_000 });
-        await expect(page.locator('#share-btn')).toBeVisible();
+        const shareButton = page.locator('#share-btn');
+        await expect(shareButton).toBeVisible();
+        // The editor preview can render before async tab initialization binds
+        // the share click handler. Wait for the actual interactive-ready state.
+        await expect(shareButton).toBeEnabled({ timeout: 20_000 });
 
-        await page.locator('#share-btn').click();
+        await shareButton.click();
         const modal = page.locator('#share-modal');
         await expect(modal).toBeVisible();
         await expect(page.locator('#share-download-file-btn')).toBeVisible();
