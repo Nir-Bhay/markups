@@ -220,7 +220,16 @@ h1 {
 }
 
 .grid.two {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  /* Shrink code-sample columns instead of forcing a 648px mobile layout. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+}
+
+.grid > *, .content > *, .card, .page-shell { min-width: 0; }
+.card pre { max-width: 100%; overflow-x: auto; }
+
+@media (max-width: 720px) {
+  .grid.two { grid-template-columns: minmax(0, 1fr); }
+  .card .table-wrap { max-width: 100%; overflow-x: auto; }
 }
 
 .callout {

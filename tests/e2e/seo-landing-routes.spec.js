@@ -117,7 +117,7 @@ test('Compatibility Lab is crawlable with real Markdown fixture and honest expor
     expect(body).toContain(token);
   }
   await page.goto('/landing');
-  await expect(page.locator('a[href="/seo/compatibility-lab"]')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open the Compatibility Lab →' })).toBeVisible();
 });
 
 test('PDF content matches raster export behavior and avoids unsupported guarantees', async ({ page }) => {

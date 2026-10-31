@@ -85,10 +85,19 @@ export function stripExportChrome(root) {
  */
 function readSvgSize(svg) {
     const vb = svg.getAttribute('viewBox');
-    const attrW = parseFloat(svg.getAttribute('width') || '0');
-    const attrH = parseFloat(svg.getAttribute('height') || '0');
-    let width = attrW;
-    let height = attrH;
+    // Mermaid emits SVGs with width="100%" on some diagram families.
+    // parseFloat('100%') === 100 is NOT a 100px drawing canvas.
+    const dimension = (name) => {
+        const value = String(svg.getAttribute(name) || '').trim();
+        return /^\\d+(?:\\.\\d+)?(?:px)?$/i.test(value) ? parseFloat(value) : 0;
+    };
+    const attrW = dimension('width');
+    const attrH = dimension('height');
+    const rect = typeof svg.getBoundingClientRect === 'function'
+        ? svg.getBoundingClientRect()
+        : null;
+    let width = attrW || rect?.width || 0;
+    let height = attrH || rect?.height || 0;
     if ((!width || !height) && vb) {
         const parts = vb.split(/[\s,]+/).map(Number);
         if (parts.length === 4) {
@@ -232,6 +241,14 @@ export async function convertMermaidSvgsToImages(container, opts = {}) {
             imgEl.style.height = 'auto';
             imgEl.setAttribute('data-export-raster', 'mermaid');
             svg.parentNode.replaceChild(imgEl, svg);
+            // The data: PNG is created synchronously but the new HTMLImageElement
+            // is not necessarily decoded when html2canvas clones the workbench.
+            // An immediate capture can therefore produce an empty diagram rectangle.
+            if (typeof imgEl.decode === 'function') {
+                await imgEl.decode();
+            } else {
+                await loadImage(imgEl.src, signal);
+            }
             stats.converted++;
         } catch (e) {
             if (e?.name === 'AbortError') throw e;
@@ -285,6 +302,14 @@ export function createExportWorkbench(sourceElement, { widthCss, className = 'ma
 
     const clone = sourceElement.cloneNode(true);
     stripExportChrome(clone);
+    // Fractions and display math extend outside ordinary line-box geometry.
+    // Give html2canvas's cropped PDF bands space to include full KaTeX glyphs.
+    clone.querySelectorAll('.katex-display').forEach((node) => {
+        node.style.setProperty('overflow', 'visible', 'important');
+        node.style.setProperty('padding-top', '14px');
+        node.style.setProperty('padding-bottom', '18px');
+        node.style.setProperty('min-height', '3em');
+    });
     workbench.appendChild(clone);
     host.appendChild(workbench);
     document.body.appendChild(host);
