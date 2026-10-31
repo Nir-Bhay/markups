@@ -274,6 +274,12 @@ export const shareManager = {
         document.getElementById('share-qr-download-btn')?.addEventListener('click', () => handleQrDownload('link'));
         document.getElementById('share-paste-qr-download-btn')?.addEventListener('click', () => handleQrDownload('paste'));
         document.getElementById('share-upload-btn')?.addEventListener('click', handlePasteUpload);
+        // Share controls start disabled in HTML. Enable only after their
+        // handlers are bound; editor/tab initialization may still be async.
+        for (const id of ['share-btn', 'mobile-share-nav-btn', 'mobile-share-btn']) {
+            const button = document.getElementById(id);
+            if (button) button.disabled = false;
+        }
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && getModal()?.classList.contains('active')) {
                 e.preventDefault();

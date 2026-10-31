@@ -357,9 +357,8 @@ export async function captureSubtreeCanvas(html2canvas, root, opts = {}) {
         backgroundColor: '#ffffff',
         imageTimeout: 10_000,
         removeContainer: true,
-        ignoreElements: ignore,
-        onclone,
         ...rest,
+        // Preserve the validated workbench boundary even when opts contains overrides.
         ignoreElements: ignore,
         onclone
     };

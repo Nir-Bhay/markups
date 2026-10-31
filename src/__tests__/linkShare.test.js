@@ -47,6 +47,33 @@ describe('services/share/linkShare', () => {
         expect(big.reason).toMatch(/file share/i);
     });
 
+    it('counts UTF-8 bytes, not characters, before offering a share link', async () => {
+        // Each emoji is four UTF-8 bytes; a character-count limit would miss this.
+        const emojiDoc = '🧪'.repeat(26_000);
+        const result = await buildShareUrl(emojiDoc, 'unicode', 'https://markups.dev/');
+        expect(result.tooLarge).toBe(true);
+        expect(result.url).toBe('');
+        expect(result.reason).toMatch(/file share/i);
+    });
+
+    it('rejects encoded links exceeding the browser-safe URL budget', async () => {
+        // Seeded, low-compressibility text keeps this case deterministic.
+        let seed = 0x12345678;
+        const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        const characters = [];
+        for (let i = 0; i < 16_000; i += 1) {
+            seed ^= seed << 13;
+            seed ^= seed >>> 17;
+            seed ^= seed << 5;
+            characters.push(alphabet[(seed >>> 0) % alphabet.length]);
+        }
+        const result = await buildShareUrl(characters.join(''), 'url-limit', 'https://markups.dev/');
+        expect(result.tooLarge).toBe(true);
+        expect(result.url).toBe('');
+        expect(result.reason).toMatch(/encoded link/i);
+        expect(result.reason).toMatch(/file share/i);
+    });
+
     it('payload builder caps title length', () => {
         const payload = JSON.parse(buildPayload('md', 't'.repeat(500)));
         expect(payload.t.length).toBeLessThanOrEqual(200);

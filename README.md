@@ -121,7 +121,7 @@ The export modal is the control labeled Export. Its format buttons, as rendered 
 | Markdown | The editor source, downloaded as `.md`. |
 | PDF | Two writers. `#export-pdf-button` and Ctrl/Cmd+P call `exportToPDF`: it lazy-loads `html2pdf.js` and saves from `#output` with JPEG quality 0.98, html2canvas scale 2, letter size, portrait, and 0.75 inch margins. The modal's PDF confirm calls `exportToPDFWithOptions`: it clones `#output` and rasterizes that clone with html2canvas into a jsPDF file (paper size and orientation come from the modal). These functions write the file. The downloaded PDF was not opened in a viewer in this check. |
 | HTML | A standalone `.html` file with the preview markup and inlined export CSS. |
-| DOCX | The button says DOCX. `exportToDOCX` (toolbar) and `exportToDOCXWithOptions` (modal) both write an HTML document that includes the Office namespaces `urn:schemas-microsoft-com:office:office` and `urn:schemas-microsoft-com:office:word`, set the blob type to `application/msword`, and download it with `getExportFilename('doc')` (a `.doc` name). The bytes are that HTML string. They are not an OOXML `.docx` zip. The file was not opened in Word in this check. |
+| Word (.doc) | The button is labeled Word (.doc). `exportToDOCX` (toolbar) and `exportToDOCXWithOptions` (modal) both write an HTML document that includes the Office namespaces `urn:schemas-microsoft-com:office:office` and `urn:schemas-microsoft-com:office:word`, set the blob type to `application/msword`, and download it with `getExportFilename('doc')` (a `.doc` name). The bytes are that HTML string. They are not an OOXML `.docx` zip. The file was not opened in Word in this check. |
 | Text | Plain text from `markdownToPlainText` in `src/services/export/txt.js`. |
 | Image | `exportToPNG` captures `#output` with html2canvas (scale 2, white background) and downloads a PNG data URL. The modal calls `exportToPNGWithOptions`, which clones `#output` and captures that clone with html2canvas using the modal's width and scale. The PNG was not opened in an image viewer in this check. |
 | Print | Opens a new window with the preview HTML and calls `print()`. |
@@ -241,7 +241,7 @@ No. The live page has no login. Share and export do not ask for one.
 
 In this browser. Notes go to IndexedDB (`markups_db`) and a copy of the open list goes to localStorage (`com.markdownlivepreview`). Clearing site data deletes them.
 
-### Is the DOCX button a real Word file?
+### Is the Word (.doc) export a native DOCX file?
 
 The toolbar button calls `exportToDOCX`. The modal calls `exportToDOCXWithOptions`. Both write HTML that includes Word's Office XML namespaces and download a `.doc` file with type `application/msword`. That is what those functions write. It is not an Office Open XML `.docx` package. The file was not opened in Word in this check.
 

@@ -1,0 +1,128 @@
+# Master backlog — Markups 2026-10 growth audit
+
+Statuses: TODO, IN_PROGRESS, BLOCKED, VERIFIED, DEFERRED. All default TODO. Priority = P0 stop-ship, P1 this sprint, P2 near-term, P3 later. Acceptance criteria are mandatory, not optional.
+
+| Ticket | Prio | Owner/area | Change | Acceptance/evidence |
+|---|---|---|---|---|
+| M-001 | P0 | Build | Add privacy-policy, terms, accessibility, cookie-policy roots to vite.config.js HTML input collection; avoid rewrites to main editor | npm run build + dist files and 4 preview HTTP 200s; route screenshots |
+| M-002 | P0 | SEO pages | Normalize /images/og-image.png to real asset /image/og-image.png in SEO-page OG/Twitter and JSON-LD | static audit green, image GET 200, social image card proof |
+| M-003 | P0 | QA | Add route smoke for legal pages and image asset | CI or local Playwright assertion on preview; no false green if route missing |
+| M-004 | P1 | Content/legal | Compare published policy with actual Analytics, Clarity, Vercel Insights and optional AI Writer data flow | Accurate privacy and consent review, no false absolute claims |
+| M-005 | P1 | Architecture | Keep /landing canonical / OR make self-canonical based on distinct intent decision | Written decision and URL inspection, no duplicate-page index |
+| M-006 | P1 | UX + SEO | Add small human-visible resources/navigation entry without covering editor | Accessible links from real UI; keyboard/desktop/mobile E2E; no accidental layout shift |
+| M-007 | P1 | SEO | Canonical robots sitemap route contract and substantive lastmod | XML valid, indexable URLs correct, GSC submitted, exclude noindex and canonical duplicates |
+| M-008 | P1 | GEO | Audit OAI-SearchBot, Googlebot, Bingbot and CDN allow/block without changing production firewall | live robots and CDN checks, verified bot log if available |
+| M-009 | P1 | Content | Reconcile PDF selective text/link/page-break claims vs actual exports | fixture outputs + copy corrections, no unverified promise |
+| M-010 | P1 | Product | Test native DOCX claims; preserve explicit .doc limitation until actual implementation | Downloaded file type and Word/LibreOffice inspection; documentation truthful |
+| M-011 | P1 | QA | Gate existing E2E + unit + both Vite builds + lint + health script | captured versions/exits, no waived failures |
+| M-012 | P1 VERIFIED (branch CI) | Docs | Fix stale AGENTS / AI-DOCS navigation assertions (source corrected 2026-10-25) | Source read-back and exact-head Branch QA success on 5a492331; Playwright E2E acknowledged; no preview/production claim |
+| M-013 | P1 | SEO | GSC property, query/URL breakdown and Bing index report | 28-day pre-sprint baseline exported and stored outside repo if private |
+| M-014 | P1 | Growth | Instrument qualified editor_start, export_success, save and outbound CTA using privacy-aware analytics | event appears in analytics, no raw text/keys/PII transmitted |
+| M-015 | P1 | Product evidence | Reproducible Markups-vs-competitor comparison; feature/date/source and screenshot each | no fabricated rankings, cited product facts, objective matrix |
+| M-016 | P1 | Site content | Build 1 focused tutorial/resource asset with working Markdown examples/screenshots | original source, clear author date, exact test passed |
+| M-017 | P1 | Link hygiene | Correct old-domain mentions in Awesome Markdown Editors and LibHunt | live existing entry inspected, editorial PR/request, resulting URL |
+| M-018 | P1 | Distribution | Review submissions to AlternativeTo and SaaSHub | policy-compliant submissions, tracking sheet and review status |
+| M-019 | P2 | Distribution | Product Hunt assets and real launch plan | eligible account, demo, screenshots, real value proposition |
+| M-020 | P2 | Communities | Technical DEV article + rules-first HN/Reddit outreach | editorial original content, no astroturfing, no votes solicit |
+| M-021 | P2 | Content | Audit all noindex comparison/alternative pages | neutrality, original testing, source references; keep noindex until useful |
+| M-022 | P2 | Docs | Make internal /seo/global-growth-playbook non-search-indexable | keep noindex; verify not in sitemap |
+| M-023 | P2 | Schema | JSON-LD semantic consistency, no bogus logo URL, correct FAQ/HowTo applicability | validation + on-page text matches schema |
+| M-024 | P2 | Accessibility | Keyboard semantics, heading hierarchy, contrast, focus and accessible PDF limitation | axe/Playwright/manual checklist and issues |
+| M-025 | P2 | Performance | CWV baseline on mobile for editor and landing pages | real Lighthouse URL/conditions, LCP INP CLS; no invented metrics |
+| M-026 | P2 | Security | Audit CSP unsafe-inline/eval and connect-src breadth; AI endpoints & key storage | report-only policy spike; no provider breakage or secret exposure |
+| M-027 | P2 | Privacy | Review consent/cookies by actual jurisdictions and telemetry | legal sign-off where necessary; avoid legal guarantees |
+| M-028 | P2 | Product | Browser offline cold/warm behavior, storage and share-link size limits | recorded browser pass/fail scenarios |
+| M-029 | P2 | CI/Docs | Replace stale QA wording; map exact smoke tests to critical user journeys | reproducible commands, scoped coverage |
+| M-030 | P2 | Release | Safe PR workflow with required reviews, preview, tests, rollback notes | human merge approval only; main unchanged until approved |
+| M-031 | P2 | Analytics | Nonbranded Google query growth and qualified referral attribution | before/after numbers with explicit small-sample caveat |
+| M-032 | P2 | GEO | Predefined 30-prompt x 3-run AI visibility study with citation scoring | raw prompts/date/platform output links or screenshots; no guarantee |
+| M-033 | P3 | Product | Evaluate genuinely selectable/accessibility-preserving PDF path | technical spike with comparison, not rushed into growth sprint |
+| M-034 | P3 | Engineering | Decompose production main.js after growth sprint | impact map, modular-entry parity, regression gates |
+| M-035 | P3 | Maintenance | Remove root/public duplicate crawler files only after build precedence tests | no regressions in robots/sitemap/llms HTTP responses |
+
+## New confirmed Search Console/public-release tickets — 2026-10-23
+- **M-036 P0 EXTERNAL OWNER ACTION:** Remove incorrectly submitted robots.txt from Search Console Sitemaps list (not from website); Windsor cannot write.
+- **M-037 P1 EXTERNAL OWNER ACTION:** Inspect actual sitemap.xml warning, validate branch sitemap on production after approved release and resubmit.
+- **M-038 P1 BUILD:** Stop publishing the internal global-growth-playbook as public HTML; replace cheatsheet link; built artifact must not exist.
+- **M-039 P1 INDEX:** Run GSC URL Inspection for root, landing, primary SEO guides and legal routes, save reasons privately.
+- **M-040 P1 ANALYTICS:** Keep site vs URL impressions separately; ensure GA4 connected account is actually Markups before using counts.
+- **M-041 P1 CONTENT:** Publish original technical documentation and pursue genuine third-party discovery, not promised one-week #1 rankings.
+## Compatibility Lab implementation — 2026-10-23
+- **M-042 P1 CONTENT/QA:** Publish a real, downloadable sample Markdown design note with Mermaid flowchart, table, KaTeX and code. Distinct learning intent; no fabricated benchmark ranking.
+- **M-043 P1 QA:** Assert real editor can render sample Mermaid SVG, KaTeX, table, code; browser route and fixture HTTP 200.
+- **M-044 P1 INDEX:** Add approved canonical lab route to sitemap and direct landing / resource links. After reviewed production release inspect Google-selected canonical and index status; avoid claiming search visibility before Search Console confirms.
+- **M-045 P2 RESEARCH:** Compare other products only when independently tested under the same fixture with screenshots, dates and version/methodology; this first lab is NOT an untested cross-product comparison.
+
+## Export-copy correctness — 2026-10-23
+- **M-046 P1 SOURCE FIX COMPLETE / CI VERIFIED ON 81155bc:** Reconciled PDF guides and FAQ/HowTo JSON-LD with raster output. Removed assertions of clickable PDF links, perfect preview fidelity, '90%' checks, guaranteed page breaks and unlimited file capability.
+- **M-047 P1 TEST / CI VERIFIED ON 81155bc:** Add browser regression that PDF guides clearly explain image-based output and avoid unsupported absolute claims.
+- **M-048 P2 SOURCE FIX COMPLETE / CI VERIFIED ON 81155bc:** Remove misleading DOCX references in HTML guide; link to true Compatibility Lab.
+- **M-049 P2 PENDING:** Download/open real browser exports in PDF viewers, verify link annotations, text selection, long-document breaks; implementation/content review is not a substitute.
+## Download integrity QA — 2026-10-23
+- **M-050 P1 TEST / CI VERIFIED ON 81155bc:** Playwright exports an actual small PDF from the editor, validates download and nonempty PDF magic bytes; does not falsely claim selectable text or perfect page fidelity.
+- **M-051 P1 TEST / CI VERIFIED ON 81155bc:** Playwright downloads Word output, checks extension is .doc and file is HTML rather than ZIP/OOXML .docx.
+- **M-052 P2 MANUAL PENDING:** Inspect those files in at least one PDF/Word viewer for layout, pagination, link annotations and accessibility. File-signature checks alone are insufficient.
+
+## Canonical product identity — 2026-10-23
+- **M-053 P1 SOURCE FIX / CI VERIFIED ON 81155bc:** AI Writer system prompt still identified Markups by markups.vercel.app; changed to canonical https://markups.dev/ and added a unit regression test. This does not alter the chosen AI provider or message content policy.
+- **M-054 P2 SOURCE FIX / CI VERIFIED ON 81155bc:** Removed remaining DOCX-promotional footer links from public PDF/HTML guides in favor of the honest Compatibility Lab, keeping the separately marked noindex DOCX explanatory page in source.
+- **M-055 P1 EXTERNAL BLOCKED:** Live Awesome Markdown Editors and LibHunt listings still point to the old domain. The owner's existing upstream issue #109 cannot be updated via the connected GitHub app (403 on third-party repository). Requires website editor/authorized GitHub account or independent maintainer review.
+
+## Dependency and execution order
+M-001 → M-003 → M-011 → safe preview. M-002 → M-023 → M-011. M-004 → M-001 and M-027. M-005 → M-007 → M-013. M-009/M-010 → M-015/M-016 (credible content). M-013/M-014 → M-031/M-032. M-017/M-018/M-019/M-020 happen ONLY after accurate canonical destination and a working product/preview.
+
+## Branch ownership lock
+SEO-engineer: vite.config.js, robots/sitemap/SEO pages, never concurrently edited by anyone else.
+App-UX: index.html, public/css/** (freeze during SEO-engineer homepage work).
+Content/editorial: SEO comparison and landing copy after engineering feature proof.
+QA: tests/e2e/**, scripts/qa/**.
+Security/privacy: privacy/terms/cookie-policy copy and CSP reviewed with UX owner.
+PM/audit: docs/seo-geo/** and run evidence. All changes must be small independent commits; branch is never force-pushed.
+
+## Workflow for each ticket
+Before: assign, verify main and branch SHA, link source and reproducible failing case. During: implementation plus the narrowest passing test, peer review for claims. After: run complete branch tests, preview verification, attach evidence and change ticket TODO to VERIFIED only when proof exists. No fabricated checkmarks.
+
+## Verification refresh — 2026-10-24
+- **M-011 branch CI: VERIFIED on application SHA `81155bcabd0ef7586529d4cd98d5ef751991eae0`.** GitHub Actions https://github.com/Nir-Bhay/markups/actions/runs/39988242957 passed static SEO, lint, 566 Vitest, both builds, built-page audit, 46 Playwright, PDF/Word downloaded-file signatures and screenshot capture. Every newer head needs its own green run.
+- **M-029 stale QA documentation: SOURCE FIXED.** `docs/seo-geo/QA-RELEASE-GATES.md` now distinguishes the successful CI from unverified preview. Evidence: `docs/seo-geo/runs/2026-10-24-branch-qa.md`. Do not mark full G3 preview gate VERIFIED.
+- **G3 / M-001 preview portion: BLOCKED by preview authentication.** PR #71 Vercel bot reports READY but read-only `/landing`, `/privacy-policy`, `/seo/compatibility-lab` checks returned `login_required`. Vercel project/deployment API calls for the actual team returned 403 pending owner team grant. Production was not changed.
+- **M-036, M-037, M-039: OWNER GSC ACTIONS remain BLOCKED.** **M-049/M-052:** full PDF/Word viewer visual, pagination, link, selection and accessibility tests remain open. CI does not validate those properties.
+
+## M-012 agent navigation refresh — 2026-10-25
+- Updated `AGENTS.md` in commit `fe1107e55251915e48166cb29a86ae82dd1539ce`: code-review-graph only when available/current, GitHub source fallback, no stale fixed line counts, Vitest + Playwright coverage documented. The two AI-DOCS navigation files already acknowledged Playwright.
+- Source read-back passed; **exact-head GitHub Actions Branch QA passed on `5a4923319e6cb493c1cba1fae641496784f82b4c`**: https://github.com/Nir-Bhay/markups/actions/runs/40165629998 (completed success, quality job `121086149084`). Logs confirm 566/566 Vitest, 47/47 Playwright, static audit, lint, both builds and built-page audits passed. Evidence: `docs/seo-geo/runs/2026-10-25-agent-navigation.md`. This is **not** a preview/production pass.
+
+## 2026-10-26 exact-head verification / outstanding gates
+- **M-012 VERIFIED for branch-only documentation + CI** at pre-evidence SHA `5a4923319e6cb493c1cba1fae641496784f82b4c`; [successful Branch QA](https://github.com/Nir-Bhay/markups/actions/runs/40165629998) (quality job `121086149084`). Workflow completed successfully: static SEO audit, lint, 566 Vitest, both Vite builds, built-pages audits, 47 Playwright tests and screenshot capture. Commit status also reported Vercel success, which is **not** authenticated preview smoke evidence.
+- This backlog evidence edit creates a newer commit; its own exact-head CI must be checked separately before describing the newest head as green. No application source changed here.
+- Still open: authenticated Vercel preview G3 (the Vercel API project connection now reads successfully, but preview HTTP/browser pages remain behind login); GSC owner-only M-036/M-037/M-039; viewer-based PDF/Word M-049/M-052; owner privacy/security review; third-party listing M-055. Do not merge or claim indexing/ranking improvements from branch CI.
+- **Vercel connection recheck (2026-10-26):** read-only team `nirbhay-987s-projects` `list_projects` returned the actual `markups` project `prj_9rmevkUjnWCKL5GklOCaVKmDa8Wz`, and `get_deployment` returned READY deployment `dpl_3iDf1DUbBNULmq8mbSr9DqVi7EMR` for commit `5a492331`. The previous API 403 blocker is no longer reproducible; do not claim deployment content validated. Browser read-only visits to [landing](https://markups-git-growth-seo-geo-audit-2026-10-nirbhay-987s-projects.vercel.app/landing), [privacy](https://markups-git-growth-seo-geo-audit-2026-10-nirbhay-987s-projects.vercel.app/privacy-policy), and [Compatibility Lab](https://markups-git-growth-seo-geo-audit-2026-10-nirbhay-987s-projects.vercel.app/seo/compatibility-lab) all redirected to **Vercel Login** (final HTTP 200 is login HTML, not Markups route HTTP 200). Authenticated preview access via authorized browser/team session is still required; no protection settings were changed.
+- **CI for evidence commit `1cacb1d511716c6b7b90c4b55aa9d85c814b539e`:** push workflow https://github.com/Nir-Bhay/markups/actions/runs/40271213223 was `in_progress` at inspection, PR workflow https://github.com/Nir-Bhay/markups/actions/runs/40271216092 `pending`; recheck final results on latest head before marking CI green.
+
+## 2026-10-28 M-024 keyboard accessibility regression (branch-only)
+- **Baseline:** PR #71 head `505f52051dcb34b111cdd7492b704c3bcb40887d`; exact-head Branch QA completed **success** on [run 40453252874](https://github.com/Nir-Bhay/markups/actions/runs/40453252874). Its companion push QA was cancelled by workflow concurrency, not a failing test.
+- **Reproducible coverage gap:** `tests/e2e/seo-landing-routes.spec.js` tested mouse tab selection and ArrowRight, but not keyboard-first skip navigation, Home/End tab selection, focus ownership or hidden-panel transitions. Existing landing source already has skip-link and tab keyboard handlers; **no functional bug is claimed**.
+- **Narrow test-only change:** Commit [1856ce02](https://github.com/Nir-Bhay/markups/commit/1856ce02d533e22515d5cf9917a1e8dccf3f5b2a) adds a Playwright case for Tab → visible/focused skip link → Enter/#main; End, ArrowLeft and Home across illustrative sample tabs; `aria-selected`, focus and visible/hidden panels. GitHub source read-back confirmed the added test. No app code, canonical URLs, telemetry, deployment settings or main branch changed.
+- **Verification:** [Branch QA run 40637474391](https://github.com/Nir-Bhay/markups/actions/runs/40637474391) started on the test commit; **was still in progress at inspection**. This backlog edit creates a new head, so **only a green run for that newest exact head** establishes full CI. M-024 remains **IN_PROGRESS**, not fully verified until exact-head CI and authenticated preview/browser accessibility review.
+- **Still blocked / not claimed:** protected Vercel preview requires an authorized owner/team browser session; GSC M-036/M-037/M-039 require owner Search Console UI; PDF/Word viewer inspection M-049/M-052, privacy/security review, third-party M-055 and explicit release approval remain. No search indexing/ranking/AI citation improvement is implied.
+
+## 2026-10-29 M-002/M-003 Open Graph binary-response regression (branch-only)
+- **Baseline:** PR #71 exact head `90f142cf8a6420f4b0f1dca14a01ccce41b99f63` had successful [Branch QA run 40637524471](https://github.com/Nir-Bhay/markups/actions/runs/40637524471). Its quality job completed all steps successfully; Vercel commit status success is deployment metadata, **not** authenticated preview or social-card validation.
+- **Reproducible QA gap:** `tests/e2e/seo-landing-routes.spec.js` checked the landing `og:image` metadata URL, and `scripts/qa/verify-built-pages.mjs` checked the built asset exists, but neither proved the HTTP asset is an actual PNG with the declared dimensions. Branch source `public/image/og-image.png` was read as base64 (blob `ec52ffcbc2a42b7cd16b430667a71537de879392`; PNG header/IHDR visible). This is a **coverage gap**, not a claimed production defect.
+- **Implementation:** [commit e441a597](https://github.com/Nir-Bhay/markups/commit/e441a597ea53e9c76254c3353640c8c8589483c3) adds a Playwright request check for HTTP 200, `image/png`, nonempty PNG signature/IHDR, and 1200x630 dimensions. GitHub source read-back confirmed the exact test. No application code, `main`, telemetry, credentials or Vercel configuration changed.
+- **Verification boundary:** This evidence edit creates a newer branch head; do not claim the latest head is green until its exact-head Branch QA completes. M-002/M-003 live social preview and protected Vercel HTTP smoke remain pending. No Google indexing/ranking/AI citations claim.
+- **External/owner blockers unchanged:** Vercel authorized preview browser session; GSC M-036/M-037/M-039 owner UI; real PDF/Word viewer M-049/M-052; privacy/security and release sign-off; third-party M-055.
+
+## 2026-10-30 share-dialog startup race (branch-only)
+- **Baseline:** exact branch HEAD `58967646f9203863ccb4f00e5afe9d83edfd5501`; [Branch QA run 40818964218](https://github.com/Nir-Bhay/markups/actions/runs/40818964218) completed success, but Playwright reported **48 passed, 1 flaky**. `tests/e2e/share.spec.js` first attempt failed at `expect(#share-modal).toBeVisible()` after clicking `#share-btn`; retry passed. This is a reproducible CI symptom, not proof of the only root cause.
+- **Evidence-based diagnosis:** `src/main.js` sets editor preview content before `await initTabs()`, while `shareManager.initialize()` (which attaches the click listener) runs afterward. The old test waited for preview content and button visibility, not share initialization. An early click could be ignored. The precise first-failure timing is not yet independently instrumented.
+- **Low-risk mitigation:** `index.html` starts desktop and both mobile share controls disabled; `src/services/share/ui.js` enables them only once click handlers are attached; `tests/e2e/share.spec.js` waits for the share action to become enabled before clicking. This avoids a misleading clickable-but-unbound control without changing share payloads, endpoints, privacy or storage.
+- **Commits:** [HTML initial state c276d69](https://github.com/Nir-Bhay/markups/commit/c276d69fbce02ddcfe8f5534b348fe08d36a83ad), [handler readiness cfe8175](https://github.com/Nir-Bhay/markups/commit/cfe8175e7c2fbc9671c6190cb6cee6edcad40bde), [Playwright readiness ec24457](https://github.com/Nir-Bhay/markups/commit/ec24457698ddd5b0d108bb044f5ee4fb95c9d98a). GitHub source read-back confirmed test, handler and HTML attributes; branch compare showed exactly these three files changed. **Exact-head full CI must pass** before marking this fix verified; repeat stress runs are desirable to assess intermittent behavior.
+- **Still open:** authenticated Vercel preview UI/mobile G3; GSC owner actions M-036/M-037/M-039; actual PDF/Word viewer M-049/M-052; M-024 manual accessibility and M-026/M-027 security/privacy sign-off; third-party M-055; explicit owner release approval. No production, main, Vercel configuration, credentials or private analytics changed. No indexing, ranking or AI citation improvement claimed.
+
+## 2026-10-31 share readiness verification and M-028 URL-boundary regression
+- **Fresh baseline:** Draft PR #71 branch head `6e4646058cbb834a6b24be464d467422a9c43cc7`; [Branch QA run 41008267682](https://github.com/Nir-Bhay/markups/actions/runs/41008267682) completed **success** (quality job `123908315267`). Logs explicitly report **49 passed, no flaky/retry**, including the formerly intermittent Share Dialog case. Static SEO, lint, Vitest, both Vite builds, built-site audits and browser screenshot capture passed. This confirms one clean CI run of the initialization-readiness mitigation, **not** statistical proof that the intermittent failure can never recur.
+- **M-028 P2 IN_PROGRESS — reproducible boundary coverage gap:** Existing `src/__tests__/linkShare.test.js` covered normal link generation, a 200 KiB oversized ASCII document and decompression safety, but did not explicitly guard multibyte UTF-8 document size or the separate 8,000-character encoded URL limit. Source `src/services/share/linkShare.js` already implements both guards; no functional defect is claimed.
+- **Test-only commit:** [c1dbdef1](https://github.com/Nir-Bhay/markups/commit/c1dbdef1316b9196fd1d59c233ebd3254a99c1cb) adds two deterministic Vitest regressions: 26,000 four-byte emoji must reject as over 100 KiB and return a file-share fallback; seeded low-compressibility text must reject an encoded URL above 8,000 characters. GitHub source read-back confirmed both tests. No app source, telemetry, secrets, production settings or main branch changed.
+- **Verification boundary:** [Branch QA run 41172414197](https://github.com/Nir-Bhay/markups/actions/runs/41172414197) was **pending** when recorded for test commit `c1dbdef1`. This backlog evidence update itself creates a newer branch head; its exact-head CI must complete successfully before marking M-028 branch test coverage VERIFIED. No local test execution, authenticated Vercel preview, browser oversized-document UI or production behavior is claimed.
+- **External/owner gates still open:** authorized Vercel preview session for actual desktop/mobile route and product QA; GSC M-036 wrong robots.txt submission removal, M-037 sitemap.xml warning and M-039 URL Inspection in owner UI; real PDF/Word viewer M-049/M-052; manual accessibility, privacy/security sign-off, external directory M-055 and explicit release approval. Indexing, rankings and AI citations are not guaranteed.

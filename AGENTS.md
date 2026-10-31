@@ -11,9 +11,9 @@ alwaysApply: true
 
 **Before ANY code exploration or modification:**
 
-1. ✅ **Read `AI-DOCS/AI-MEMORY.md`** - Main navigation with exact line ranges
+1. ✅ **Read `AI-DOCS/AI-MEMORY.md`** - Current navigation map; verify paths and line ranges against the current commit
 2. ✅ **Read `AI-DOCS/QUICK-START.md`** - Common task quick reference  
-3. ✅ **Use code-review-graph MCP tools** - Structural analysis (fastest)
+3. ✅ **Use code-review-graph MCP tools when connected** - Otherwise inspect repository source/tree and record the graph limitation
 4. ✅ **Check feature docs** - `AI-DOCS/features/FEATURES-INDEX.md`
 5. ❌ **DON'T** read entire files without checking docs first
 
@@ -39,11 +39,7 @@ AI-DOCS/
 
 ## MCP Tools: code-review-graph
 
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
+**Use code-review-graph when it is actually connected and its index matches the current branch.** If it is unavailable or stale, use repository file/tree searches and targeted source reads; record the limitation. Never claim to have used a graph tool that was not available.
 
 ### When to use graph tools FIRST
 
@@ -53,7 +49,7 @@ scanning cannot.
 - **Finding relationships**: `query_graph` with callers_of/callees_of/imports_of/tests_for
 - **Architecture questions**: `get_architecture_overview` + `list_communities`
 
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
+Fall back to Grep/Glob/Read when the graph is unavailable, stale, or does not cover what you need.
 
 ### Key Tools
 
@@ -95,8 +91,8 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 ## 💡 Universal Best Practices
 
 ### ✅ DO:
-- **Check AI-DOCS first** - Save 90% of exploration time
-- **Use exact line ranges** - Jump directly to relevant code
+- **Check AI-DOCS first** - Then verify source paths and behavior on the current branch
+- **Use verified line ranges** - Old documentation offsets may drift; confirm against the current source
 - **Verify with code-review-graph** - Understand impact before changing
 - **Follow existing patterns** - Check similar features for consistency
 - **Test your changes** - Verify functionality works
@@ -122,13 +118,13 @@ User Request
     Go to specific file + line range
     
     ↓ (if not found)
-2. Use semantic_search_nodes("keyword")
+2. If connected, use semantic_search_nodes("keyword")
     ↓
-3. Use query_graph(pattern="callers_of", target="function")
+3. If connected, use query_graph(pattern="callers_of", target="function")
     ↓
 4. Check feature documentation
     ↓
-5. Grep/glob (last resort)
+5. If graph unavailable/stale, inspect GitHub tree + targeted file search/read
 ```
 
 ---
@@ -143,10 +139,10 @@ User Request
 | **Editor** | Monaco Editor 0.52 |
 | **Parser** | Marked 15.x + extensions |
 | **Storage** | Dexie (IndexedDB) + LocalStorage |
-| **Testing** | Vitest |
-| **Total Files** | ~160 (JS, CSS, HTML) |
-| **Main Entry** | `src/main.js` (1000+ lines) |
-| **UI Entry** | `index.html` (1980 lines) |
+| **Testing** | Vitest unit tests + Playwright E2E (`tests/e2e/`) |
+| **Total Files** | Changes over time; inspect the current repository tree |
+| **Main Entry** | `src/main.js` (production); `src/main.modular.js` (modular build) |
+| **UI Entry** | `index.html` (verify current length and structure) |
 
 ---
 
@@ -224,7 +220,7 @@ UI Layer → Features Layer → Core Layer → Services Layer → Utils Layer
 
 ---
 
-**Last Updated**: 2026-04-04  
+**Last Updated**: 2026-10-25 (navigation/testing guidance; branch-only)  
 **Goal**: 10x faster AI navigation with zero file scanning
 
 ---
