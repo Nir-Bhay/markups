@@ -31,6 +31,23 @@ test.describe('no-server share', () => {
         await expect(modal).not.toHaveClass(/active/);
     });
 
+    test('keyboard Escape closes the share dialog and restores focus to its trigger', async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.goto('/');
+        await expect(page.locator('#output')).toContainText('Welcome to Markups', { timeout: 20_000 });
+
+        const trigger = page.locator('#share-btn');
+        await expect(trigger).toBeEnabled({ timeout: 20_000 });
+        await trigger.focus();
+        await page.keyboard.press('Enter');
+
+        const modal = page.locator('#share-modal');
+        await expect(modal).toHaveClass(/active/);
+        await page.keyboard.press('Escape');
+        await expect(modal).not.toHaveClass(/active/);
+        await expect(trigger).toBeFocused();
+    });
+
     test('opens a shared hash in a new tab without replacing the current doc', async ({ page }) => {
         const hash = await encodeDocToHash('# Shared heading\n\nhello-from-share', 'Shared heading');
         page.on('dialog', (dialog) => dialog.accept());
