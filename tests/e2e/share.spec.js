@@ -48,6 +48,24 @@ test.describe('no-server share', () => {
         await expect(trigger).toBeFocused();
     });
 
+    test('declining an incoming share preserves the current document and removes its URL payload', async ({ page }) => {
+        const hash = await encodeDocToHash('# Unwanted import\n\nnot-for-this-tab', 'Declined document');
+        const prompts = [];
+        page.on('dialog', async (dialog) => {
+            prompts.push(dialog.type());
+            await dialog.dismiss();
+        });
+
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.goto(`/#${hash}`);
+        await expect(page.locator('#output')).toContainText('Welcome to Markups', { timeout: 20_000 });
+        // The URL payload must be removed after the user rejects the import.
+        await expect(page).not.toHaveURL(/#s=/);
+        await expect(page.locator('.header-tab')).toHaveCount(1);
+        await expect(page.getByRole('tab', { name: /Declined document/i })).toHaveCount(0);
+        expect(prompts).toEqual(['confirm']);
+    });
+
     test('opens a shared hash in a new tab without replacing the current doc', async ({ page }) => {
         const hash = await encodeDocToHash('# Shared heading\n\nhello-from-share', 'Shared heading');
         page.on('dialog', (dialog) => dialog.accept());
