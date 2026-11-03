@@ -66,6 +66,18 @@ test.describe('no-server share', () => {
         expect(prompts).toEqual(['confirm']);
     });
 
+    test('malformed incoming share does not prompt or replace the current document', async ({ page }) => {
+        const prompts = [];
+        page.on('dialog', async (dialog) => {
+            prompts.push(dialog.type());
+            await dialog.dismiss();
+        });
+        await page.goto('/#s=ginvalid-base64!');
+        await expect(page.locator('#output')).toContainText('Welcome to Markups', { timeout: 20_000 });
+        await expect(page.locator('.header-tab')).toHaveCount(1);
+        expect(prompts).toEqual([]);
+    });
+
     test('opens a shared hash in a new tab without replacing the current doc', async ({ page }) => {
         const hash = await encodeDocToHash('# Shared heading\n\nhello-from-share', 'Shared heading');
         page.on('dialog', (dialog) => dialog.accept());
