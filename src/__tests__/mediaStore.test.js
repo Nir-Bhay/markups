@@ -35,6 +35,47 @@ describe('LocalMediaStore', () => {
         await expect(store.migrateLegacy({ img_1_a: png })).rejects.toMatchObject({ name: 'QuotaExceededError' });
     });
 
+    it('falls back to binary storage when WebKit cannot persist Blobs', async () => {
+        const database = createMediaDb();
+        const put = database.media.put;
+        database.media.put = async (row) => {
+            if (row.blob) throw new DOMException('Error preparing Blob/File data to be stored in object store', 'UnknownError');
+            return put(row);
+        };
+        const store = new LocalMediaStore(database);
+        await store.putDataUrl('img_1_a', png);
+
+        const row = database.rows.get('img_1_a');
+        expect(row.blob).toBeUndefined();
+        expect(row.data).toBeInstanceOf(ArrayBuffer);
+        expect(row.bytes).toBe(row.data.byteLength);
+        expect(row.type).toBe('image/png');
+        await expect(new LocalMediaStore(database).getDataUrl('img_1_a')).resolves.toBe(png);
+        const entries = await store.previewEntries();
+        expect(entries).toEqual([['img_1_a', expect.stringMatching(/^blob:/)]]);
+        URL.revokeObjectURL(entries[0][1]);
+        await expect(store.portableMarkdown('![x](markups-img:img_1_a)')).resolves.toContain(png);
+        await expect(store.migrateLegacy({ img_1_a: png })).resolves.toEqual({ copied: 0, invalid: 0 });
+    });
+
+    it('does not retry quota errors or hide a failed binary fallback', async () => {
+        const database = createMediaDb();
+        const quota = new DOMException('Full', 'QuotaExceededError');
+        const writes = [];
+        database.media.put = async (row) => {
+            writes.push(row);
+            throw quota;
+        };
+        const store = new LocalMediaStore(database);
+        await expect(store.putDataUrl('img_1_a', png)).rejects.toBe(quota);
+        expect(writes).toHaveLength(1);
+        database.media.put = async (row) => {
+            if (row.blob) throw new DOMException('Error preparing Blob/File data to be stored in object store', 'UnknownError');
+            throw quota;
+        };
+        await expect(store.putDataUrl('img_1_a', png)).rejects.toBe(quota);
+    });
+
     it('enforces a bounded aggregate local image budget before adding media', async () => {
         const database = createMediaDb();
         database.rows.set('img_existing', { id: 'img_existing', bytes: MAX_LOCAL_MEDIA_TOTAL_BYTES - 4, blob: new Blob(['x']) });
