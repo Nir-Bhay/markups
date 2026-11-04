@@ -10,7 +10,7 @@ test('preserves IndexedDB documents when the localStorage backup is full', async
             } catch {
                 // Non-JSON localStorage entries pass through unchanged.
             }
-            if ((item?.namespace === 'com.markdownlivepreview' && item?.key === 'docs') || key === 'com.markdownlivepreview.tabs') {
+            if (window.__quotaTestBlockDocsBackup && ((item?.namespace === 'com.markdownlivepreview' && item?.key === 'docs') || key === 'com.markdownlivepreview.tabs')) {
                 throw new DOMException('Quota exceeded', 'QuotaExceededError');
             }
             return nativeSetItem.call(this, key, value);
@@ -21,18 +21,28 @@ test('preserves IndexedDB documents when the localStorage backup is full', async
     await expect(page.locator('#editor')).toBeVisible();
     await page.waitForFunction(() => typeof window.__markups_createFile === 'function');
     await page.evaluate(async () => {
-        for (let i = 0; i < 6; i++) {
+        window.__quotaTestBlockDocsBackup = true;
+        await window.__markups_createFile();
+    });
+    await expect(page.getByText(/Browser backup storage is full/i)).toBeVisible();
+    await page.evaluate(async () => {
+        for (let i = 0; i < 5; i++) {
             await window.__markups_createFile();
         }
     });
 
     await page.locator('#editor').click();
     await page.keyboard.type('# Quota recovery check');
-    await expect(page.getByText(/Browser backup storage is full/i)).toBeVisible();
+    await expect.poll(() => page.evaluate(() => {
+        const document = window.__markups_documents.find((item) => item.id === window.__markups_activeDocId);
+        return document?.content;
+    })).toBe('# Quota recovery check');
+    await expect(page.locator('#save-status')).toHaveAttribute('data-state', 'saved');
     await expect.poll(() => page.evaluate(() => window.__markups_documents.length)).toBe(7);
 
     await page.reload();
     await page.waitForFunction(() => window.__markups_documents?.length === 7);
+    await expect.poll(() => page.evaluate(() => window.editor?.getValue())).toBe('# Quota recovery check');
     await expect(page.locator('#save-status')).toContainText('All changes saved');
 });
 
