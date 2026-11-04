@@ -1,5 +1,5 @@
 import { db } from './database.js';
-import { sanitizeSvgToDataUrl, validateImageSignature } from '../../utils/file.js';
+import { readFileAsArrayBuffer, sanitizeSvgToDataUrl, validateImageSignature } from '../../utils/file.js';
 
 const ID_PATTERN = /^img_[a-zA-Z0-9_]{1,120}$/;
 const REF_PATTERN = /markups-img:(img_\w+)/g;
@@ -34,21 +34,36 @@ export function blobToImageData(blob) {
     });
 }
 
+function storedImageBlob(row) {
+    if (row?.blob) return row.blob;
+    if (row?.data instanceof ArrayBuffer) return new Blob([row.data], { type: row.type });
+    return null;
+}
+
 export class LocalMediaStore {
     constructor(database = db) { this.db = database; }
 
     async storeBlob(id, blob) {
-        const write = async () => {
+        const write = async (image) => {
             const existing = await this.db.media.get(id);
             const rows = await this.db.media.toArray();
             const total = rows.reduce((sum, row) => sum + (Number(row.bytes) || Number(row.blob?.size) || 0), 0);
             if (total - (Number(existing?.bytes) || Number(existing?.blob?.size) || 0) + blob.size > MAX_LOCAL_MEDIA_TOTAL_BYTES) {
                 throw new DOMException('Local image storage limit reached.', 'QuotaExceededError');
             }
-            await this.db.media.put({ id, blob, bytes: blob.size, createdAt: Date.now() });
+            await this.db.media.put({ id, ...image, bytes: blob.size, createdAt: Date.now() });
         };
-        if (typeof this.db.transaction === 'function') await this.db.transaction('rw', this.db.media, write);
-        else await write();
+        const persist = (image) => typeof this.db.transaction === 'function'
+            ? this.db.transaction('rw', this.db.media, () => write(image))
+            : write(image);
+        try {
+            await persist({ blob });
+        } catch (error) {
+            // WebKit ephemeral sessions cannot persist Blob/File values in IndexedDB.
+            if (error.name !== 'UnknownError' || !/preparing Blob\/File/.test(error.message)) throw error;
+            const data = await readFileAsArrayBuffer(blob);
+            await persist({ data, type: blob.type });
+        }
     }
 
     async putDataUrl(id, value) {
@@ -61,7 +76,8 @@ export class LocalMediaStore {
     async getDataUrl(id, fallback = null) {
         if (!ID_PATTERN.test(id)) return null;
         const row = await this.db.media.get(id);
-        if (row?.blob) return blobToImageData(row.blob);
+        const blob = storedImageBlob(row);
+        if (blob) return blobToImageData(blob);
         if (typeof fallback === 'string' && fallback.startsWith('data:image/')) {
             return blobToImageData(imageDataToBlob(fallback));
         }
