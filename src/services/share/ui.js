@@ -293,6 +293,12 @@ export const shareManager = {
         document.getElementById('share-qr-download-btn')?.addEventListener('click', () => handleQrDownload('link'));
         document.getElementById('share-paste-qr-download-btn')?.addEventListener('click', () => handleQrDownload('paste'));
         document.getElementById('share-upload-btn')?.addEventListener('click', handlePasteUpload);
+        // The app can still be initializing while its controls are visible.
+        // Keep the entry points inert until their handlers are ready.
+        for (const id of ['share-btn', 'mobile-share-nav-btn', 'mobile-share-btn']) {
+            const button = document.getElementById(id);
+            if (button) button.disabled = false;
+        }
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && getModal()?.classList.contains('active')) {
                 e.preventDefault();
