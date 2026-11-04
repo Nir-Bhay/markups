@@ -24,16 +24,18 @@ export default defineConfig({
         screenshot: 'only-on-failure',
         video: process.env.PLAYWRIGHT_VIDEO === 'off' ? 'off' : 'retain-on-failure'
     },
-    webServer: {
-        command: `vite --host ${HOST} --port ${PORT}`,
-        url: baseURL,
-        reuseExistingServer: !process.env.CI,
-        timeout: 60_000,
-        env: {
-            ...process.env,
-            MARKUPS_ENTRY: process.env.MARKUPS_ENTRY || ''
+    ...(process.env.PLAYWRIGHT_EXTERNAL_SERVER === '1' ? {} : {
+        webServer: {
+            command: `vite --host ${HOST} --port ${PORT}`,
+            url: baseURL,
+            reuseExistingServer: !process.env.CI,
+            timeout: 60_000,
+            env: {
+                ...process.env,
+                MARKUPS_ENTRY: process.env.MARKUPS_ENTRY || ''
+            }
         }
-    },
+    }),
     projects: [
         {
             name: `${browser}-${entryLabel}`,
