@@ -7,6 +7,7 @@
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
 import { noteStorage } from '../../core/storage/noteStorage.js';
 import { APP_CONFIG } from '../../config/app.config.js';
+import { isStableNoteId } from '../../core/storage/noteIdentity.js';
 
 /**
  * @typedef {'idle'|'unsaved'|'saving'|'saved'|'error'} SaveStatus
@@ -84,7 +85,7 @@ class AutosaveManager {
         // Listen for active tab changes — stash pending under the old note,
         // flush it, then restore the new note's pending (no cross-note bleed).
         eventBus.on(EVENTS.TAB_ACTIVATED, ({ tab }) => {
-            void this._switchActiveNote(tab?.id ?? null);
+            void this._switchActiveNote(tab?.stableId ?? tab?.noteId ?? tab?.id ?? null);
         });
 
         // Save on visibility change (tab/window losing focus)
@@ -177,13 +178,20 @@ class AutosaveManager {
         const prevPending = this._pendingContent;
         if (prevId !== null && prevId !== undefined && prevPending !== null) {
             this._pendingByNote.set(String(prevId), prevPending);
-            await this._performSaveFor(prevId, prevPending);
         }
+
+        // Change the content-event target synchronously. The tab manager
+        // emits TAB_ACTIVATED before it replaces the editor model, so the
+        // incoming model change is queued against the correct note.
         this._activeNoteId = noteId ?? null;
         const restored = this._activeNoteId === null
             ? null
             : (this._pendingByNote.get(String(this._activeNoteId)) ?? null);
         this._pendingContent = restored;
+
+        if (prevId !== null && prevId !== undefined && prevPending !== null) {
+            await this._performSaveFor(prevId, prevPending);
+        }
         if (restored !== null) {
             this._setStatus('unsaved');
             if (this._debounceTimer) clearTimeout(this._debounceTimer);
@@ -199,18 +207,34 @@ class AutosaveManager {
      * @private
      */
     async _performSaveFor(noteId, content) {
-        const numericId = typeof noteId === 'number' ? noteId : parseInt(noteId, 10);
-        if (isNaN(numericId)) return false;
+        const stableId = isStableNoteId(noteId) ? noteId : null;
+        const numericId = typeof noteId === 'number'
+            ? noteId
+            : (/^\d+$/.test(String(noteId)) ? Number(noteId) : NaN);
+        if (!stableId && (!Number.isInteger(numericId) || numericId <= 0)) return false;
         // Hash guard: skip write when content already saved for this note.
         if (this._lastSavedContentByNote.get(String(noteId)) === content) {
-            if (String(this._activeNoteId) === String(noteId)) this._pendingContent = null;
+            if (String(this._activeNoteId) === String(noteId)) {
+                this._pendingContent = null;
+                // A model restore can mark an unchanged note unsaved. Its
+                // content was already confirmed, so publish the saved state.
+                this._setStatus('saved');
+            }
             this._pendingByNote.delete(String(noteId));
             return true;
         }
         this._setStatus('saving');
-        eventBus.emit(EVENTS.DOCUMENT_SAVING, { noteId });
+        eventBus.emit(EVENTS.DOCUMENT_SAVING, {
+            noteId: Number.isInteger(numericId) && numericId > 0 ? numericId : null,
+            stableId
+        });
         try {
-            await noteStorage.updateNote(numericId, { content });
+            const updatedNote = stableId
+                ? await noteStorage.updateNoteByStableId(stableId, { content })
+                : await noteStorage.updateNote(numericId, { content });
+            if (!updatedNote) {
+                throw new Error('Note storage did not confirm the update');
+            }
             this._lastSavedContentByNote.set(String(noteId), content);
             this._pendingByNote.delete(String(noteId));
             if (String(this._activeNoteId) === String(noteId)) this._pendingContent = null;
@@ -220,11 +244,15 @@ class AutosaveManager {
             // Best-effort version snapshot (throttled inside; never breaks saves).
             try {
                 const { recordVersion } = await import('../../core/storage/versionHistory.js');
-                void recordVersion(numericId, content);
+                void recordVersion(updatedNote.id, content);
             } catch (_e) { /* ignore */ }
             this._lastSavedAt = Date.now();
             this._setStatus('saved');
-            eventBus.emit(EVENTS.DOCUMENT_SAVED, { noteId, savedAt: this._lastSavedAt });
+            eventBus.emit(EVENTS.DOCUMENT_SAVED, {
+                noteId: updatedNote.id,
+                stableId: updatedNote.stableId,
+                savedAt: this._lastSavedAt
+            });
             return true;
         } catch (error) {
             console.error('AutosaveManager: Save failed:', error);
@@ -264,10 +292,11 @@ class AutosaveManager {
         // Phase 2.1: unresolvable id → same no-write, no-saved-signal rule.
         // Re-queue content so it is not silently dropped. Reset the status
         // set above — otherwise the indicator hangs on "Saving…".
+        const stableId = isStableNoteId(this._activeNoteId);
         const numericId = typeof this._activeNoteId === 'number'
             ? this._activeNoteId
-            : parseInt(this._activeNoteId, 10);
-        if (isNaN(numericId)) {
+            : (/^\d+$/.test(String(this._activeNoteId)) ? Number(this._activeNoteId) : NaN);
+        if (!stableId && (!Number.isInteger(numericId) || numericId <= 0)) {
             this._pendingContent = content;
             if (this._activeNoteId !== null) {
                 this._pendingByNote.set(String(this._activeNoteId), content);
@@ -351,6 +380,24 @@ class AutosaveManager {
         this._pendingContent = noteId === null
             ? null
             : (this._pendingByNote.get(String(noteId)) ?? null);
+    }
+
+    /**
+     * Move buffered edits when a provisional tab identity resolves to an
+     * existing note's canonical stable UUID.
+     */
+    rebindActiveNote(previousId, stableId) {
+        if (!isStableNoteId(stableId) || String(this._activeNoteId) !== String(previousId)) return false;
+        const pending = this._pendingContent ?? this._pendingByNote.get(String(previousId)) ?? null;
+        this._pendingByNote.delete(String(previousId));
+        if (pending !== null) this._pendingByNote.set(String(stableId), pending);
+        this._activeNoteId = stableId;
+        this._pendingContent = pending;
+        if (pending !== null && this._debounceTimer) {
+            clearTimeout(this._debounceTimer);
+            this._debounceTimer = setTimeout(() => this._performSave(), this._interval);
+        }
+        return true;
     }
 
     /**

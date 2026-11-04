@@ -51,7 +51,7 @@ class PDFExporter {
             this.loaded = true;
         } catch (error) {
             console.error('Failed to load html2pdf:', error);
-            throw new Error('PDF export library not available');
+            throw new Error('PDF export library not available', { cause: error });
         }
     }
 

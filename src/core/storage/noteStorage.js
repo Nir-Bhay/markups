@@ -6,6 +6,7 @@
 
 import { db } from './database.js';
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { ensureStableNoteIds } from './noteIdentity.js';
 
 /** Bytes below which a pre-write quota warning is emitted. */
 export const STORAGE_LOW_QUOTA_BYTES = 5 * 1024 * 1024;
@@ -119,6 +120,7 @@ class NoteStorageService {
             const notes = await db.notes
                 .orderBy('updatedAt')
                 .reverse()
+                .filter((note) => note.deletedAt == null)
                 .toArray();
             this.clearLastError();
             return notes;
@@ -133,11 +135,11 @@ class NoteStorageService {
      * @param {number} id - Note ID
      * @returns {Promise<import('./database.js').Note|undefined>}
      */
-    async getNote(id) {
+    async getNote(id, { includeDeleted = false } = {}) {
         try {
             const note = await db.notes.get(id);
             this.clearLastError();
-            return note;
+            return !includeDeleted && note?.deletedAt != null ? undefined : note;
         } catch (error) {
             this._report(error, `get note ${id}`);
             return undefined;
@@ -154,10 +156,68 @@ class NoteStorageService {
             return await db.notes
                 .where('legacyId')
                 .equals(legacyId)
+                .filter((note) => note.deletedAt == null)
                 .first();
         } catch (error) {
             this._report(error, `get note by legacyId ${legacyId}`);
             return undefined;
+        }
+    }
+
+    /**
+     * Find a note by its immutable UUID identity.
+     * @param {string} stableId
+     * @param {{includeDeleted?: boolean}} [options]
+     * @returns {Promise<import('./database.js').Note|undefined>}
+     */
+    async getNoteByStableId(stableId, { includeDeleted = false } = {}) {
+        try {
+            const note = await db.notes.where('stableId').equals(stableId).first();
+            this.clearLastError();
+            return !includeDeleted && note?.deletedAt != null ? undefined : note;
+        } catch (error) {
+            this._report(error, 'get note by stableId');
+            return undefined;
+        }
+    }
+
+    /**
+     * Resolve or create the durable note row associated with one legacy tab.
+     * The transaction plus unique stableId index makes concurrent window
+     * initialization idempotent.
+     * @param {{tabId: string, stableId: string, title: string, content: string, createdAt?: number, updatedAt?: number}} tab
+     * @returns {Promise<import('./database.js').Note|null>}
+     */
+    async ensureTabNote(tab) {
+        try {
+            const legacyId = String(tab.tabId);
+            const stableId = String(tab.stableId);
+            const note = await db.transaction('rw', db.notes, async () => {
+                const byStableId = await db.notes.where('stableId').equals(stableId).first();
+                const existing = byStableId || await db.notes.where('legacyId').equals(legacyId).first();
+                if (existing) return existing;
+
+                const now = Date.now();
+                const data = ensureStableNoteIds([{
+                    title: tab.title || 'Untitled',
+                    content: typeof tab.content === 'string' ? tab.content : '',
+                    tags: [],
+                    category: null,
+                    favorite: false,
+                    legacyId,
+                    stableId,
+                    createdAt: tab.createdAt || now,
+                    updatedAt: tab.updatedAt || now,
+                    deletedAt: null
+                }])[0];
+                const id = await db.notes.add(data);
+                return { ...data, id };
+            });
+            this.clearLastError();
+            return note;
+        } catch (error) {
+            this._report(error, 'ensure tab note');
+            return null;
         }
     }
 
@@ -175,16 +235,18 @@ class NoteStorageService {
     async createNote(noteData) {
         try {
             const now = Date.now();
-            const note = {
+            const note = ensureStableNoteIds([{
                 title: noteData.title || 'Untitled',
                 content: noteData.content || '',
                 tags: noteData.tags || [],
                 category: noteData.category || null,
                 favorite: noteData.favorite || false,
                 legacyId: noteData.legacyId || null,
+                stableId: noteData.stableId,
                 createdAt: noteData.createdAt || now,
-                updatedAt: noteData.updatedAt || now
-            };
+                updatedAt: noteData.updatedAt || now,
+                deletedAt: null
+            }])[0];
 
             const id = await db.notes.add(note);
             this.clearLastError();
@@ -211,6 +273,13 @@ class NoteStorageService {
 
             // Remove id from changes to prevent overwrite
             delete update.id;
+            // Stable identity is assigned at creation and cannot be changed by updates.
+            delete update.stableId;
+            // Trash state is controlled by deleteNote/restoreNote.
+            delete update.deletedAt;
+
+            const current = await db.notes.get(id);
+            if (!current || current.deletedAt != null) return null;
 
             await db.notes.update(id, update);
             this.clearLastError();
@@ -221,6 +290,13 @@ class NoteStorageService {
         }
     }
 
+    /** Update an active note using its immutable UUID identity. */
+    async updateNoteByStableId(stableId, changes) {
+        const note = await this.getNoteByStableId(stableId);
+        if (!note) return null;
+        return this.updateNote(note.id, changes);
+    }
+
     /**
      * Delete a note by ID
      * @param {number} id - Note ID
@@ -228,11 +304,44 @@ class NoteStorageService {
      */
     async deleteNote(id) {
         try {
-            await db.notes.delete(id);
+            const deletedAt = Date.now();
+            await db.transaction('rw', db.notes, db.file_nodes, async () => {
+                const note = await db.notes.get(id);
+                if (!note) return;
+                await db.notes.update(id, { deletedAt });
+                await db.file_nodes.where('noteId').equals(id).modify({ deletedAt, updatedAt: deletedAt });
+            });
             this.clearLastError();
             return true;
         } catch (error) {
             this._report(error, `delete note ${id}`);
+            return false;
+        }
+    }
+
+    /** List soft-deleted notes while preserving their version and cloud-link rows. */
+    async getDeletedNotes() {
+        try {
+            const notes = await db.notes.filter((note) => note.deletedAt != null).toArray();
+            notes.sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0));
+            this.clearLastError();
+            return notes;
+        } catch (error) {
+            this._report(error, 'get deleted notes');
+            return [];
+        }
+    }
+
+    /** Restore a standalone note. File-tree restore should use fileTreeStorage instead. */
+    async restoreNote(id) {
+        try {
+            const note = await db.notes.get(id);
+            if (!note || note.deletedAt == null) return false;
+            await db.notes.update(id, { deletedAt: null, updatedAt: Date.now() });
+            this.clearLastError();
+            return true;
+        } catch (error) {
+            this._report(error, `restore note ${id}`);
             return false;
         }
     }
@@ -253,6 +362,7 @@ class NoteStorageService {
             // Use Dexie filter for flexible search across title + content
             const results = await db.notes
                 .filter(note => {
+                    if (note.deletedAt != null) return false;
                     const titleMatch = note.title.toLowerCase().includes(lowerQuery);
                     const contentMatch = note.content.toLowerCase().includes(lowerQuery);
                     return titleMatch || contentMatch;
@@ -276,6 +386,7 @@ class NoteStorageService {
             return await db.notes
                 .where('tags')
                 .equals(tag)
+                .filter((note) => note.deletedAt == null)
                 .toArray();
         } catch (error) {
             this._report(error, `get notes by tag "${tag}"`);
@@ -293,6 +404,7 @@ class NoteStorageService {
             return await db.notes
                 .where('category')
                 .equals(category)
+                .filter((note) => note.deletedAt == null)
                 .toArray();
         } catch (error) {
             this._report(error, `get notes by category "${category}"`);
@@ -307,8 +419,7 @@ class NoteStorageService {
     async getFavoriteNotes() {
         try {
             return await db.notes
-                .where('favorite')
-                .equals(1) // IndexedDB stores booleans as 0/1
+                .filter((note) => note.favorite === true && note.deletedAt == null)
                 .toArray();
         } catch (error) {
             this._report(error, 'get favorite notes');
@@ -322,7 +433,7 @@ class NoteStorageService {
      */
     async getNotesCount() {
         try {
-            return await db.notes.count();
+            return await db.notes.filter((note) => note.deletedAt == null).count();
         } catch (error) {
             this._report(error, 'count notes');
             return 0;
@@ -349,7 +460,9 @@ class NoteStorageService {
             }
 
             // Fallback: estimate from note content sizes
-            const notes = await this.getAllNotes();
+            // Include Trash: it still occupies local storage until the user
+            // chooses an explicit lifecycle action in a future purge feature.
+            const notes = await db.notes.toArray();
             const used = notes.reduce((sum, note) => {
                 return sum + (note.content?.length || 0) + (note.title?.length || 0);
             }, 0) * 2; // Approximate UTF-16 encoding
@@ -379,16 +492,18 @@ class NoteStorageService {
     async bulkCreateNotes(notesData) {
         try {
             const now = Date.now();
-            const notes = notesData.map(data => ({
+            const notes = ensureStableNoteIds(notesData.map(data => ({
                 title: data.title || 'Untitled',
                 content: data.content || '',
                 tags: data.tags || [],
                 category: data.category || null,
                 favorite: data.favorite || false,
                 legacyId: data.legacyId || null,
+                stableId: data.stableId,
                 createdAt: data.createdAt || now,
-                updatedAt: data.updatedAt || now
-            }));
+                updatedAt: data.updatedAt || now,
+                deletedAt: null
+            })));
 
             // Use Dexie transaction for atomicity
             await db.transaction('rw', db.notes, async () => {

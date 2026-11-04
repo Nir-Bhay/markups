@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
- * Cross-platform wrapper for running Playwright against the modular entry.
- * Avoids Unix-only `MARKUPS_ENTRY=modular playwright test` syntax.
+ * Run the modular entry through the lifecycle-safe Playwright/Vite wrapper.
  */
 
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
-const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-const result = spawnSync(npxCommand, ['playwright', 'test'], {
+const root = fileURLToPath(new URL('../', import.meta.url));
+const result = spawnSync(process.execPath, [join(root, 'scripts', 'run-e2e.mjs'), ...process.argv.slice(2)], {
+    cwd: root,
     stdio: 'inherit',
     shell: false,
     env: {

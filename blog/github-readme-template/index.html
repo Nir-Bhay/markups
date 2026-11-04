@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index,follow">
+  <title>GitHub README Markdown Template for Projects | Markups</title>
+  <meta name="description" content="A practical GitHub README template that explains what a project does, how to run it, where to get help, and how to contribute.">
+  <link rel="canonical" href="https://markups.dev/blog/github-readme-template">
+  <link rel="stylesheet" href="/css/content-pages.css">
+  <link rel="stylesheet" href="/css/editorial.css">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://markups.dev/blog/github-readme-template">
+  <meta property="og:title" content="GitHub README Markdown Template for Projects">
+  <meta property="og:description" content="A practical GitHub README template that explains what a project does, how to run it, where to get help, and how to contribute.">
+  <meta property="og:image" content="https://markups.dev/image/og-image.png">
+  <meta property="og:site_name" content="Markups">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="GitHub README Markdown Template">
+  <meta name="twitter:description" content="A practical GitHub README template that explains what a project does, how to run it, where to get help, and how to contribute.">
+  <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org","@type":"Article",
+    "headline":"GitHub README Markdown Template for Projects",
+    "description":"A practical project README outline with guidance on explaining purpose, setup, usage, support, and contribution.",
+    "datePublished":"2026-11-04","dateModified":"2026-11-04",
+    "author":{"@type":"Organization","name":"Markups Editorial","url":"https://markups.dev/blog"},
+    "publisher":{"@type":"Organization","name":"Markups","url":"https://markups.dev","logo":{"@type":"ImageObject","url":"https://markups.dev/image/og-image.png"}},
+    "mainEntityOfPage":"https://markups.dev/blog/github-readme-template",
+    "articleSection":"Open-source documentation","inLanguage":"en"
+  }
+  </script>
+<link rel="stylesheet" href="/css/journal.css">
+</head>
+<body class="journal-article"><a class="skip-editorial" href="#main-content">Skip to content</a><nav class="editorial-nav" aria-label="Site navigation"><a class="editorial-brand" href="/landing"><span>M</span> Markups<span class="journal-label"> / Journal</span></a><div><a href="/blog">Articles</a><a href="/markdown-guide">Markdown guide</a><a href="/blog/markdown-troubleshooting">Troubleshooting</a><a href="/" class="editorial-editor">Open editor ↗</a></div></nav>
+  <div class="page-shell editorial-shell">
+    <header class="hero">
+      <div class="eyebrow">Markups Blog · Open-source documentation</div>
+      <h1>A practical GitHub README template for a new project</h1>
+      <p class="lede">A repository visitor should be able to tell what the project does, how to try it, and where to find help. A clear README answers those questions before asking someone to inspect the whole codebase.</p>
+      <div class="editorial-meta"><span>Markups Editorial</span><span>November 4, 2026</span><span>4 min read</span></div>
+    </header>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="/">Markups</a></li><li><a href="/blog">Blog</a></li><li aria-current="page">GitHub README</li></ol></nav>
+    <main class="editorial-main" id="main-content">
+      <aside class="reading-sidebar"><p class="eyebrow">IN THIS ARTICLE</p><nav aria-label="Article contents"><a href="#template">Copy the README template</a><a href="#order">Choose a useful order</a><a href="#accuracy">Keep project claims accurate</a><a href="#markdown">Check Markdown portability</a><a href="#sources-heading">Sources</a></nav><a class="sidebar-back" href="/blog">← All articles</a></aside><article class="card article-body"><figure class="workflow-figure"><figcaption>A practical mental model</figcaption><ol><li><span>01</span><strong>Inspect the source</strong></li><li><span>02</span><strong>Check the renderer</strong></li><li><span>03</span><strong>Verify the destination</strong></li></ol><p>Each step answers a different question. Verify the final document in its actual destination.</p></figure>
+        <p><strong>A project README is an entry point, not a complete manual.</strong> Put the project's purpose, a working first-run path, the main usage example, and support or contribution links near the top. Move detailed design notes into a docs folder and link them from the README.</p>
+        
+
+        <h2 id="template">Copy the README template</h2>
+        <p>Keep only sections that apply. Replace every placeholder and test each command or link before publishing.</p>
+        <pre><code># Project name
+
+One sentence: what this project does and who it helps.
+
+## Why this project?
+Describe the problem and what makes this repository useful.
+
+## Features
+- List capabilities that exist in the current release.
+- Link to detailed docs for complex behavior.
+
+## Requirements
+- Runtime and version
+- Required service or account, if any
+
+## Quick start
+1. Install the actual dependencies.
+2. Run the tested command.
+3. Open the expected URL or output file.
+
+## Usage
+Show the smallest useful example and explain its expected result.
+
+## Configuration
+List supported settings. Never paste real credentials here.
+
+## Limitations
+Describe known constraints readers should understand before use.
+
+## Contributing
+Explain how to report issues, propose a change, and run checks.
+
+## License
+Name the license and link to the repository's license file.</code></pre>
+
+        <h2 id="order">Choose a useful order</h2>
+        <p>Lead with the outcome and a fast way to try it. A visitor should not have to scroll past a long changelog, a wall of badges, or a contributor policy before learning what the project is. Consider this order:</p>
+        <ol>
+          <li><strong>Purpose:</strong> a direct description in ordinary language.</li>
+          <li><strong>First useful action:</strong> install, open, or run one tested example.</li>
+          <li><strong>What it can do:</strong> a short list backed by the current code or release.</li>
+          <li><strong>Next steps:</strong> links to full docs, examples, API reference, or roadmap.</li>
+          <li><strong>Trust and participation:</strong> limitations, license, support, and contribution guidance.</li>
+        </ol>
+        <p>GitHub surfaces a README from the repository's root, <code>.github</code>, or <code>docs</code> directory, with a documented precedence when several exist. GitHub also renders Markdown with its own supported syntax. If the README needs to work in other viewers, avoid relying on extensions that those renderers may not implement.</p>
+
+        <h2 id="accuracy">Keep project claims accurate</h2>
+        <ul>
+          <li>Use badges only when the status behind them is current and the badge destination is real.</li>
+          <li>Do not promise an install command, supported platform, performance result, or compatibility level that you have not tested.</li>
+          <li>Label beta features and known limitations where a new user will see them.</li>
+          <li>Use a screenshot only when it shows the current interface and has useful alternative text.</li>
+          <li>Keep setup steps synchronized with package scripts, release files, and CI.</li>
+        </ul>
+        <p>If a README contains a complicated workflow, link to a full guide and keep a short happy path here. A smaller verified quick start is more useful than a long list of stale commands.</p>
+
+        <h2 id="markdown">Check Markdown portability</h2>
+        <p>Basic headings, paragraphs, lists, links, and fenced code are widely supported. Tables, task lists, alerts, footnotes, math, and diagrams can be implementation-specific. Preview the file in the place where readers will use it. For a syntax-by-syntax explanation, see the <a href="/markdown-guide">Markups Markdown guide</a> and <a href="/seo/compatibility-lab">Compatibility Lab</a>.</p>
+        <p>GitHub can generate a navigation table of contents from headings in its rendered Markdown view. If readers use another platform, an explicit linked table of contents may still be appropriate. Test internal anchors because heading slug rules differ among renderers.</p>
+
+        <aside class="editorial-note"><strong>Research note:</strong> this article was prepared with AI assistance and checked against the linked GitHub documentation on November 4, 2026. The template is illustrative; repository commands must be replaced with commands tested for the project.</aside>
+        <section class="article-sources" aria-labelledby="sources-heading"><h2 id="sources-heading">Sources</h2><ul>
+          <li><a href="https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes" target="_blank" rel="noopener noreferrer">GitHub Docs: About the repository README file</a> — describes the README's role and where GitHub surfaces it.</li>
+          <li><a href="https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax" target="_blank" rel="noopener noreferrer">GitHub Docs: Basic writing and formatting syntax</a> — explains syntax as GitHub renders it.</li>
+        </ul></section>
+        <p class="quiet-tool-link">Want to inspect a small example? <a href="/">Try it in a Markdown preview</a>, then verify your publishing destination.</p>
+        <div class="editorial-links"><a href="/markdown-guide">Full Markdown guide</a><a href="/seo/cheatsheet">Markdown cheatsheet</a><a href="/blog">All Markups articles</a></div>
+      </article>
+    </main>
+    <footer class="footer"><p>More practical examples in the <a href="/blog">Markups Blog</a>.</p></footer>
+  </div>
+<script src="/js/editorial.js" defer></script><script type="module" src="/src/editorialTelemetry.js"></script>
+</body>
+</html>

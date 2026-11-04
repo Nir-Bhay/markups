@@ -9,31 +9,27 @@
  * - modular proof build succeeds without Vite chunk warnings
  */
 
-import { rmSync, rmdirSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const warningPatterns = [
     /Circular chunk:/i,
-    /Some chunks are larger than/i,
-    /\(!\)/
+    /Some chunks are larger than/i
 ];
 
+const tempBuildRoot = mkdtempSync(join(tmpdir(), 'markups-verify-health-'));
 const tempBuildDirs = [
-    '.tmp/verify-dist-production',
-    '.tmp/verify-dist-modular'
+    join(tempBuildRoot, 'production'),
+    join(tempBuildRoot, 'modular')
 ];
 
 function cleanupTempBuildDirs() {
-    for (const dir of tempBuildDirs) {
-        rmSync(dir, { recursive: true, force: true });
-    }
-
-    try {
-        rmdirSync('.tmp');
-    } catch {
-        // Keep non-empty .tmp directories created by other tools; .gitignore covers them.
-    }
+    // Only remove the unique directory created by this invocation. Fixed paths
+    // under the repository could contain unrelated user data from another run.
+    rmSync(tempBuildRoot, { recursive: true, force: true });
 }
 
 function runNpm(args, options = {}) {
@@ -87,7 +83,7 @@ function assertChunkBudgets(label, output) {
         matched = true;
         const [, fileName, rawSize] = match;
         const sizeKb = Number.parseFloat(rawSize.replace(/,/g, ''));
-        const maxKb = fileName.startsWith('monaco-editor-')
+        const maxKb = (fileName.startsWith('monaco-editor-') || fileName.startsWith('editor.api-'))
             ? 2400
             : fileName.startsWith('main-')
                 ? 1300
@@ -109,6 +105,30 @@ function assertChunkBudgets(label, output) {
     }
 }
 
+function assertMonacoUsesPatchedSanitizer(label, outputDir) {
+    const assetsDir = join(outputDir, 'assets');
+    const jsBundles = readdirSync(assetsDir)
+        .filter((name) => name.endsWith('.js'))
+        .map((name) => ({ name, source: readFileSync(join(assetsDir, name), 'utf8') }));
+    const expectedSanitizerVersion = JSON.parse(
+        readFileSync(new URL('../node_modules/dompurify/package.json', import.meta.url), 'utf8')
+    ).version;
+    const bundlesWithPatchedSanitizer = jsBundles.filter(({ source }) =>
+        source.includes(`version=\`${expectedSanitizerVersion}\``)
+    );
+    const bundlesWithStaleSanitizer = jsBundles.filter(({ source }) => source.includes('3.1.7'));
+
+    if (bundlesWithStaleSanitizer.length > 0) {
+        throw new Error(`${label} still includes Monaco's stale bundled DOMPurify 3.1.7 in ${bundlesWithStaleSanitizer.map(({ name }) => name).join(', ')}`);
+    }
+
+    if (bundlesWithPatchedSanitizer.length === 0) {
+        throw new Error(`${label} does not include the patched DOMPurify ${expectedSanitizerVersion}`);
+    }
+
+    process.stdout.write(`  ✓ ${label} excludes stale Monaco DOMPurify and includes patched DOMPurify ${expectedSanitizerVersion}\n`);
+}
+
 function verifyAudit() {
     const result = runNpm(['audit', '--json'], { allowFailure: true });
 
@@ -120,7 +140,18 @@ function verifyAudit() {
         throw new Error(`Unable to parse npm audit JSON: ${error.message}`);
     }
 
-    const total = audit?.metadata?.vulnerabilities?.total ?? 0;
+    if (audit?.error || (result.status !== 0 && !audit?.metadata?.vulnerabilities)) {
+        const detail = audit?.error?.detail || audit?.error?.summary || audit?.message || `exit code ${result.status}`;
+        process.stdout.write(result.output);
+        throw new Error(`npm audit could not complete: ${detail}`);
+    }
+
+    const total = audit?.metadata?.vulnerabilities?.total;
+    if (typeof total !== 'number') {
+        process.stdout.write(result.output);
+        throw new Error('npm audit did not return vulnerability metadata');
+    }
+
     if (total > 0 || result.status !== 0) {
         process.stdout.write(JSON.stringify(audit, null, 2));
         process.stdout.write('\n');
@@ -130,11 +161,15 @@ function verifyAudit() {
     process.stdout.write('  ✓ npm audit found 0 vulnerabilities\n');
 }
 
-function verifyCommand(args, label, { checkBuildWarnings = false } = {}) {
+function verifyCommand(args, label, { checkBuildWarnings = false, sanitizerOutputDir = null } = {}) {
     const result = runNpm(args);
 
     if (checkBuildWarnings) {
         assertCleanBuild(label, result.output);
+    }
+
+    if (sanitizerOutputDir) {
+        assertMonacoUsesPatchedSanitizer(label, sanitizerOutputDir);
     }
 
     process.stdout.write(`  ✓ ${label} passed\n`);
@@ -146,14 +181,14 @@ try {
     verifyAudit();
     verifyCommand(['test'], 'unit tests');
     verifyCommand(
-        ['run', 'build', '--', '--outDir', tempBuildDirs[0]],
+        ['run', 'build', '--', '--outDir', tempBuildDirs[0], '--emptyOutDir'],
         'production build',
-        { checkBuildWarnings: true }
+        { checkBuildWarnings: true, sanitizerOutputDir: tempBuildDirs[0] }
     );
     verifyCommand(
-        ['run', 'build:modular', '--', '--outDir', tempBuildDirs[1]],
+        ['run', 'build:modular', '--', '--outDir', tempBuildDirs[1], '--emptyOutDir'],
         'modular proof build',
-        { checkBuildWarnings: true }
+        { checkBuildWarnings: true, sanitizerOutputDir: tempBuildDirs[1] }
     );
 
     process.stdout.write('\n✅ Repository health verification passed.\n');

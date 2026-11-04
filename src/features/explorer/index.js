@@ -32,6 +32,7 @@ export class ExplorerManager {
         this.drawer = document.getElementById('explorer-drawer');
         this.toggleBtn = document.getElementById('explorer-toggle-btn');
         this.newFileBtn = document.getElementById('explorer-new-file-btn');
+        this.trashBtn = document.getElementById('explorer-trash-btn');
         this.newFolderBtn = document.getElementById('explorer-new-folder-btn');
         this.resizeHandle = document.getElementById('explorer-resize-handle');
         this.filterInput = document.getElementById('explorer-filter-input');
@@ -44,6 +45,7 @@ export class ExplorerManager {
             const targetFolderId = event.shiftKey ? this.getSelectedFolderId() : 'root';
             this.config.onCreateFolder?.(targetFolderId);
         };
+        this._boundTrash = () => this.config.onOpenTrash?.();
         this._boundFilterInput = () => {
             this.filterQuery = this.filterInput.value.trim().toLowerCase();
             this.render();
@@ -72,6 +74,7 @@ export class ExplorerManager {
         this.toggleBtn?.addEventListener('click', this._boundToggle);
         this.newFileBtn?.addEventListener('click', this._boundNewFile);
         this.newFolderBtn?.addEventListener('click', this._boundNewFolder);
+        this.trashBtn?.addEventListener('click', this._boundTrash);
         this.setFolderButtonShiftState(false);
         this.resizeHandle?.addEventListener('mousedown', (event) => this.startResize(event));
 
@@ -104,6 +107,7 @@ export class ExplorerManager {
         this.toggleBtn?.removeEventListener('click', this._boundToggle);
         this.newFileBtn?.removeEventListener('click', this._boundNewFile);
         this.newFolderBtn?.removeEventListener('click', this._boundNewFolder);
+        this.trashBtn?.removeEventListener('click', this._boundTrash);
         this.filterInput?.removeEventListener('input', this._boundFilterInput);
         this.sortSelect?.removeEventListener('change', this._boundSortChange);
         this.container?.removeEventListener('click', this._boundTreeClick);
@@ -125,6 +129,7 @@ export class ExplorerManager {
         this.toggleBtn = null;
         this.newFileBtn = null;
         this.newFolderBtn = null;
+        this.trashBtn = null;
         this.resizeHandle = null;
         this.filterInput = null;
         this.sortSelect = null;
@@ -136,6 +141,7 @@ export class ExplorerManager {
         this._boundMouseup = null;
         this._boundKeydown = null;
         this._boundKeyup = null;
+        this._boundTrash = null;
         this._boundDocumentClick = null;
         this._boundOverflowOutsideClick = null;
         this._boundOverflowResize = null;

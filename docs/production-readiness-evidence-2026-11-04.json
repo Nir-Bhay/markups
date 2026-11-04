@@ -1,0 +1,39 @@
+{
+  "date_ist": "2026-11-04",
+  "verdict": "NO_GO",
+  "unit_tests": {
+    "files": 105,
+    "passed": 724,
+    "runtime": "Node 25.2.0"
+  },
+  "focused_supported_runtime": {
+    "files": 3,
+    "passed": 25,
+    "runtime": "Node 24.22.2"
+  },
+  "lint": "passed",
+  "landing_types": "passed",
+  "production_build": "compiled",
+  "modular_build": "compiled",
+  "npm_audit_all_known_vulnerabilities": 0,
+  "source_sitemap_urls": 34,
+  "live_sitemap_urls": 10,
+  "live_statuses": {
+    "200": 11,
+    "404": 23
+  },
+  "built_runtime": {
+    "runtime": "Node 24.22.2",
+    "browser": "Edge fresh session",
+    "uncaught_error": "ReferenceError: Prism is not defined",
+    "stack": "assets/highlight-vendor-Bdip0EZY.js:2:512",
+    "editorInitialized": false,
+    "previewText": "empty"
+  },
+  "isolated_dev_preview": {
+    "passed_suites": 13,
+    "checks_passed": 52,
+    "runtime": "Node 24.22.2"
+  },
+  "browser_suite_scope": "Diagnostic full dev run not green; contaminated by dependency invalidation and obsolete landing selectors. Built feature suite stopped after reproducing common startup blocker. No full browser pass claimed."
+}

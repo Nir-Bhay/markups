@@ -291,6 +291,10 @@ class AIService {
             throw new Error('No API key configured. Please add your API key in AI Settings.');
         }
 
+        if (!isAllowedEndpoint(config.endpoint, config.provider)) {
+            throw new Error('Use an HTTPS endpoint, or a localhost endpoint for local models.');
+        }
+
         this.abortController = new AbortController();
 
         try {
@@ -463,6 +467,9 @@ class AIService {
         try {
             return await fetch(resolveAiFetchUrl(config.endpoint, '/chat/completions'), {
                 method: 'POST',
+                redirect: 'error',
+                credentials: 'omit',
+                referrerPolicy: 'no-referrer',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${config.apiKey}`
@@ -501,6 +508,9 @@ class AIService {
         try {
             return await fetch(url, {
                 method: 'POST',
+                redirect: 'error',
+                credentials: 'omit',
+                referrerPolicy: 'no-referrer',
                 headers: {
                     'Content-Type': 'application/json',
                     'x-api-key': config.apiKey,
@@ -538,6 +548,9 @@ class AIService {
         try {
             return await fetch(url, {
                 method: 'POST',
+                redirect: 'error',
+                credentials: 'omit',
+                referrerPolicy: 'no-referrer',
                 headers: {
                     'Content-Type': 'application/json',
                     'x-goog-api-key': config.apiKey
@@ -931,16 +944,17 @@ export function resolveAiFetchUrl(endpoint, suffix = '/chat/completions') {
  * HTTPS is required for remote providers; plain HTTP is reserved for local
  * Ollama-style endpoints so keys cannot be sent over the network in cleartext.
  */
-export function isAllowedEndpoint(url, provider = 'custom') {
+export function isAllowedEndpoint(url, _provider = 'custom') {
     const value = String(url || '').trim();
     if (!value) return true;
 
     try {
         const parsed = new URL(value);
+        if (parsed.username || parsed.password || parsed.search || parsed.hash) return false;
         if (parsed.protocol === 'https:') return true;
         if (parsed.protocol !== 'http:') return false;
-        return provider === 'ollama'
-            || ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname);
+        // A provider label must not make a remote cleartext endpoint safe.
+        return ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname);
     } catch {
         return false;
     }

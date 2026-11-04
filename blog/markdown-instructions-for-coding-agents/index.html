@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index,follow">
+  <title>Write Useful AGENTS.md Instructions in Markdown | Markups</title>
+  <meta name="description" content="A practical AGENTS.md template for coding agents: document project context, useful commands, conventions, and boundaries without bloating instructions.">
+  <link rel="canonical" href="https://markups.dev/blog/markdown-instructions-for-coding-agents">
+  <link rel="stylesheet" href="/css/content-pages.css">
+  <link rel="stylesheet" href="/css/editorial.css">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://markups.dev/blog/markdown-instructions-for-coding-agents">
+  <meta property="og:title" content="Write Useful AGENTS.md Instructions in Markdown">
+  <meta property="og:description" content="A practical AGENTS.md template for coding agents: document project context, useful commands, conventions, and boundaries without bloating instructions.">
+  <meta property="og:image" content="https://markups.dev/image/og-image.png">
+  <meta property="og:site_name" content="Markups">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Write Useful AGENTS.md Instructions in Markdown">
+  <meta name="twitter:description" content="A practical AGENTS.md template for coding agents: document project context, useful commands, conventions, and boundaries without bloating instructions.">
+  <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Write Useful AGENTS.md Instructions in Markdown",
+    "description": "A practical guide and template for writing maintainable project instructions for coding agents.",
+    "datePublished": "2026-11-04",
+    "dateModified": "2026-11-04",
+    "author": {"@type":"Organization","name":"Markups Editorial","url":"https://markups.dev/blog"},
+    "publisher": {"@type":"Organization","name":"Markups","url":"https://markups.dev","logo":{"@type":"ImageObject","url":"https://markups.dev/image/og-image.png"}},
+    "mainEntityOfPage": "https://markups.dev/blog/markdown-instructions-for-coding-agents",
+    "articleSection": "Coding agents",
+    "inLanguage": "en"
+  }
+  </script>
+<link rel="stylesheet" href="/css/journal.css">
+</head>
+<body class="journal-article"><a class="skip-editorial" href="#main-content">Skip to content</a><nav class="editorial-nav" aria-label="Site navigation"><a class="editorial-brand" href="/landing"><span>M</span> Markups<span class="journal-label"> / Journal</span></a><div><a href="/blog">Articles</a><a href="/markdown-guide">Markdown guide</a><a href="/blog/markdown-troubleshooting">Troubleshooting</a><a href="/" class="editorial-editor">Open editor ↗</a></div></nav>
+  <div class="page-shell editorial-shell">
+    <header class="hero">
+      <div class="eyebrow">Markups Blog · Coding agents</div>
+      <h1>Write useful AGENTS.md instructions in Markdown</h1>
+      <p class="lede">A project instruction file works best when it tells an agent what matters in this repository, where to look, and how to verify a change. It should be short enough to stay current.</p>
+      <div class="editorial-meta"><span>Markups Editorial</span><span>November 4, 2026</span><span>4 min read</span></div>
+    </header>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="/">Markups</a></li><li><a href="/blog">Blog</a></li><li aria-current="page">Coding-agent instructions</li></ol></nav>
+    <main class="editorial-main" id="main-content">
+      <aside class="reading-sidebar"><p class="eyebrow">IN THIS ARTICLE</p><nav aria-label="Article contents"><a href="#what-it-does">What an instruction file does</a><a href="#keep-it-focused">Keep it focused and current</a><a href="#template">A starter AGENTS.md template</a><a href="#verify">Check that it helps</a><a href="#sources-heading">Sources</a></nav><a class="sidebar-back" href="/blog">← All articles</a></aside><article class="card article-body"><figure class="workflow-figure"><figcaption>A practical mental model</figcaption><ol><li><span>01</span><strong>Project context</strong></li><li><span>02</span><strong>Clear instructions</strong></li><li><span>03</span><strong>Review the result</strong></li></ol><p>Each step answers a different question. Verify the final document in its actual destination.</p></figure>
+        <p><strong>Short answer:</strong> use <code>AGENTS.md</code> as a small, task-aware map of your project. Describe the repository, important conventions, commands that actually work, and boundaries agents must respect. Link to deeper documentation when a task needs it. A Markdown file is only useful when the coding tool discovers and reads it.</p>
+
+        
+
+        <h2 id="what-it-does">What an instruction file does</h2>
+        <p>Files such as <code>AGENTS.md</code> hold durable repository context: what the project is, how its parts fit together, which commands verify work, and which constraints are easy to miss. Some tools also support their own instruction files or referenced Markdown. The names and loading rules differ between products, so confirm the current documentation for each agent instead of assuming that every tool reads every filename.</p>
+        <p>For example, OpenAI describes <code>AGENTS.md</code> as repository guidance for Codex, while GitHub documents support for <code>AGENTS.md</code> and <code>.github/copilot-instructions.md</code> in Copilot CLI. Their details are product-specific. The shared idea is simpler: put stable project knowledge in a place the tool actually loads, and keep the user's current task in the prompt.</p>
+
+        <h2 id="keep-it-focused">Keep it focused and current</h2>
+        <p>Instructions can become counterproductive when they repeat entire architecture guides, insist on reading unrelated files for every task, or list commands nobody has run recently. A useful file points to a source of truth and says when that source matters. For a small typo, an agent should not need to load database and deployment manuals; for a storage change, it should.</p>
+        <ul>
+          <li><strong>Prefer facts over slogans.</strong> “Run <code>npm run typecheck:landing</code> after changing landing TypeScript” is more actionable than “write high-quality code.”</li>
+          <li><strong>Name the scope.</strong> Say which files define production behavior and which route, package, or test covers the feature.</li>
+          <li><strong>State real boundaries.</strong> Mention data loss, secrets, production, or compatibility risks that are specific to this repository.</li>
+          <li><strong>Link selectively.</strong> Point to a deeper guide for the matching task instead of copying it into the instruction file.</li>
+          <li><strong>Review it after the project changes.</strong> Remove old test counts, dead paths, retired scripts, and temporary restrictions.</li>
+        </ul>
+
+        <h2 id="template">A starter AGENTS.md template</h2>
+        <p>Copy this outline and replace each placeholder with verified repository details. Delete sections that do not help the next contributor.</p>
+        <pre><code># Project instructions
+
+## Purpose
+One or two sentences describing the product and its main runtime.
+
+## Where to look
+- [Feature or route]: path/to/source and its relevant test.
+- [Storage or API]: path/to/source; read docs/storage.md before changing it.
+
+## Working conventions
+- Keep changes within the requested feature.
+- Follow the nearest existing implementation pattern.
+- Do not place secrets, credentials, or user content in source or logs.
+
+## Verification
+- Install: npm ci
+- Focused check: npm run typecheck
+- Full check: npm test
+
+## Boundaries
+- Never deploy or change production settings from this repository task.
+- Preserve existing user data and migration compatibility.</code></pre>
+        <p>A nested instruction file can give narrower guidance for one directory when the agent supports that behavior. Keep overlapping rules consistent: a child instruction should refine the parent, not quietly contradict it.</p>
+
+        <h2 id="verify">Check that it helps</h2>
+        <ol>
+          <li>Open the target coding tool and confirm the file's discovery rules.</li>
+          <li>Ask it to make a small, reversible change in the relevant folder.</li>
+          <li>Check that it uses the right source files and verification command without loading unrelated manuals.</li>
+          <li>Review the diff yourself. Instructions guide work; they do not replace code review or tests.</li>
+        </ol>
+        <p>Do not put API keys, credentials, private customer information, or instructions to expose secrets in an agent file. Repository guidance can be shared with tools and contributors, so treat it as ordinary project documentation.</p>
+
+        <aside class="editorial-note"><strong>Research note:</strong> this article was prepared with AI assistance and checked against the linked product documentation on November 4, 2026. Tool behavior changes; revisit the original documentation when configuring a new agent.</aside>
+
+        <section class="article-sources" aria-labelledby="sources-heading">
+          <h2 id="sources-heading">Sources</h2>
+          <ul>
+            <li><a href="https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra" target="_blank" rel="noopener noreferrer">OpenAI Developers: Rethinking skills and prompts for GPT-6 Astra</a> — discusses repository instructions, task prompts, and keeping context focused.</li>
+            <li><a href="https://developers.openai.com/cookbook/examples/gpt-5/codex_prompting_guide" target="_blank" rel="noopener noreferrer">OpenAI Cookbook: Codex Prompting Guide</a> — explains how Codex discovers repository instruction files.</li>
+            <li><a href="https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions" target="_blank" rel="noopener noreferrer">GitHub Docs: Add custom instructions for Copilot CLI</a> — documents supported instruction-file locations.</li>
+          </ul>
+        </section>
+
+        <p class="quiet-tool-link">Want to inspect a small example? <a href="/">Try it in a Markdown preview</a>, then verify your publishing destination.</p>
+        <div class="editorial-links"><a href="/markdown-guide">Full Markdown guide</a><a href="/blog/architecture-decision-records-markdown-template">Architecture decision records</a><a href="/blog">All Markups articles</a></div>
+      </article>
+    </main>
+    <footer class="footer"><p>Read more in the <a href="/markdown-guide">Markdown guide</a><a href="/blog/markdown-troubleshooting">Troubleshooting</a> or return to the <a href="/blog">Markups Blog</a>.</p></footer>
+  </div>
+<script src="/js/editorial.js" defer></script><script type="module" src="/src/editorialTelemetry.js"></script>
+</body>
+</html>

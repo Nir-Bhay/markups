@@ -3,10 +3,9 @@
  * Handles image upload via button click and drag & drop
  * @module features/image-upload
  *
- * Note: Production entry (`src/main.js`) uses its own `imageStore` with
- * `markups-img:` refs, LRU soft-cap, tab-close cleanup, and blob URL revoke.
- * This module (used by deferred `app.js`) inserts data URLs directly into
- * markdown — keep inserts small / respect MAX_IMAGE_SIZE_MB to limit memory.
+ * The modular entry stores validated images in IndexedDB and inserts durable
+ * markups-img references. app.js resolves those references for preview and
+ * converts them to portable data URLs only at export/share boundaries.
  *
  * Security (Phase 4): SVG is sanitized via DOMPurify; raster images are
  * checked against magic-byte signatures before accept.
@@ -16,6 +15,7 @@ import { eventBus, EVENTS } from '../../utils/eventBus.js';
 import { editorService } from '../../core/editor/index.js';
 import { APP_CONFIG } from '../../config/app.config.js';
 import { sanitizeMarkdownAlt } from '../../utils/sanitize.js';
+import { localMediaStore } from '../../core/storage/mediaStore.js';
 import {
     readFileAsText,
     readFileAsArrayBuffer,
@@ -83,6 +83,7 @@ class ImageUploadManager {
         // Setup file input change
         if (this.fileInput) {
             this.fileInput.addEventListener('change', (e) => this._handleFileSelect(e));
+            this.fileInput.dataset.ready = 'true';
         }
 
         // Setup drag and drop
@@ -212,7 +213,11 @@ class ImageUploadManager {
                 }
             }
 
-            this._insertImage(file.name, dataUrl);
+            // Persist the validated image before inserting its reference. A
+            // storage failure must not leave an unrecoverable image in a note.
+            const imageId = `img_${globalThis.crypto.randomUUID().replaceAll('-', '_')}`;
+            await localMediaStore.putDataUrl(imageId, dataUrl);
+            this._insertImage(file.name, `markups-img:${imageId}`);
         } catch (err) {
             console.error('Image upload failed:', err);
             eventBus.emit(EVENTS.TOAST_SHOW, {
