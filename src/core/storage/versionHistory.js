@@ -1,89 +1,86 @@
-/**
- * Version history — throttled snapshots of note content into `note_versions`
- * with retention cap and restore. Best-effort: failures never break saves.
- * @module core/storage/versionHistory
- */
-
+/** Note-scoped local snapshots. Legacy unscoped history is never reassigned. */
 import { db } from './database.js';
 
 export const VERSION_HISTORY_THROTTLE_MS = 5 * 60 * 1000;
 export const VERSION_HISTORY_MAX_PER_NOTE = 50;
+const lastSnapshotAt = new Map();
 
-/** @type {Map<string, number>} Last snapshot timestamp per note */
-const _lastSnapshotAt = new Map();
+function noteIdOf(value) {
+    const id = Number(value);
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
 
-/**
- * Record a content snapshot for a note (throttled, retention-capped).
- * @param {number} noteId
- * @param {string} content
- * @param {{ throttleMs?: number, maxVersions?: number, force?: boolean }} [options]
- * @returns {Promise<number|null>} Version row id, or null when throttled/skipped
- */
-export async function recordVersion(noteId, content, options = {}) {
+async function writeSnapshot(noteId, content, options = {}) {
+    const id = noteIdOf(noteId);
+    if (id === null || typeof content !== 'string') throw new Error('Invalid snapshot');
+    const now = Date.now();
     const throttleMs = options.throttleMs ?? VERSION_HISTORY_THROTTLE_MS;
-    const maxVersions = options.maxVersions ?? VERSION_HISTORY_MAX_PER_NOTE;
+    if (!options.force && lastSnapshotAt.has(id) && now - lastSnapshotAt.get(id) < throttleMs) {
+        return { id: null, created: false };
+    }
+    const maxVersions = Math.max(1, Math.min(500, options.maxVersions ?? VERSION_HISTORY_MAX_PER_NOTE));
+    const result = await db.transaction('rw', db.notes, db.note_versions, async () => {
+        if (!await db.notes.get(id)) throw new Error('Document no longer exists');
+        const versions = await db.note_versions.where('noteId').equals(id).toArray();
+        versions.sort((a, b) => b.createdAt - a.createdAt || b.id - a.id);
+        if (versions[0]?.content === content) return { id: versions[0].id, created: false };
+        const snapshotId = await db.note_versions.add({ noteId: id, content, createdAt: now });
+        const stale = versions.slice(maxVersions - 1).map(version => version.id);
+        if (stale.length) await db.note_versions.bulkDelete(stale);
+        return { id: snapshotId, created: true };
+    });
+    if (result.created) lastSnapshotAt.set(id, now);
+    return result;
+}
+
+/** Returns a new snapshot ID, or null for duplicate/throttle/storage failure. */
+export async function recordVersion(noteId, content, options = {}) {
     try {
-        const numericId = typeof noteId === 'number' ? noteId : parseInt(noteId, 10);
-        if (isNaN(numericId) || typeof content !== 'string') return null;
-        const now = Date.now();
-        if (!options.force) {
-            const last = _lastSnapshotAt.get(String(numericId)) ?? 0;
-            if (now - last < throttleMs) return null;
-        }
-        const latest = await db.note_versions
-            .where('noteId').equals(numericId)
-            .reverse().sortBy('createdAt');
-        if (latest.length > 0 && latest[0].content === content) return null;
-        const id = await db.note_versions.add({ noteId: numericId, content, createdAt: now });
-        _lastSnapshotAt.set(String(numericId), now);
-        // Retention: keep newest `maxVersions` rows.
-        const all = await db.note_versions.where('noteId').equals(numericId).sortBy('createdAt');
-        if (all.length > maxVersions) {
-            const stale = all.slice(0, all.length - maxVersions).map(v => v.id);
-            await db.note_versions.bulkDelete(stale);
-        }
-        return id;
+        const result = await writeSnapshot(noteId, content, options);
+        return result.created ? result.id : null;
     } catch {
         return null;
     }
 }
 
-/**
- * List snapshots for a note, newest first.
- * @param {number} noteId
- * @returns {Promise<Array<{ id: number, noteId: number, content: string, createdAt: number }>>}
- */
-export async function listVersions(noteId) {
+export async function listVersions(noteId, { throwOnError = false } = {}) {
+    const id = noteIdOf(noteId);
+    if (id === null) return [];
     try {
-        const numericId = typeof noteId === 'number' ? noteId : parseInt(noteId, 10);
-        if (isNaN(numericId)) return [];
-        return await db.note_versions.where('noteId').equals(numericId).reverse().sortBy('createdAt');
-    } catch {
+        const versions = await db.note_versions.where('noteId').equals(id).toArray();
+        return versions.sort((a, b) => b.createdAt - a.createdAt || b.id - a.id);
+    } catch (error) {
+        if (throwOnError) throw error;
         return [];
     }
 }
 
 /**
- * Restore a snapshot's content into its note. Returns the restored content.
- * @param {number} noteId
- * @param {number} versionId
- * @param {{ noteStorage }} deps - noteStorage to avoid a static import cycle
- * @returns {Promise<string|null>}
+ * Preserve the current (including unsaved) text before confirmed note restoration.
+ * canRestore is checked after asynchronous reads/backups so a stale UI can abort.
+ * Captured note IDs, rather than the current tab, always determine the write target.
  */
-export async function restoreVersion(noteId, versionId, { noteStorage }) {
+export async function restoreVersion(noteId, versionId, { noteStorage, currentContent, canRestore = () => true }) {
+    const id = noteIdOf(noteId);
+    const snapshotId = noteIdOf(versionId);
+    if (id === null || snapshotId === null) return null;
     try {
-        const version = await db.note_versions.get(versionId);
-        if (!version || version.noteId !== Number(noteId)) return null;
-        const updatedNote = await noteStorage.updateNote(Number(noteId), { content: version.content });
-        if (!updatedNote) return null;
-        await recordVersion(Number(noteId), version.content, { force: true });
+        const version = await db.note_versions.get(snapshotId);
+        if (!version || version.noteId !== id || !canRestore()) return null;
+        const currentNote = await noteStorage.getNote(id);
+        if (!currentNote || !canRestore()) return null;
+        const backup = typeof currentContent === 'string' ? currentContent : currentNote.content;
+        // Unlike recordVersion's best-effort API, a failed backup blocks restore.
+        const savedBackup = await writeSnapshot(id, backup, { force: true });
+        if (!savedBackup.id || !canRestore()) return null;
+        const updatedNote = await noteStorage.updateNote(id, { content: version.content });
+        if (!updatedNote || updatedNote.content !== version.content) return null;
         return version.content;
     } catch {
         return null;
     }
 }
 
-/** Test-only: reset throttle state. */
 export function _resetVersionThrottle() {
-    _lastSnapshotAt.clear();
+    lastSnapshotAt.clear();
 }

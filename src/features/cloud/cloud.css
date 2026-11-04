@@ -1,0 +1,97 @@
+.cloud-account-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10040;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: rgb(10 14 24 / 62%);
+    backdrop-filter: blur(3px);
+}
+
+.cloud-account-overlay[hidden],
+.cloud-account-panel [hidden] { display: none !important; }
+
+.cloud-account-panel {
+    width: min(760px, 100%);
+    max-height: min(88vh, 900px);
+    overflow: auto;
+    padding: 22px;
+    color: var(--text-primary, #202431);
+    background: var(--surface-primary, #fff);
+    border: 1px solid var(--border-color, #d8dbe3);
+    border-radius: 16px;
+    box-shadow: 0 24px 80px rgb(0 0 0 / 28%);
+}
+
+.cloud-account-header,
+.cloud-user-row,
+.cloud-list-head,
+.cloud-actions,
+.cloud-account-panel .cloud-document-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cloud-account-header,
+.cloud-user-row,
+.cloud-list-head { justify-content: space-between; }
+
+.cloud-account-header h2 { margin: 0; font-size: 1.3rem; }
+.cloud-account-header p,
+.cloud-card p,
+.cloud-danger p { margin: 5px 0 12px; color: var(--text-secondary, #61697a); font-size: .91rem; line-height: 1.45; }
+.cloud-account-header > button { font-size: 1.6rem; line-height: 1; }
+.cloud-account-panel button,
+.cloud-account-panel .cloud-button {
+    min-height: 38px;
+    padding: 8px 12px;
+    color: inherit;
+    background: var(--surface-secondary, #f5f6f9);
+    border: 1px solid var(--border-color, #d8dbe3);
+    border-radius: 8px;
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+.cloud-account-panel button:disabled { opacity: .5; cursor: not-allowed; }
+.cloud-account-panel button:focus-visible,
+.cloud-account-panel input:focus-visible,
+.cloud-account-panel select:focus-visible,
+.cloud-account-panel a:focus-visible { outline: 3px solid #6574f7; outline-offset: 2px; }
+.cloud-account-panel .cloud-primary { color: white; background: #5865f2; border-color: #5865f2; }
+.cloud-account-panel .cloud-text-button { padding-inline: 0; border: 0; background: transparent; color: #4c59db; }
+.cloud-account-status { min-height: 1.35em; margin: 14px 0; font-size: .92rem; }
+.cloud-account-status[data-kind="error"] { color: #b42318; }
+.cloud-account-status[data-kind="success"] { color: #137333; }
+.cloud-account-panel h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.cloud-account-panel h4 { margin: 0; font-size: .98rem; }
+.cloud-card { margin-top: 14px; padding: 16px; border: 1px solid var(--border-color, #d8dbe3); border-radius: 12px; }
+.cloud-auth-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.cloud-auth-tabs button[aria-pressed="true"] { border-color: #5865f2; color: #4653d2; }
+.cloud-auth-form { display: grid; gap: 12px; max-width: 420px; }
+.cloud-account-panel label { display: grid; gap: 5px; margin: 10px 0; font-size: .9rem; }
+.cloud-account-panel input:not([type="checkbox"]),
+.cloud-account-panel select { width: 100%; min-height: 38px; padding: 8px 10px; color: inherit; background: var(--surface-primary, #fff); border: 1px solid var(--border-color, #d8dbe3); border-radius: 8px; font: inherit; }
+.cloud-consent { display: flex !important; align-items: flex-start; gap: 10px; line-height: 1.45; }
+.cloud-consent input { margin-top: 3px; }
+.cloud-actions { flex-wrap: wrap; margin-top: 10px; }
+.cloud-usage, .cloud-provider-status, .cloud-current-label { margin-top: 10px; color: var(--text-secondary, #61697a); font-size: .88rem; }
+.cloud-list-head { margin-top: 18px; }
+.cloud-document-list { display: grid; gap: 8px; padding: 0; list-style: none; }
+.cloud-account-panel .cloud-document-list li { flex-wrap: wrap; padding: 9px; border: 1px solid var(--border-color, #d8dbe3); border-radius: 8px; }
+.cloud-document-list li > span { flex: 1 1 180px; font-weight: 600; overflow-wrap: anywhere; }
+.cloud-document-list small { flex-basis: 100%; color: var(--text-secondary, #61697a); }
+.cloud-empty { color: var(--text-secondary, #61697a); }
+.cloud-file-list { display: grid; gap: 6px; padding: 0; list-style: none; max-height: 240px; overflow: auto; }
+.cloud-file-list button { width: 100%; text-align: left; overflow-wrap: anywhere; }
+.cloud-account-panel button:focus-visible, .cloud-account-panel a:focus-visible { outline: 2px solid #4f46e5; outline-offset: 3px; }
+.cloud-danger { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border-color, #d8dbe3); }
+.cloud-danger button { color: #b42318; }
+
+@media (max-width: 600px) {
+    .cloud-account-overlay { padding: 8px; align-items: end; }
+    .cloud-account-panel { max-height: 92vh; padding: 16px; border-radius: 16px 16px 8px 8px; }
+    .cloud-user-row { align-items: flex-start; gap: 8px; }
+}

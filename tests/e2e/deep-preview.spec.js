@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 import { SUITES } from './deep-preview-fixtures.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const QA_OUTPUT_DIR = process.env.RUNNER_TEMP || path.resolve(__dirname, '../../docs/qa');
+const QA_OUTPUT_DIR = process.env.RUNNER_TEMP || path.resolve(__dirname, '../../test-results/qa');
 const REPORT_PATH = path.join(QA_OUTPUT_DIR, 'deep-preview-report.json');
 
 async function waitForApp(page) {

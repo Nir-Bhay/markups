@@ -135,6 +135,25 @@ function updateFormatToggles() {
     const selection = editor.getSelection?.();
     if (!model || !selection) return;
 
+    const clearFormatState = () => {
+        bold.classList.remove('active');
+        italic.classList.remove('active');
+        strike?.classList.remove('active');
+    };
+
+    const lineCount = model.getLineCount?.();
+    const validLine = (lineNumber) => Number.isInteger(lineNumber)
+        && lineNumber >= 1
+        && Number.isInteger(lineCount)
+        && lineNumber <= lineCount;
+    if (!validLine(selection.startLineNumber) || !validLine(selection.endLineNumber)) {
+        // Monaco can briefly emit a selection from the previous model during
+        // rapid edits or model swaps. Ignore that stale range instead of asking
+        // the current model for a line that no longer exists.
+        clearFormatState();
+        return;
+    }
+
     const startLine = model.getLineContent(selection.startLineNumber);
     const endLine = model.getLineContent(selection.endLineNumber);
     const before = startLine.slice(Math.max(0, selection.startColumn - 3), selection.startColumn - 1);

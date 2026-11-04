@@ -179,19 +179,38 @@ body {
   gap: 10px;
   flex-shrink: 0;
   padding-right: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.header-brand:link,
+.header-brand:visited,
+.header-brand:hover,
+.header-brand:active {
+  color: var(--text-primary);
+  text-decoration: none !important;
+}
+
+.header-brand:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 3px;
+  border-radius: var(--radius-md);
 }
 
 .brand-logo {
   width: 32px;
   height: 32px;
+  flex: 0 0 32px;
   background: var(--accent-primary);
   color: white;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 1;
   font-weight: 700;
   font-size: 1rem;
+  text-decoration: none;
 }
 
 .brand-name {
@@ -1314,6 +1333,12 @@ body.dark-mode .header-tab .tab-name:hover {
   letter-spacing: 0.02em;
 }
 
+.explorer-action-btn.explorer-action-icon {
+  min-width: 28px;
+  width: 28px;
+  padding: 0;
+}
+
 .explorer-action-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
@@ -1436,6 +1461,58 @@ body.dark-mode .header-tab .tab-name:hover {
 
 .explorer-drawer.compact .explorer-action-btn span {
   display: none;
+}
+
+.trash-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(55vh, 520px);
+  overflow: auto;
+}
+
+.trash-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+}
+
+.trash-item-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+
+.trash-item-date {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.trash-item-restore {
+  flex: 0 0 auto;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  padding: 5px 9px;
+  cursor: pointer;
+}
+
+.trash-item-restore:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-hover);
+}
+
+.trash-empty {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 20px 8px;
 }
 
 .explorer-drawer.compact .explorer-tools {
@@ -2591,6 +2668,10 @@ body.dark-mode .header-tab .tab-name:hover {
   gap: 6px;
   color: var(--accent-success);
   font-size: 0.75rem;
+}
+
+#save-status {
+  color: #15803d;
 }
 
 .status-saved svg {
@@ -6665,6 +6746,22 @@ body.dark-mode .front-matter-card {
   margin: 1rem 0;
 }
 
+/* Keep the live editor preview compact: Markdown blank lines still separate
+   paragraphs, but preview styling does not add another full line of margin. */
+#output.markdown-body > p {
+  margin-block: 0;
+  line-height: 1.3;
+}
+
+#output.markdown-body > blockquote {
+  margin-block: 0;
+  padding-block: 0.25rem;
+}
+
+#output.markdown-body > blockquote > p {
+  margin-block: 0;
+}
+
 .markdown-body a {
   color: var(--text-link);
   text-decoration: underline;
@@ -9399,6 +9496,3 @@ a:focus-visible,
   }
 }
 /* Visible product overview on roomy editor headers (keep mobile workspace intact). */
-.header-tour-link{display:inline-flex;align-items:center;white-space:nowrap;padding:5px 8px;border:1px solid var(--border-light);border-radius:7px;color:var(--text-secondary);text-decoration:none;font-size:11px;font-weight:600}
-.header-tour-link:hover,.header-tour-link:focus-visible{color:var(--accent-primary,#4bb980);border-color:currentColor}
-@media(max-width:1150px){.header-tour-link{display:none}}

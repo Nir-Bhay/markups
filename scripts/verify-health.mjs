@@ -83,7 +83,7 @@ function assertChunkBudgets(label, output) {
         matched = true;
         const [, fileName, rawSize] = match;
         const sizeKb = Number.parseFloat(rawSize.replace(/,/g, ''));
-        const maxKb = fileName.startsWith('monaco-editor-')
+        const maxKb = (fileName.startsWith('monaco-editor-') || fileName.startsWith('editor.api-'))
             ? 2400
             : fileName.startsWith('main-')
                 ? 1300
@@ -107,28 +107,26 @@ function assertChunkBudgets(label, output) {
 
 function assertMonacoUsesPatchedSanitizer(label, outputDir) {
     const assetsDir = join(outputDir, 'assets');
-    const monacoBundleName = readdirSync(assetsDir).find((name) =>
-        name.startsWith('monaco-editor-') && name.endsWith('.js')
-    );
-
-    if (!monacoBundleName) {
-        throw new Error(`${label} did not emit the Monaco editor bundle`);
-    }
-
-    const monacoBundle = readFileSync(join(assetsDir, monacoBundleName), 'utf8');
+    const jsBundles = readdirSync(assetsDir)
+        .filter((name) => name.endsWith('.js'))
+        .map((name) => ({ name, source: readFileSync(join(assetsDir, name), 'utf8') }));
     const expectedSanitizerVersion = JSON.parse(
         readFileSync(new URL('../node_modules/dompurify/package.json', import.meta.url), 'utf8')
     ).version;
+    const bundlesWithPatchedSanitizer = jsBundles.filter(({ source }) =>
+        source.includes(`version=\`${expectedSanitizerVersion}\``)
+    );
+    const bundlesWithStaleSanitizer = jsBundles.filter(({ source }) => source.includes('3.1.7'));
 
-    if (monacoBundle.includes('3.1.7')) {
-        throw new Error(`${label} still includes Monaco's stale bundled DOMPurify 3.1.7`);
+    if (bundlesWithStaleSanitizer.length > 0) {
+        throw new Error(`${label} still includes Monaco's stale bundled DOMPurify 3.1.7 in ${bundlesWithStaleSanitizer.map(({ name }) => name).join(', ')}`);
     }
 
-    if (!monacoBundle.includes(`version=\`${expectedSanitizerVersion}\``)) {
+    if (bundlesWithPatchedSanitizer.length === 0) {
         throw new Error(`${label} does not include the patched DOMPurify ${expectedSanitizerVersion}`);
     }
 
-    process.stdout.write(`  ✓ ${label} Monaco bundle uses DOMPurify ${expectedSanitizerVersion}\n`);
+    process.stdout.write(`  ✓ ${label} excludes stale Monaco DOMPurify and includes patched DOMPurify ${expectedSanitizerVersion}\n`);
 }
 
 function verifyAudit() {

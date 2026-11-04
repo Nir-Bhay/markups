@@ -33,6 +33,7 @@ class TOCManager {
         this.items = [];
         this.flat = [];
         this.container = null;
+        this.contentContainer = null;
         this.visible = false;
         this.initialized = false;
 
@@ -50,6 +51,12 @@ class TOCManager {
             this.container = typeof container === 'string'
                 ? document.querySelector(container)
                 : container;
+            this.contentContainer = this.container?.querySelector('#toc-content') || null;
+            if (this.container && !this.contentContainer) {
+                this.contentContainer = document.createElement('nav');
+                this.contentContainer.id = 'toc-content';
+                this.container.appendChild(this.contentContainer);
+            }
         }
 
         // Setup event listeners
@@ -218,7 +225,8 @@ class TOCManager {
     show() {
         this.visible = true;
         if (this.container) {
-            this.container.classList.add('visible');
+            this.container.classList.remove('hidden');
+            this.container.classList.toggle('visible', window.innerWidth <= 768);
         }
         eventBus.emit(EVENTS.TOC_SHOWN);
     }
@@ -230,6 +238,7 @@ class TOCManager {
         this.visible = false;
         if (this.container) {
             this.container.classList.remove('visible');
+            this.container.classList.add('hidden');
         }
         eventBus.emit(EVENTS.TOC_HIDDEN);
     }
@@ -239,11 +248,11 @@ class TOCManager {
      * @returns {boolean} New visibility state
      */
     toggle() {
-        if (this.visible) {
-            this.hide();
-        } else {
-            this.show();
-        }
+        const currentlyVisible = this.container
+            ? !this.container.classList.contains('hidden')
+            : this.visible;
+        if (currentlyVisible) this.hide();
+        else this.show();
         return this.visible;
     }
 
@@ -278,10 +287,11 @@ class TOCManager {
      * Render TOC UI
      */
     render() {
-        if (!this.container) return;
+        const target = this.contentContainer || this.container;
+        if (!target) return;
 
         if (this.flat.length === 0) {
-            this.container.innerHTML = `
+            target.innerHTML = `
                 <div class="toc-empty">
                     <p>No headings found</p>
                     <small>Add headings with # to see the table of contents</small>
@@ -290,18 +300,10 @@ class TOCManager {
             return;
         }
 
-        this.container.innerHTML = `
-            <div class="toc-header">
-                <h3>Contents</h3>
-                <span class="toc-count">${this.flat.length} headings</span>
-            </div>
-            <div class="toc-list">
-                ${this._renderItems(this.items)}
-            </div>
-        `;
+        target.innerHTML = `<div class="toc-list">${this._renderItems(this.items)}</div>`;
 
         // Add click handlers
-        this.container.querySelectorAll('.toc-item').forEach(el => {
+        target.querySelectorAll('.toc-item').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.preventDefault();
                 const line = parseInt(el.dataset.line, 10);

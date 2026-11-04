@@ -40,20 +40,11 @@ function greet(name) {
 
 ### Math
 
-Inline: $E = mc^2$ · Block:
-
-$$\\\\sum_{i=1}^{n} i = \\\\frac{n(n+1)}{2}$$
+Write math inline or on its own line for an equation. The Markdown guide shows supported syntax and rendering limits.
 
 ### Diagram
 
-\\\`\\\`\\\`mermaid
-graph LR
-    A[Write Markdown] --> B[Live Preview]
-    B --> C{Export}
-    C --> D[PDF]
-    C --> E[HTML]
-    C --> F[Image]
-\\\`\\\`\\\`
+Select **Diagram** in the toolbar to insert a Mermaid example. It renders in the preview.
 
 ### Blockquote
 
@@ -67,3 +58,5 @@ Happy writing! 🚀
 `;
 
 export default DEFAULT_CONTENT;
+
+

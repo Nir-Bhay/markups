@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index,follow">
+  <title>Architecture Decision Record Markdown Template | Markups</title>
+  <meta name="description" content="Use this concise Markdown ADR template to record an architecture decision, its context, alternatives, status, and trade-offs in a project repository.">
+  <link rel="canonical" href="https://markups.dev/blog/architecture-decision-records-markdown-template">
+  <link rel="stylesheet" href="/css/content-pages.css">
+  <link rel="stylesheet" href="/css/editorial.css">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://markups.dev/blog/architecture-decision-records-markdown-template">
+  <meta property="og:title" content="Architecture Decision Record Markdown Template">
+  <meta property="og:description" content="Use this concise Markdown ADR template to record an architecture decision, its context, alternatives, status, and trade-offs in a project repository.">
+  <meta property="og:image" content="https://markups.dev/image/og-image.png">
+  <meta property="og:site_name" content="Markups">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Architecture Decision Record Markdown Template">
+  <meta name="twitter:description" content="Use this concise Markdown ADR template to record an architecture decision, its context, alternatives, status, and trade-offs in a project repository.">
+  <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org","@type":"Article",
+    "headline":"Architecture Decision Record Markdown Template",
+    "description":"A concise guide and reusable Markdown template for documenting software architecture decisions.",
+    "datePublished":"2026-11-04","dateModified":"2026-11-04",
+    "author":{"@type":"Organization","name":"Markups Editorial","url":"https://markups.dev/blog"},
+    "publisher":{"@type":"Organization","name":"Markups","url":"https://markups.dev","logo":{"@type":"ImageObject","url":"https://markups.dev/image/og-image.png"}},
+    "mainEntityOfPage":"https://markups.dev/blog/architecture-decision-records-markdown-template",
+    "articleSection":"Engineering decisions","inLanguage":"en"
+  }
+  </script>
+<link rel="stylesheet" href="/css/journal.css">
+</head>
+<body class="journal-article"><a class="skip-editorial" href="#main-content">Skip to content</a><nav class="editorial-nav" aria-label="Site navigation"><a class="editorial-brand" href="/landing"><span>M</span> Markups<span class="journal-label"> / Journal</span></a><div><a href="/blog">Articles</a><a href="/markdown-guide">Markdown guide</a><a href="/blog/markdown-troubleshooting">Troubleshooting</a><a href="/" class="editorial-editor">Open editor ↗</a></div></nav>
+  <div class="page-shell editorial-shell">
+    <header class="hero">
+      <div class="eyebrow">Markups Blog · Engineering decisions</div>
+      <h1>An Architecture Decision Record Markdown template</h1>
+      <p class="lede">An ADR captures one consequential technical choice and why a team made it. Keep the record short, link supporting detail, and preserve the context future maintainers will need.</p>
+      <div class="editorial-meta"><span>Markups Editorial</span><span>November 4, 2026</span><span>4 min read</span></div>
+    </header>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="/">Markups</a></li><li><a href="/blog">Blog</a></li><li aria-current="page">Decision records</li></ol></nav>
+    <main class="editorial-main" id="main-content">
+      <aside class="reading-sidebar"><p class="eyebrow">IN THIS ARTICLE</p><nav aria-label="Article contents"><a href="#when-to-write">When a decision needs a record</a><a href="#template">Copyable Markdown template</a><a href="#write-clear">Make the record useful later</a><a href="#workflow">A lightweight repository workflow</a><a href="#sources-heading">Sources</a></nav><a class="sidebar-back" href="/blog">← All articles</a></aside><article class="card article-body"><figure class="workflow-figure"><figcaption>A practical mental model</figcaption><ol><li><span>01</span><strong>Context</strong></li><li><span>02</span><strong>Decision</strong></li><li><span>03</span><strong>Consequences</strong></li></ol><p>Each step answers a different question. Verify the final document in its actual destination.</p></figure>
+        <p><strong>Use an Architecture Decision Record (ADR)</strong> when a choice is important enough that someone may later ask what constraints shaped it. Markdown keeps the record readable in a text editor, easy to review in Git, and straightforward to link from code or project documentation.</p>
+
+        
+
+        <h2 id="when-to-write">When a decision needs a record</h2>
+        <p>Record a decision when it changes system structure, dependencies, interfaces, deployment, data handling, or another constraint that will be hard to reconstruct from the final code alone. Do not create an ADR for every small implementation detail. The point is to keep the reasoning behind durable choices discoverable, not to turn routine work into paperwork.</p>
+        <p>A useful ADR describes a single decision. It can mention alternatives, but the decision itself should be clear enough that a new contributor can tell what the team chose and what consequences to expect.</p>
+
+        <h2 id="template">Copyable Markdown template</h2>
+        <p>Adapt the headings to the project. The basic sections below reflect widely used ADR guidance; a team may add its own review or ownership fields.</p>
+        <pre><code># ADR 001: Store drafts in browser storage
+
+## Status
+Proposed
+
+## Context
+Describe the problem, constraints, and desired outcomes.
+Keep this section factual and name the forces that are in tension.
+
+## Decision
+State the choice in a direct sentence: “We will ...”
+
+## Options considered
+- Option A: benefits, costs, and constraints.
+- Option B: benefits, costs, and constraints.
+
+## Consequences
+### Benefits
+- What becomes easier or safer?
+
+### Costs and risks
+- What trade-offs or follow-up work does this create?
+
+## Follow-up
+- [ ] Owner — next action — due date, if applicable.
+
+## References
+- Link to the design, issue, or experiment behind this record.</code></pre>
+        <p>Use your own status vocabulary, but define it. Common states include <em>proposed</em>, <em>accepted</em>, <em>rejected</em>, <em>deprecated</em>, and <em>superseded</em>. An accepted ADR should remain as part of the history; if the decision changes, write a new record that links to the earlier one rather than silently rewriting the past.</p>
+
+        <h2 id="write-clear">Make the record useful later</h2>
+        <ul>
+          <li><strong>Name the decision in the title.</strong> “Use PostgreSQL for account data” is easier to find than “Database discussion.”</li>
+          <li><strong>Separate facts from the choice.</strong> Context describes constraints; the decision states the team's response.</li>
+          <li><strong>Include the real trade-offs.</strong> Capture both benefits and costs. A record that only argues for the chosen path is weak evidence.</li>
+          <li><strong>Link evidence.</strong> Point to benchmarks, design notes, issues, or security reviews instead of copying them into every ADR.</li>
+          <li><strong>Keep it brief.</strong> If a section needs extensive detail, put that detail in a design document and link to it.</li>
+        </ul>
+        <p>ADR guidance is a practice, not a single universal Markdown standard. Choose one template, make it easy to find, and use it consistently enough that the team knows where to look.</p>
+
+        <h2 id="workflow">A lightweight repository workflow</h2>
+        <ol>
+          <li>Create a directory such as <code>docs/decisions/</code>.</li>
+          <li>Give each record a stable number and short title, for example <code>001-store-drafts-in-browser.md</code>.</li>
+          <li>Review proposed decisions with the people affected before implementation becomes difficult to change.</li>
+          <li>Link the accepted record from the related design or implementation area.</li>
+          <li>When reality changes, add a superseding record and link both directions.</li>
+        </ol>
+        <p>For meeting capture before an ADR is ready, use the <a href="/blog/markdown-meeting-notes-template">Markdown meeting-notes template</a>. To write project-wide agent instructions, see <a href="/blog/markdown-instructions-for-coding-agents">the AGENTS.md guide</a>.</p>
+
+        <aside class="editorial-note"><strong>Research note:</strong> this article was prepared with AI assistance and checked against the linked architecture documentation on November 4, 2026. The sample decision is illustrative, not a claim about a real project.</aside>
+        <section class="article-sources" aria-labelledby="sources-heading"><h2 id="sources-heading">Sources</h2><ul>
+          <li><a href="https://martinfowler.com/bliki/ArchitectureDecisionRecord.html" target="_blank" rel="noopener noreferrer">Martin Fowler: Architecture Decision Record</a> — explains the single-decision, concise-record approach and links its history.</li>
+          <li><a href="https://gds-way.digital.cabinet-office.gov.uk/standards/architecture-decisions.html" target="_blank" rel="noopener noreferrer">UK Government Digital Service: Documenting architecture decisions</a> — outlines context, decision, consequences, and lifecycle considerations.</li>
+        </ul></section>
+        <p class="quiet-tool-link">Want to inspect a small example? <a href="/">Try it in a Markdown preview</a>, then verify your publishing destination.</p>
+        <div class="editorial-links"><a href="/markdown-guide">Full Markdown guide</a><a href="/blog/markdown-meeting-notes-template">Meeting-notes template</a><a href="/blog">All Markups articles</a></div>
+      </article>
+    </main>
+    <footer class="footer"><p>More writing workflows in the <a href="/blog">Markups Blog</a>.</p></footer>
+  </div>
+<script src="/js/editorial.js" defer></script><script type="module" src="/src/editorialTelemetry.js"></script>
+</body>
+</html>

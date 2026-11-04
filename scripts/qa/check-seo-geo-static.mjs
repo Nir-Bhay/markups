@@ -20,6 +20,13 @@ const sitemap = get('public/sitemap.xml');
 const entries = [
   ['/', 'index.html'],
   ['/landing', 'landing/index.html'],
+  ['/blog', 'blog/index.html'],
+  ['/blog/markdown-instructions-for-coding-agents', 'blog/markdown-instructions-for-coding-agents/index.html'],
+  ['/blog/architecture-decision-records-markdown-template', 'blog/architecture-decision-records-markdown-template/index.html'],
+  ['/blog/markdown-meeting-notes-template', 'blog/markdown-meeting-notes-template/index.html'],
+  ['/blog/github-readme-template', 'blog/github-readme-template/index.html'],
+  ['/blog/safe-markdown-html-rendering', 'blog/safe-markdown-html-rendering/index.html'],
+  ['/markdown-guide', 'markdown-guide/index.html'],
   ['/seo/online-markdown-editor', 'seo/online-markdown-editor/index.html'],
   ['/seo/markdown-to-pdf', 'seo/markdown-to-pdf/index.html'],
   ['/seo/markdown-to-html', 'seo/markdown-to-html/index.html'],
@@ -58,8 +65,9 @@ for (const [path, file] of entries) {
   if (!canonical) note('error', 'MISSING_CANONICAL', file);
   if (!/<h1\b/i.test(html)) note('warning', 'MISSING_H1', file);
   if (noindex && urlSet.has(expectedUrl)) note('error', 'NOINDEX_IN_SITEMAP', path);
-  if (!noindex && canonical === expectedUrl && path.startsWith('/seo/') && !urlSet.has(expectedUrl)) {
-    note('error', 'MISSING_INDEXABLE_SEO_URL', path);
+  const isEditorialRoute = path === '/blog' || path.startsWith('/blog/') || path === '/markdown-guide';
+  if (!noindex && canonical === expectedUrl && (path.startsWith('/seo/') || isEditorialRoute) && !urlSet.has(expectedUrl)) {
+    note('error', 'MISSING_INDEXABLE_CONTENT_URL', path);
   }
   if (!noindex && canonical && canonical !== expectedUrl && path !== '/landing') {
     note('warning', 'CANONICAL_DIFFERS_FROM_ROUTE', path + ' -> ' + canonical);

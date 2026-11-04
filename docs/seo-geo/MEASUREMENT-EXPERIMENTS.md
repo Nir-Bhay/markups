@@ -53,3 +53,17 @@ The connected Markups GA4 property currently reports only generic browser events
 - export_completed: after successful export code path for formats pdf/html/md/doc/txt/png; ONLY export_format allowlist. No filenames, document titles, content, URLs or API keys.
 
 Events are emitted only on markups.dev when the existing GA4 gtag integration is available. No new analytics vendor or cookies introduced. Do not label an event as a confirmed user download/receipt: it indicates the export routine reached the success branch. Privacy/legal review of the existing tracker and any consent requirements is still a release gate. Existing GA4 data cannot retroactively report editor activation; measure from deployment onwards.
+
+## Connected baseline refresh — 2026-11-04
+
+Read-only Windsor queries were scoped to the `https://markups.dev/` Search Console property and the GA4 `markups.dev` hostname. Aggregate figures only; no raw visitor data is stored here. Full interpretation and route evidence: `SEO-AUDIT-2026-11-04.md`.
+
+| Metric | Most recent range | Comparison | Caveat |
+|---|---:|---:|---|
+| Search Console impressions | 91 in approx. 90 days | 6 in latest 28 days vs 28 prior | 2 clicks total; small sample and anonymized query suppression. |
+| Search Console clicks | 2 in approx. 90 days | Latest 28 days: 0; prior 28: 1 | Not enough for robust CTR testing. |
+| GA4 sessions | 556 in approx. 90 days | 184 last 28 days vs 187 prior | Production host filter only. |
+| GA4 organic-search sessions | 56 in approx. 90 days | 27 last 28 days vs 18 prior | Concentrated on `/`; source-only content cannot contribute before deployment. |
+| Activation events | No `editor_start` or `export_completed` observations in queried production period | Pending after release | Event code exists in source; do not infer activation from page views. |
+
+These figures set a directional baseline only. Search demand and rankings are not forecast from them, and the changes in the two 28-day ranges are not causal evidence.

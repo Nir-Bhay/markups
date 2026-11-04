@@ -1,13 +1,13 @@
-# Public route and canonical inventory — branch source review (2026-10-27)
+# Public route and canonical inventory — branch source review (updated 2026-11-04)
 
-**Scope:** `growth/seo-geo-audit-2026-10` only; draft [PR #71](https://github.com/Nir-Bhay/markups/pull/71). This supersedes the *branch-source* decisions in the 2026-10-23 baseline inventory, **not** its historical production observations. Nothing here asserts that branch changes have shipped to `markups.dev`, that Google chose a canonical, or that a protected preview has passed interactive review.
+**Scope:** current workspace source only. This supersedes the *branch-source* decisions in the 2026-10-23 and 2026-10-27 inventory, **not** their historical production observations. Nothing here asserts that source changes have shipped to `markups.dev`, that Google chose a canonical, or that an authenticated preview passed interactive review. Current live-vs-source findings are recorded at the end of this file and in `runs/2026-11-04-markups-seo-audit.md`.
 
 ## Canonical decision — M-005 / M-007
 
 - **`/` is the primary Markdown editing application**: immediately usable Monaco-based editor, live preview and export controls. Its canonical is `https://markups.dev/`.
 - **`/landing` is a separate explanatory product tour**, with examples, feature explanations, use cases, FAQ, six guide links and a CTA into `/`. Its source canonical is `https://markups.dev/landing` and it is included in the branch sitemap. This is a *provisional, distinct-intent self-canonical* decision, not evidence Google will index both. The titles overlap in "free online Markdown editor"; inspect duplicate/canonical signals after an approved release and consolidate if search evidence shows duplication.
 - **`/seo/compatibility-lab` is a separate, source-backed technical guide** with a downloadable Markdown fixture. Its branch self-canonical and sitemap entry are intentional.
-- Sitemap membership is limited to source pages intended to be indexable. The current branch `public/sitemap.xml` has **16 `<loc>` entries**. No `noindex` comparison/alternative page or internal playbook belongs there. `lastmod` values must reflect substantive changes, not daily automated refreshes.
+- Sitemap membership is limited to source pages intended to be indexable. The current workspace `public/sitemap.xml` has **23 `<loc>` entries**. No `noindex` comparison/alternative page or internal playbook belongs there. `lastmod` values must reflect substantive changes, not daily automated refreshes. This is a source inventory; live production sitemap currently has 10 URLs.
 - `public/robots.txt` points to `https://markups.dev/sitemap.xml`. An erroneously *submitted* `robots.txt` entry in Search Console is a separate owner UI problem: do not delete the actual robots file.
 
 ## Branch source inventory (not a live production or Google indexing report)
@@ -30,6 +30,13 @@
 | `/seo/examples/mermaid` | index,follow / self | Yes | Working Mermaid example |
 | `/seo/examples/math` | index,follow / self | Yes | Working KaTeX example |
 | `/seo/tutorials/markdown-to-pdf` | index,follow / self | Yes | PDF tutorial; no selectable-text guarantee |
+| `/markdown-guide` | index,follow / self | Yes | Long-form syntax and Markups renderer guide; source reviewed 2026-11-04 |
+| `/blog` | index,follow / self | Yes | Editorial index; links to five source-backed articles |
+| `/blog/markdown-instructions-for-coding-agents` | index,follow / self | Yes | AGENTS.md workflow/template; research sources cited |
+| `/blog/architecture-decision-records-markdown-template` | index,follow / self | Yes | ADR template and decision-record lifecycle; sources cited |
+| `/blog/markdown-meeting-notes-template` | index,follow / self | Yes | Meeting-notes template and task-list semantics; sources cited |
+| `/blog/github-readme-template` | index,follow / self | Yes | README structure and GitHub Markdown behavior; sources cited |
+| `/blog/safe-markdown-html-rendering` | index,follow / self | Yes | Sanitizer/parser pipeline checked against current source; not a security guarantee |
 | `/seo/best-markdown-editor-for-developers` | noindex / self | No | Keep out until evidence-backed and approved |
 | `/seo/stackedit-alternative` | noindex / self | No | No unsupported competitive claims |
 | `/seo/typora-alternative` | noindex / self | No | No unsupported competitive claims |
@@ -54,3 +61,11 @@
 ## Release routing checklist
 
 Every submitted canonical URL must resolve as intended with 200 HTML, unique useful visible content, appropriate robots and self-canonical, no login gate for the final public production site, no redirect/soft-404 and no misleading structured data. Verify HTTP/HTTPS, www, trailing slash and old domain redirect behavior independently. Do not infer ranking, impressions or AI citations from passing static tests.
+
+## Live-vs-source check — 2026-11-04
+
+- Live `robots.txt` returned and declared `https://markups.dev/sitemap.xml`; `claude-seo` sitemap discovery returned HTTP 200 and valid XML.
+- Live sitemap has **10 URLs**. All 10 returned HTTP 200 in the audit; `/landing` returned HTTP 200 but is absent from the live sitemap.
+- Current source sitemap has **23 URLs**. Direct HTTP checks against production returned 200 for 11 and 404 for 12. The 404s are `/privacy-policy`, `/terms`, `/cookie-policy`, `/accessibility`, `/seo/compatibility-lab`, `/markdown-guide`, `/blog`, and the five blog article routes.
+- The 12 production 404s must be resolved by reviewed release/routing before asking Google to crawl the newly authored pages. The local build includes these routes, but the source sitemap is not evidence of deployment or Google indexing.
+- Source root/public sitemap copies match and both have 23 `<loc>` entries. Root/public `llms.txt` copies also match; `llms.txt` is informational and does not promise search ranking or AI citations.

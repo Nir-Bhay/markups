@@ -68,6 +68,9 @@ export function stripExportChrome(root) {
     });
 
     root.querySelectorAll('[id]').forEach((el) => {
+        // Mermaid's inline CSS and marker URLs reference SVG IDs. Removing
+        // those IDs before rasterizing produces missing diagrams/arrowheads.
+        if (el.closest('svg')) return;
         el.removeAttribute('id');
     });
 
@@ -85,8 +88,9 @@ export function stripExportChrome(root) {
  */
 function readSvgSize(svg) {
     const vb = svg.getAttribute('viewBox');
-    const attrW = parseFloat(svg.getAttribute('width') || '0');
-    const attrH = parseFloat(svg.getAttribute('height') || '0');
+    // Percentage attributes describe the containing block, not SVG pixels.
+    const attrW = /%$/.test(svg.getAttribute('width') || '') ? 0 : parseFloat(svg.getAttribute('width') || '0');
+    const attrH = /%$/.test(svg.getAttribute('height') || '') ? 0 : parseFloat(svg.getAttribute('height') || '0');
     let width = attrW;
     let height = attrH;
     if ((!width || !height) && vb) {
@@ -231,6 +235,10 @@ export async function convertMermaidSvgsToImages(container, opts = {}) {
             imgEl.style.maxWidth = '100%';
             imgEl.style.height = 'auto';
             imgEl.setAttribute('data-export-raster', 'mermaid');
+            // Preview CSS hides images until its loader marks them ready.
+            // Export-created images bypass that loader, so decode explicitly.
+            await imgEl.decode();
+            imgEl.setAttribute('data-loaded', 'true');
             svg.parentNode.replaceChild(imgEl, svg);
             stats.converted++;
         } catch (e) {
@@ -271,6 +279,10 @@ export function createExportWorkbench(sourceElement, { widthCss, className = 'ma
     workbench.className = className;
     workbench.setAttribute('data-export-workbench', 'true');
     workbench.style.cssText = [
+        // Own child margins in both the live and html2canvas clone layouts.
+        // Otherwise removing the host's clipping changes margin collapsing
+        // after height measurement, cutting off the final table/text rows.
+        'display:flow-root',
         'position:relative',
         'left:0',
         'top:0',
@@ -288,6 +300,13 @@ export function createExportWorkbench(sourceElement, { widthCss, className = 'ma
     workbench.appendChild(clone);
     host.appendChild(workbench);
     document.body.appendChild(host);
+    // html2canvas materializes ::before/::after as extra DOM children. That
+    // changes :first-child/:last-child rules in github-markdown-css and can
+    // grow the clone after its capture height was measured. Snapshot margins
+    // while the live workbench still has the original document structure.
+    workbench.querySelectorAll('h1,h2,h3,h4,h5,h6,p,table,ul,ol,pre,blockquote,hr').forEach(node => {
+        node.style.margin = getComputedStyle(node).margin;
+    });
     return workbench;
 }
 
@@ -496,12 +515,11 @@ export async function renderWorkbenchToPdf(workbench, opts) {
 
     // Ensure workbench has a stable layout width before measuring.
     const workbenchWidthPx = Math.max(1, workbench.scrollWidth || workbench.offsetWidth || 720);
-    const totalHeight = Math.max(1, workbench.scrollHeight || workbench.offsetHeight || 1);
+    const totalHeight = Math.ceil(Math.max(1, workbench.scrollHeight || 0, workbench.offsetHeight || 0, workbench.getBoundingClientRect().height || 0));
     // CSS px that fit one PDF content page (width maps to usableW inches).
     const slicePx = Math.max(200, Math.floor(usableH * (workbenchWidthPx / usableW)));
     const totalGuess = Math.max(1, Math.ceil(totalHeight / slicePx));
 
-    annotateExportBands(workbench);
     await yieldToMain();
 
     let y = 0;
@@ -513,28 +531,25 @@ export async function renderWorkbenchToPdf(workbench, opts) {
         }
 
         const sliceHeight = Math.min(slicePx, totalHeight - y);
-        const bandTop = y;
-        const bandBottom = y + sliceHeight;
         onProgress?.(pageIndex + 1, totalGuess);
 
-        // Capture only this vertical band. ignoreElements skips off-band boxes so
-        // html2canvas does not re-paint the entire tall document every page.
+        // Crop the canvas to a band, but keep all in-flow DOM boxes. Removing
+        // earlier paragraphs reflows later pages to y=0, leaving blank crops.
         const canvas = await captureSubtreeCanvas(html2canvas, workbench, {
             scale,
             x: 0,
             y,
             width: workbenchWidthPx,
             height: sliceHeight,
-            windowWidth: workbenchWidthPx,
-            windowHeight: Math.max(sliceHeight, 400),
+            // Preserve the viewport used to measure the source. Switching to
+            // the paper width can activate responsive CSS in html2canvas's
+            // clone and grow content beyond the measured band (clipped rows).
+            windowWidth: Math.max(workbenchWidthPx, window.innerWidth || 0),
+            windowHeight: Math.max(sliceHeight, window.innerHeight || 0, 400),
             scrollX: 0,
             scrollY: 0,
             extraIgnore: (el) => {
-                if (el.getAttribute?.('data-export-ignore') != null) return true;
-                const top = Number(el.getAttribute?.('data-export-top'));
-                const bottom = Number(el.getAttribute?.('data-export-bottom'));
-                if (!Number.isFinite(top) || !Number.isFinite(bottom)) return false;
-                return bottom < bandTop - 2 || top > bandBottom + 2;
+                return el.getAttribute?.('data-export-ignore') != null;
             }
         });
 

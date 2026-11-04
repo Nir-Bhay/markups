@@ -9,10 +9,56 @@ import {
     isHtml2CanvasCloneError,
     pickExportTimeoutMs,
     pickHtml2CanvasScale,
+    renderWorkbenchToPdf,
     stripExportChrome
 } from '../services/export/pdfPrep.js';
 
 describe('pdfPrep helpers', () => {
+    it('preserves Mermaid SVG IDs and marker references while removing HTML IDs', () => {
+        const root = document.createElement('div');
+        root.innerHTML = '<h1 id="heading">Title</h1><svg id="diagram"><defs><marker id="arrow" /></defs><path marker-end="url(#arrow)" /></svg>';
+        stripExportChrome(root);
+        expect(root.querySelector('h1').id).toBe('');
+        expect(root.querySelector('svg').id).toBe('diagram');
+        expect(root.querySelector('marker').id).toBe('arrow');
+        expect(root.querySelector('path').getAttribute('marker-end')).toBe('url(#arrow)');
+    });
+    it('does not drop unannotated table structure or styles from later PDF pages', async () => {
+        const workbench = document.createElement('div');
+        workbench.innerHTML = '<table><tbody><tr><td>Last page data</td></tr></tbody></table>';
+        document.body.appendChild(workbench);
+        Object.defineProperties(workbench, { scrollWidth: { value: 720 }, scrollHeight: { value: 1200 } });
+        const captures = [];
+        const html2canvas = vi.fn(async (_root, options) => {
+            captures.push(options);
+            return { toDataURL: () => 'data:image/jpeg;base64,AA==' };
+        });
+        class FakePDF {
+            constructor() { this.internal = { pageSize: { getWidth: () => 8.5, getHeight: () => 11 } }; }
+            addImage() {}
+            addPage() {}
+        }
+        await renderWorkbenchToPdf(workbench, { html2canvas, JsPDF: FakePDF, pageNumbers: false });
+        expect(captures).toHaveLength(2);
+        expect(captures[1].ignoreElements(workbench)).toBe(false);
+        expect(captures[1].ignoreElements(workbench.querySelector('tbody'))).toBe(false);
+        expect(captures[1].ignoreElements(document.head)).toBe(false);
+        workbench.remove();
+    });
+    it('keeps measured boundary margins when a capture engine inserts pseudo nodes', () => {
+        const style = document.createElement('style');
+        style.textContent = '.pdf-fixture h1 { margin-top: 24px; } .pdf-fixture > :first-child { margin-top: 0; }';
+        document.head.appendChild(style);
+        const source = document.createElement('article');
+        source.className = 'pdf-fixture';
+        source.innerHTML = '<h1>First heading</h1><p>Last paragraph</p>';
+        const workbench = createExportWorkbench(source);
+        const heading = workbench.querySelector('h1');
+        workbench.querySelector('article').prepend(document.createElement('html2canvaspseudoelement'));
+        expect(getComputedStyle(heading).marginTop).toBe('0px');
+        destroyExportWorkbench(workbench);
+        style.remove();
+    });
     it('picks lower html2canvas scale for taller documents', () => {
         expect(pickHtml2CanvasScale(5000)).toBe(1.75);
         expect(pickHtml2CanvasScale(20000)).toBe(1.5);
@@ -89,7 +135,12 @@ describe('pdfPrep helpers', () => {
     it('allows html2canvas clone iframes in CSP', () => {
         const html = readFileSync(resolve(import.meta.dirname, '../../index.html'), 'utf8');
         const vercel = readFileSync(resolve(import.meta.dirname, '../../vercel.json'), 'utf8');
-        expect(html).toMatch(/frame-src[^"]*about:blank/);
-        expect(vercel).toMatch(/frame-src[^"]*about:blank/);
+        // about:blank is not a valid CSP source token. Same-origin clone
+        // frames inherit their creator's origin; real PDF download is also
+        // covered by the compiled browser suite.
+        expect(html).toMatch(/frame-src 'self' blob:/);
+        expect(vercel).toMatch(/frame-src 'self' blob:/);
+        expect(html).not.toMatch(/(?:frame-src|child-src)[^;]*about:blank/);
+        expect(vercel).not.toMatch(/(?:frame-src|child-src)[^;]*about:blank/);
     });
 });

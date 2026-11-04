@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 const pages = [
-  ['/landing','Your Markdown.'],
+  ['/landing','Write in Markdown.'],
   ['/privacy-policy','Privacy Policy'],
   ['/terms','Terms of Service'],
   ['/cookie-policy','Cookie Policy'],
@@ -11,22 +11,24 @@ for(const [path,heading] of pages){
   test('public page '+path,async({page})=>{
     const response=await page.goto(path);
     expect(response?.status()).toBe(200);
-    await expect(page.locator('h1')).toContainText(heading);
+    await expect(page.getByRole('heading', { level: 1 }).filter({ hasText: heading })).toBeVisible();
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href','https://markups.dev'+path);
   });
 }
 test('landing sample tabs work via click and keyboard',async({page})=>{
   await page.goto('/landing');
-  await expect(page.getByRole('tab',{name:'README.md'})).toHaveAttribute('aria-selected','true');
-  await page.getByRole('tab',{name:'Diagram.md'}).click();
-  await expect(page.locator('#sample-mermaid')).toBeVisible();
-  await page.getByRole('tab',{name:'Diagram.md'}).press('ArrowRight');
-  await expect(page.getByRole('tab',{name:'Math.md'})).toHaveAttribute('aria-selected','true');
-  await expect(page.locator('#sample-math')).toBeVisible();
+  const examples = page.getByRole('group', { name: 'Choose a Markdown example' });
+  await expect(examples.getByRole('button', { name: 'Team brief', exact: true })).toHaveAttribute('aria-pressed','true');
+  await examples.getByRole('button', { name: 'Motion notes', exact: true }).click();
+  await expect(examples.getByRole('button', { name: 'Motion notes', exact: true })).toHaveAttribute('aria-pressed','true');
+  await expect(page.getByRole('textbox', { name: 'Editable Markdown example' })).toHaveValue(/# Motion notes/);
+  await examples.getByRole('button', { name: 'Team brief', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(examples.getByRole('button', { name: 'Team brief', exact: true })).toHaveAttribute('aria-pressed','true');
 });
 test('landing links to real editor and correct Open Graph asset',async({page})=>{
   await page.goto('/landing');
-  await expect(page.getByRole('link',{name:/start writing for free/i})).toHaveAttribute('href','/');
+  await expect(page.locator('.hero-actions').getByRole('link',{name:/open the editor/i})).toHaveAttribute('href','/');
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content','https://markups.dev/image/og-image.png');
 });
 
@@ -44,15 +46,15 @@ test('landing exposes six accessible, crawlable guide links across mobile layout
   await page.setViewportSize({width:375,height:812});
   const response=await page.goto('/landing');
   expect(response?.status()).toBe(200);
-  await expect(page.getByRole('heading',{name:'Less searching. More creating.'})).toBeVisible();
-  const cards=page.locator('#guides a.resource-card');
+  await expect(page.locator('#guides-title')).toBeVisible();
+  const cards=page.locator('#guides .guide-links a');
   await expect(cards).toHaveCount(6);
   const targets=[
     '/seo/cheatsheet','/seo/examples/mermaid','/seo/examples/math',
     '/seo/tutorials/markdown-to-pdf','/seo/markdown-to-html','/seo/markdown-live-preview-editor'
   ];
   for(const target of targets){
-    await expect(page.locator('#guides a.resource-card[href="'+target+'"]')).toHaveCount(1);
+    await expect(page.locator('#guides .guide-links a[href="'+target+'"]')).toHaveCount(1);
   }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
   // Five-link desktop navigation must not squeeze the header on small tablets.

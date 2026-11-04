@@ -1,8 +1,37 @@
 import { defineConfig } from 'vite';
-import { readdirSync, existsSync } from 'fs';
+import react from '@vitejs/plugin-react';
+import { readdirSync, existsSync, readFileSync } from 'fs';
 import { resolve, relative, sep } from 'path';
 
 const projectRoot = import.meta.dirname;
+
+function prismLanguageImports() {
+    return {
+        name: 'markups-prism-language-imports',
+        enforce: 'pre',
+        transform(code, id) {
+            const path = id.split('?')[0].replaceAll('\\', '/');
+            // Prism components are browser-global scripts, not ES modules. Make
+            // their core dependency explicit so production chunk evaluation
+            // cannot execute a grammar before the CommonJS core initializes.
+            if (/\/prismjs\/components\/prism-(?!core\.)[a-z0-9-]+\.js$/.test(path)) {
+                return { code: `import Prism from 'prismjs';\n${code}`, map: null };
+            }
+        }
+    };
+}
+
+function offlineAssetManifest() {
+    return {
+        name: 'markups-offline-assets',
+        generateBundle(_options, bundle) {
+            // Include lazy chunks too: first-load imports can complete before
+            // the new worker controls the page, so request caching alone misses them.
+            const assets = Object.keys(bundle).filter(file => /\.(?:js|css|woff2?)$/.test(file)).map(file => '/' + file);
+            this.emitFile({ type: 'asset', fileName: 'precache-manifest.json', source: JSON.stringify(assets) });
+        }
+    };
+}
 
 function monacoDompurifyResolver() {
     return {
@@ -63,7 +92,7 @@ for (const entry of readdirSync(projectRoot, { withFileTypes: true })) {
     }
 }
 
-['landing', 'seo', 'policy', 'strategy', 'privacy-policy', 'terms', 'cookie-policy', 'accessibility'].forEach((folder) => {
+['landing', 'seo', 'blog', 'markdown-guide', 'policy', 'strategy', 'privacy-policy', 'terms', 'cookie-policy', 'accessibility'].forEach((folder) => {
     collectHtmlInputs(resolve(projectRoot, folder), input);
 });
 
@@ -73,72 +102,55 @@ const publicHtmlRoutes = new Set(Object.values(input)
     .filter((file) => file !== input.main && file.endsWith('index.html'))
     .map((file) => '/' + relative(projectRoot, resolve(file, '..')).split(sep).join('/')));
 
-function getVendorChunkName(id) {
-    const normalizedId = id.replace(/\\/g, '/');
-
-    if (!normalizedId.includes('/node_modules/')) return null;
-
-    // Keep the optional Monaco find/replace UI lazy. The core app has its own search
-    // overlay, while Monaco's full find controller is loaded only on Ctrl+Shift+H.
-    if (normalizedId.includes('/monaco-editor/esm/vs/editor/contrib/find/')) return 'monaco-find';
-
-    // Keep Monaco as one cacheable editor vendor chunk. Finer-grained manual splits
-    // create circular chunk graphs in Monaco's internal module structure.
-    if (normalizedId.includes('/monaco-editor/')) return 'monaco-editor';
-
-    // Keep PDF export dependencies lazy and split by library so one export action does not
-    // create a single >1 MB vendor chunk. These modules are reached through dynamic imports.
-    if (normalizedId.includes('/html2pdf.js/')) return 'pdf-html2pdf';
-    if (normalizedId.includes('/html2canvas/')) return 'pdf-html2canvas';
-    if (normalizedId.includes('/jspdf/')) return 'pdf-jspdf';
-    if (
-        normalizedId.includes('/canvg/') ||
-        normalizedId.includes('/core-js/') ||
-        normalizedId.includes('/fflate/') ||
-        normalizedId.includes('/pako/') ||
-        normalizedId.includes('/rgbcolor/') ||
-        normalizedId.includes('/svg-pathdata/') ||
-        normalizedId.includes('/@babel/runtime/')
-    ) {
-        return 'pdf-support';
-    }
-
-    // Mermaid is intentionally left to automatic dynamic chunking.
-    if (normalizedId.includes('/katex/')) return 'katex-vendor';
-    if (normalizedId.includes('/prismjs/') || normalizedId.includes('/github-markdown-css/')) {
-        return 'highlight-vendor';
-    }
-    if (normalizedId.includes('/dompurify/')) return 'sanitize-vendor';
-    if (
-        normalizedId.includes('/marked/') ||
-        normalizedId.includes('/marked-katex-extension/') ||
-        normalizedId.includes('/marked-highlight/') ||
-        normalizedId.includes('/marked-gfm-heading-id/') ||
-        normalizedId.includes('/marked-footnote/') ||
-        normalizedId.includes('/marked-alert/')
-    ) {
-        return 'markdown-vendor';
-    }
-    if (normalizedId.includes('/dexie/')) return 'storage-vendor';
-
-    return null;
-}
-
 function rewriteCleanHtmlRoute(req, _res, next) {
     const raw = req.url || '/';
     const q = raw.indexOf('?');
     const path = (q >= 0 ? raw.slice(0, q) : raw).replace(/\/$/, '');
-    if (publicHtmlRoutes.has(path)) {
+    // Resolve editorial pages added while the dev server is already running.
+    // Build inputs are collected at startup, so that snapshot can miss new posts.
+    const isEditorialPage = /^\/(?:blog|markdown-guide)(?:\/[a-z0-9-]+)*$/.test(path)
+        && existsSync(resolve(projectRoot, '.' + path, 'index.html'));
+    if (publicHtmlRoutes.has(path) || isEditorialPage) {
         req.url = path + '/index.html' + (q < 0 ? '' : raw.slice(q));
     }
     next();
 }
 
-export default defineConfig(({ mode }) => {
+function landingPrerenderPlugin(command) {
+    const renderedPage = resolve(projectRoot, '.tmp/landing-prerender.html');
+
+    return {
+        name: 'markups-landing-prerender',
+        transformIndexHtml: {
+            order: 'pre',
+            handler(html) {
+                if (
+                    command !== 'build' ||
+                    !html.includes('<div id="root"></div>') ||
+                    !existsSync(renderedPage)
+                ) {
+                    return html;
+                }
+
+                const markup = readFileSync(renderedPage, 'utf8');
+                return html.replace(
+                    '<div id="root"></div>',
+                    () => `<div id="root">${markup}</div>`
+                );
+            }
+        }
+    };
+}
+
+export default defineConfig(({ mode, command }) => {
     const useModularEntry = mode === 'modular' || process.env.MARKUPS_ENTRY === 'modular';
 
     return {
         plugins: [
+            react(),
+            prismLanguageImports(),
+            offlineAssetManifest(),
+            landingPrerenderPlugin(command),
             monacoDompurifyResolver(),
             {
                 name: 'markups-clean-html-routes',
@@ -153,7 +165,10 @@ export default defineConfig(({ mode }) => {
                 name: 'markups-entry-selector',
                 transformIndexHtml(html) {
                     if (!useModularEntry) return html;
-                    return html.replace('src="/src/main.js"', 'src="/src/main.modular.js"');
+                    // Vite adds a timestamp query after an entry changes during
+                    // development. Keep selecting the requested entry after HMR
+                    // instead of silently falling back to production.
+                    return html.replace(/(src=["'])\/src\/main\.js(?=[?"'])/g, '$1/src/main.modular.js');
                 }
             }
         ],
@@ -180,14 +195,6 @@ export default defineConfig(({ mode }) => {
                     chunkFileNames: 'assets/[name]-[hash].js',
                     assetFileNames: 'assets/[name]-[hash][extname]',
                     comments: { legal: false },
-                    codeSplitting: {
-                        groups: [{
-                            test: (id) => id.replace(/\\/g, '/').includes('/node_modules/'),
-                            name: getVendorChunkName,
-                            debugName: 'named-vendor-chunks',
-                            priority: 100
-                        }]
-                    }
                 }
             }
         },

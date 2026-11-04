@@ -6,6 +6,7 @@ function liveContext() {
     const gtag = vi.fn();
     const context = {
         location: { hostname: 'markups.dev' },
+        __MARKUPS_ANALYTICS_ENABLED__: true,
         gtag,
         sessionStorage: {
             getItem(key) { return storage.get(key) ?? null; },
@@ -32,6 +33,14 @@ describe('privacy-safe product analytics', () => {
         context.location.hostname = 'markups.dev';
         delete context.gtag;
         expect(trackExportCompleted('html', context)).toBe(false);
+        expect(gtag).not.toHaveBeenCalled();
+    });
+
+    it('never queues product events unless the URL passed telemetry policy checks', () => {
+        const { context, gtag } = liveContext();
+        context.__MARKUPS_ANALYTICS_ENABLED__ = false;
+        expect(trackEditorStartOnce(context)).toBe(false);
+        expect(trackExportCompleted('pdf', context)).toBe(false);
         expect(gtag).not.toHaveBeenCalled();
     });
 

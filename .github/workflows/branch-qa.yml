@@ -1,14 +1,14 @@
 name: Branch QA (no deployment)
 on:
   push:
-    branches: [growth/seo-geo-audit-2026-10]
+    branches: [growth/seo-geo-audit-2026-10, 'Nir-Bhay/**']
   pull_request:
     branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: markups-branch-qa
+  group: markups-branch-qa-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   quality:
@@ -20,11 +20,12 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
       - run: npm ci
       - run: node scripts/qa/check-seo-geo-static.mjs
       - run: npm run lint
+      - run: npm run typecheck:landing
       - run: npm test
       - run: npm run build
       - run: node scripts/qa/verify-built-pages.mjs
@@ -32,6 +33,20 @@ jobs:
       - run: npm run build:modular
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - run: npm run test:e2e:built
+      - run: python -m pip install 'pymupdf>=1.26,<2'
+      - run: python scripts/qa/verify-pdf-artifacts.py
+      - name: Retain real export review artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: markups-release-exports
+          path: |
+            test-results/built-production/**/export-*.pdf
+            test-results/built-production/**/export-smoke.doc
+            test-results/built-production/pdf-review/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Capture landing screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -48,5 +63,36 @@ jobs:
           path: |
             test-results/
             playwright-report/
+          if-no-files-found: ignore
+          retention-days: 3
+  browser-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Compiled browser release checks
+        env:
+          PLAYWRIGHT_BROWSER: ${{ matrix.browser }}
+          PLAYWRIGHT_VIDEO: 'off'
+          PLAYWRIGHT_PORT: '4473'
+        run: npm run test:e2e:built -- tests/e2e/release-built.spec.js tests/e2e/export-file-integrity.spec.js tests/e2e/storage-quota.spec.js tests/e2e/share.spec.js tests/e2e/security-boundaries.spec.js --workers=1
+      - name: Firefox failure evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: markups-${{ matrix.browser }}-failures
+          path: test-results/built-production/
           if-no-files-found: ignore
           retention-days: 3

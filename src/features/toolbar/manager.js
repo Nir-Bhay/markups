@@ -16,7 +16,7 @@ import { TOOLBAR_GROUPS } from './dropdowns.js';
 import { prefs } from './preferences.js';
 import { popover } from './popovers.js';
 import { injectToolbarStyles } from './styles.js';
-import { markdownService } from '../../core/markdown/index.js';
+import { extractMarkdownStats } from '../../utils/markdown-stats.js';
 import {
   resolveEditor,
   wrapSelectionHtml,
@@ -870,7 +870,7 @@ export class ToolbarManager {
         // Count stats — Phase 3.3: canonical extractStats so the popover
         // agrees with footer + goals. Sentences use the footer modal regex.
         const countStats = (text) => {
-            const stats = markdownService.extractStats(text || '');
+            const stats = extractMarkdownStats(text || '');
             const sentences = (text || '').split(/[.(!?)]+/).filter(s => s.trim()).length;
             return {
                 chars: stats.characters,

@@ -9,7 +9,7 @@ let editorStartSentThisPage = false;
 
 function emitProductEvent(name, params, context = globalThis) {
     // Only the first-party production hostname may send activation events.
-    if (context?.location?.hostname !== 'markups.dev' || context.__MARKUPS_LOCAL__) return false;
+    if (context?.location?.hostname !== 'markups.dev' || context.__MARKUPS_LOCAL__ || context.__MARKUPS_ANALYTICS_ENABLED__ !== true) return false;
     if (typeof context.gtag !== 'function') return false;
     if (name !== 'editor_start' && name !== 'export_completed') return false;
     const payload = name === 'editor_start' ? {} : { export_format: params.export_format };

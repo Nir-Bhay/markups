@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://markups.dev/</loc><lastmod>2026-10-23</lastmod></url>
-  <url><loc>https://markups.dev/landing</loc><lastmod>2026-10-23</lastmod></url>
+  <url><loc>https://markups.dev/landing</loc><lastmod>2026-11-03</lastmod></url>
   <url><loc>https://markups.dev/license</loc><lastmod>2026-09-19</lastmod></url>
   <url><loc>https://markups.dev/privacy-policy</loc><lastmod>2026-10-23</lastmod></url>
   <url><loc>https://markups.dev/terms</loc><lastmod>2026-10-23</lastmod></url>
@@ -16,4 +16,22 @@
   <url><loc>https://markups.dev/seo/examples/mermaid</loc><lastmod>2026-09-19</lastmod></url>
   <url><loc>https://markups.dev/seo/examples/math</loc><lastmod>2026-09-19</lastmod></url>
   <url><loc>https://markups.dev/seo/tutorials/markdown-to-pdf</loc><lastmod>2026-10-23</lastmod></url>
+  <url><loc>https://markups.dev/markdown-guide</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/markdown-instructions-for-coding-agents</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/architecture-decision-records-markdown-template</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/markdown-meeting-notes-template</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/github-readme-template</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/safe-markdown-html-rendering</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/markdown-table-formatting</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/mermaid-flowchart-markdown</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/math-in-markdown-portability</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/markdown-changelog-template</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/commonmark-vs-gfm-markdown</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/markdown-line-breaks-not-working</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/markdown-images-not-showing</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/markdown-nested-lists-indentation</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/markdown-code-block-not-highlighting</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/markdown-links-not-working</loc><lastmod>2026-11-04</lastmod></url>
+  <url><loc>https://markups.dev/blog/markdown-troubleshooting</loc><lastmod>2026-11-04</lastmod></url>
 </urlset>

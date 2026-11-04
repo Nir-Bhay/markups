@@ -6,6 +6,7 @@ import 'github-markdown-css/github-markdown-light.css';
 import exportCss from './styles/export.css?raw';
 import { sanitizePreviewHtml, ensurePreviewLinksOpenInNewTab, escapeHtml, sanitizeMarkdownAlt } from './utils/sanitize.js';
 import { trackEditorStartOnce, trackExportCompleted } from './utils/productAnalytics.js';
+import { initializeTelemetry } from './utils/telemetryBootstrap.js';
 import { safeBase64FromArrayBuffer } from './utils/file.js';
 import { modesManager } from './features/modes/index.js';
 import { setupSpellcheck } from './features/spellcheck/index.js';
@@ -88,13 +89,31 @@ Prism.languages.XML = Prism.languages.markup;
 Prism.languages.svg = Prism.languages.svg || Prism.languages.markup;
 Prism.languages.html = Prism.languages.html || Prism.languages.markup;
 
-// Mermaid for diagrams
-import mermaid from 'mermaid';
-mermaid.initialize({ startOnLoad: false, theme: 'default', suppressErrors: true, securityLevel: 'strict' });
+// Mermaid is large and optional for ordinary text editing. Load it only when
+// a rendered document actually contains a Mermaid fence.
+let mermaid = null;
+let mermaidLoading = null;
+function loadMermaid() {
+    if (mermaid) return Promise.resolve(mermaid);
+    if (!mermaidLoading) {
+        mermaidLoading = import('mermaid').then(({ default: module }) => {
+            mermaid = module;
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: document.body.classList.contains('dark-mode') ? 'dark' : 'default',
+                suppressErrors: true,
+                securityLevel: 'strict'
+            });
+            return mermaid;
+        }).catch(error => {
+            mermaidLoading = null;
+            throw error;
+        });
+    }
+    return mermaidLoading;
+}
 
 // KaTeX for math
-import 'katex/dist/katex.min.css';
-import markedKatex from 'marked-katex-extension';
 
 // Image resize — dynamically imported after editor init (P3-T1)
 import {
@@ -119,8 +138,9 @@ import { initializeImportDialog, openImportDialog } from './features/import/dial
 import { noteStorage } from './core/storage/noteStorage.js';
 import { fileTreeStorage, ROOT_FOLDER_ID } from './core/storage/fileTreeStorage.js';
 import { runMigration, ensureFileTreeFromNotes } from './core/storage/migration.js';
-import { markdownService, deriveDocumentTitle } from './core/markdown/index.js';
+import { deriveDocumentTitle, extractMarkdownStats } from './utils/markdown-stats.js';
 import { createExplorerManager } from './features/explorer/index.js';
+import { modal } from './ui/modal/index.js';
 
 // Import debounce utility for performance optimization
 import { debounce } from './utils/debounce.js';
@@ -159,7 +179,9 @@ import { appContextMenuManager } from './features/app-context-menu/index.js';
 import { editorService } from './core/editor/index.js';
 import { createFocusTrap } from './utils/dom.js';
 import { validateImageSignature, sanitizeSvgToDataUrl } from './utils/file.js';
+import { localMediaStore } from './core/storage/mediaStore.js';
 import { initVersionHistory, setHasEdited, stopVersionHistoryPolling } from './features/version-history/index.js';
+import { initializeCloudAccount } from './features/cloud/index.js';
 import { trackedAddEventListener } from './utils/listener-registry.js';
 
 let lastGlobalErrorToastAt = 0;
@@ -186,6 +208,10 @@ import markedFootnote from 'marked-footnote';
 import { markedEmoji } from 'marked-emoji';
 import { emojiMarkedOptions } from './utils/emoji-shortcodes.js';
 // Note: markdownlint is Node.js only, using custom browser-based linting instead
+
+// Initialize telemetry before the editor loads content. The bootstrap only
+// sends sanitized page metadata and skips OAuth/share URLs entirely.
+initializeTelemetry();
 
 // Global configuration constants
 const APP_CONFIG = {
@@ -258,6 +284,15 @@ const collectReferencedImageIds = (texts) => {
     return ids;
 };
 
+let deletedNoteImageRefs = new Set();
+
+const refreshDeletedNoteImageRefs = async () => {
+    const deletedNotes = await noteStorage.getDeletedNotes();
+    if (noteStorage.getLastError()) return false;
+    deletedNoteImageRefs = collectReferencedImageIds(deletedNotes.map((note) => note.content));
+    return true;
+};
+
 let _lastEditorValueForImageRefs = null;
 
 const getOpenDocumentImageRefs = () => {
@@ -265,10 +300,12 @@ const getOpenDocumentImageRefs = () => {
     if (current !== _lastEditorValueForImageRefs) {
         _lastEditorValueForImageRefs = current;
     }
-    return collectReferencedImageIds([
+    const refs = collectReferencedImageIds([
         ...(Array.isArray(documents) ? documents.map((d) => d.content) : []),
         ...(_lastEditorValueForImageRefs !== null ? [_lastEditorValueForImageRefs] : [])
     ]);
+    for (const id of deletedNoteImageRefs) refs.add(id);
+    return refs;
 };
 
 /**
@@ -308,13 +345,17 @@ const imageStoreSet = (imgId, value) => {
 const imageStoreGet = (imgId) => imageStore.get(imgId);
 
 /** Drop store entries not referenced by any remaining document/editor content. */
-const pruneUnreferencedImages = (extraTexts = []) => {
+const pruneUnreferencedImages = async (extraTexts = []) => {
+    // A restored note must be able to resolve local images it references.
+    // If Trash cannot be read, keep the cache rather than evicting blindly.
+    if (!await refreshDeletedNoteImageRefs()) return false;
     const texts = [
         ...(Array.isArray(documents) ? documents.map((d) => d.content) : []),
         ...(editor ? [editor?.getValue()] : []),
         ...extraTexts
     ];
     const referenced = collectReferencedImageIds(texts);
+    for (const id of deletedNoteImageRefs) referenced.add(id);
     let changed = false;
     for (const key of [...imageStore.keys()]) {
         if (!referenced.has(key)) {
@@ -322,9 +363,6 @@ const pruneUnreferencedImages = (extraTexts = []) => {
             imageStore.delete(key);
             changed = true;
         }
-    }
-    if (changed) {
-        saveImageStore();
     }
     return changed;
 };
@@ -345,9 +383,7 @@ const cleanupImagesAfterTabClose = (closedContent) => {
             changed = true;
         }
     }
-    if (changed) {
-        saveImageStore();
-    }
+    return changed;
 };
 
 /** Clear entire image store (revokes blob URLs). */
@@ -357,7 +393,6 @@ const clearImageStore = () => {
         revokeImageStoreValue(value);
     }
     imageStore.clear();
-    saveImageStore();
 };
 // default welcome content — shown to first-time users, auto-cleared on first real keystroke
 const defaultInput = `# Welcome to Markups ✨
@@ -395,20 +430,11 @@ ${"\`"}${"\`"}${"\`"}
 
 ### Math
 
-Inline: $E = mc^2$ · Block:
-
-$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$
+Write math inline or on its own line for an equation. The Markdown guide shows supported syntax and rendering limits.
 
 ### Diagram
 
-${"\`"}${"\`"}${"\`"}mermaid
-graph LR
-    A[Write Markdown] --> B[Live Preview]
-    B --> C{Export}
-    C --> D[PDF]
-    C --> E[HTML]
-    C --> F[Image]
-${"\`"}${"\`"}${"\`"}
+Select **Diagram** in the toolbar to insert a Mermaid example. It renders in the preview.
 
 ### Blockquote
 
@@ -520,6 +546,7 @@ const initTabs = async () => {
         onCreateFolder: (folderId) => createFolder(folderId),
         onRenameNode: (node, newName) => renameNode(node, newName),
         onDeleteNode: (node) => deleteNode(node),
+        onOpenTrash: () => openTrash(),
         onMoveNode: (payload) => moveNodeInTree(payload),
         onLayoutChange: () => {
             if (editor) editor?.layout();
@@ -688,6 +715,7 @@ const openMarkdownInNewTab = async ({ markdown, title } = {}) => {
     editor?.focus();
     hasEdited = true;
     setHasEdited(true);
+    return newDoc;
 };
 
 const addNewTab = async (parentFolderId) => {
@@ -849,62 +877,50 @@ const moveNodeInTree = async ({ draggedNode, targetNode, position, sortMode }) =
 
 const deleteNode = async (node) => {
     const isFolder = node.type === 'folder';
+    const allNodes = await fileTreeStorage.getTree();
+    const subtreeIds = new Set([node.id]);
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const item of allNodes) {
+            if (!subtreeIds.has(item.id) && subtreeIds.has(item.parentId)) {
+                subtreeIds.add(item.id);
+                changed = true;
+            }
+        }
+    }
+    const descendants = Math.max(0, subtreeIds.size - 1);
     const message = isFolder
-        ? `Delete folder "${node.name}"?`
-        : `Delete file "${node.name}.md"?`;
-    if (!confirm(`${message}\n\nThis action cannot be undone.`)) return;
+        ? `Move folder "${node.name}"${descendants ? ` and its ${descendants} item${descendants === 1 ? '' : 's'}` : ''} to Trash? You can restore it later.`
+        : `Move file "${node.name}.md" to Trash? You can restore it later.`;
+    if (!confirm(message)) return;
 
-    if (isFolder) {
-        const allNodes = await fileTreeStorage.getTree();
-        const countDescendants = (folderId) => {
-            let count = 0;
-            const stack = [folderId];
-            while (stack.length > 0) {
-                const currentId = stack.pop();
-                const children = allNodes.filter((item) => item.parentId === currentId);
-                children.forEach((child) => {
-                    count += 1;
-                    if (child.type === 'folder') {
-                        stack.push(child.id);
-                    }
-                });
-            }
-            return count;
-        };
-
-        const totalItems = countDescendants(node.id);
-        if (totalItems > 0) {
-            const secondConfirm = confirm(
-                `Folder "${node.name}" contains ${totalItems} item${totalItems === 1 ? '' : 's'}.\n\nDelete everything inside it?`
-            );
-            if (!secondConfirm) return;
-        }
-    }
-
-    const result = await fileTreeStorage.deleteNodeRecursive(node.id);
-    if (result.deletedNoteIds.length > 0) {
+    if (subtreeIds.has(activeDocId)) {
         try {
-            // Use allSettled so one failed IDB delete doesn't abort the whole teardown
-            // (previously an unhandled rejection from a single failed write could crash
-            // the tab-close flow). Remaining deletions continue even if some reject.
-            const outcomes = await Promise.allSettled(
-                result.deletedNoteIds.map((noteId) => noteStorage.deleteNote(noteId))
-            );
-            const failures = outcomes.filter((o) => o.status === 'rejected');
-            if (failures.length > 0) {
-                console.error(
-                    `deleteNode: failed to delete ${failures.length}/${result.deletedNoteIds.length} note(s):`,
-                    failures.map((f) => f.reason)
-                );
-                showToast(`Could not delete ${failures.length} note(s)`, 'error');
+            livePreviewEditController?.syncFromPreview();
+            await saveCurrentDoc();
+            const activeDoc = documents.find((doc) => doc.id === activeDocId);
+            const savedNote = activeDoc?.noteId ? await noteStorage.getNote(activeDoc.noteId) : null;
+            if (!savedNote || savedNote.content !== (editor?.getValue() ?? '') || savedNote.title !== activeDoc.title) {
+                showToast('Could not save this document. It remains open; retry before moving it to Trash.', 'error');
+                return;
             }
-        } catch (err) {
-            // Degrade gracefully: the file-tree node is already gone; a failure here
-            // must not throw out of the delete handler.
-            console.error('deleteNode: note cleanup threw unexpectedly:', err);
-            showToast('Some notes could not be cleaned up', 'error');
+        } catch (error) {
+            console.error('Could not save the active document before moving it to Trash:', error);
+            showToast('Could not save this document. It remains open; retry before moving it to Trash.', 'error');
+            return;
         }
     }
+
+    let result;
+    try {
+        result = await fileTreeStorage.deleteNodeRecursive(node.id);
+    } catch (error) {
+        console.error('Could not move the file-tree item to Trash:', error);
+        showToast('Could not move this item to Trash. Your notes remain available.', 'error');
+        return;
+    }
+    if (!result.deletedNodeIds.length) return;
 
     documents = documents.filter((doc) => !result.deletedNodeIds.includes(doc.id));
     // Phase 2.4 fix: prune dirty-check snapshots for deleted docs.
@@ -921,10 +937,95 @@ const deleteNode = async (node) => {
     window.__markups_documents = documents;
     window.__markups_activeDocId = activeDocId;
     saveDocsToStorage();
-    pruneUnreferencedImages();
+    await pruneUnreferencedImages();
     renderTabs();
     await syncTreeFromDocuments();
     loadActiveDocument();
+    showToast('Moved to Trash. Its versions and linked data are kept.', 'success');
+};
+
+const openTrash = async () => {
+    const list = document.createElement('div');
+    list.className = 'trash-list';
+    const modalId = modal.open({ title: 'Trash', content: list, size: 'md' });
+
+    const renderTrash = async () => {
+        const [roots, linkedDeletedNoteIds, deletedNotes] = await Promise.all([
+            fileTreeStorage.getTrashRoots(),
+            fileTreeStorage.getTrashNoteIds(),
+            noteStorage.getDeletedNotes()
+        ]);
+        list.replaceChildren();
+        const linkedDeletedNoteIdSet = new Set(linkedDeletedNoteIds);
+        const entries = [
+            ...roots.map((node) => ({ type: 'node', id: node.id, label: node.type === 'file' ? `${node.name}.md` : node.name, deletedAt: node.deletedAt })),
+            ...deletedNotes.filter((note) => !linkedDeletedNoteIdSet.has(note.id)).map((note) => ({ type: 'note', id: note.id, label: `${note.title || 'Untitled'}.md`, deletedAt: note.deletedAt }))
+        ];
+
+        if (entries.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'trash-empty';
+            empty.textContent = 'Trash is empty.';
+            list.appendChild(empty);
+            return;
+        }
+
+        for (const entry of entries) {
+            const row = document.createElement('div');
+            row.className = 'trash-item';
+            const label = document.createElement('div');
+            label.className = 'trash-item-label';
+            label.append(document.createTextNode(entry.label));
+            const date = document.createElement('span');
+            date.className = 'trash-item-date';
+            date.textContent = entry.deletedAt ? `Moved ${new Date(entry.deletedAt).toLocaleString()}` : 'Moved to Trash';
+            label.appendChild(date);
+            const restore = document.createElement('button');
+            restore.type = 'button';
+            restore.className = 'trash-item-restore';
+            restore.textContent = 'Restore';
+            restore.setAttribute('aria-label', `Restore ${entry.label}`);
+            restore.addEventListener('click', async () => {
+                restore.disabled = true;
+                try {
+                    livePreviewEditController?.syncFromPreview();
+                    await saveCurrentDoc();
+                    if (entry.type === 'node') {
+                        const result = await fileTreeStorage.restoreNodeRecursive(entry.id);
+                        if (!result) throw new Error('Trash item is no longer available');
+                        const allLiveNodes = await fileTreeStorage.getTree();
+                        const restoredIds = new Set(result.restoredNodeIds);
+                        for (const fileNode of allLiveNodes) {
+                            if (!restoredIds.has(fileNode.id) || fileNode.type !== 'file' || !fileNode.noteId) continue;
+                            if (documents.some((doc) => doc.id === fileNode.id)) continue;
+                            const note = await noteStorage.getNote(fileNode.noteId);
+                            if (note) documents.push(mapNoteToDocument(note, fileNode));
+                        }
+                    } else {
+                        const restored = await fileTreeStorage.restoreStandaloneNote(entry.id);
+                        if (!restored) throw new Error('Note is no longer available');
+                        documents.push(mapNoteToDocument(restored.note, restored.node));
+                    }
+                    await refreshDeletedNoteImageRefs();
+                    window.__markups_documents = documents;
+                    saveDocsToStorage();
+                    renderTabs();
+                    await syncTreeFromDocuments();
+                    showToast('Restored from Trash.', 'success');
+                    await renderTrash();
+                } catch (error) {
+                    console.error('Could not restore Trash item:', error);
+                    showToast('Could not restore this item. Its saved data is still kept in Trash.', 'error');
+                    restore.disabled = false;
+                }
+            });
+            row.append(label, restore);
+            list.appendChild(row);
+        }
+    };
+
+    await renderTrash();
+    return modalId;
 };
 
 // Phase 2.0: last persisted {content, title} per doc id. Skips the whole
@@ -1217,10 +1318,32 @@ marked.use(markedHighlight({
 }));
 
 // Configure marked with KaTeX
-marked.use(markedKatex({
-    throwOnError: false,
-    output: 'html' // or 'mathml'
-}));
+let katexExtensionPromise = null;
+let katexExtensionReady = false;
+
+const containsMathSyntax = (markdown) => {
+    const withoutCode = markdown
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/`[^`\n]*`/g, '');
+    return /\$\$[\s\S]+?\$\$|\$(?!\$)[^$\r\n]+\$|\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\]/.test(withoutCode);
+};
+
+const ensureKatexExtension = () => {
+    if (katexExtensionReady) return Promise.resolve();
+    if (!katexExtensionPromise) {
+        katexExtensionPromise = Promise.all([
+            import('marked-katex-extension'),
+            import('katex/dist/katex.min.css')
+        ]).then(([{ default: markedKatex }]) => {
+            marked.use(markedKatex({ throwOnError: false, output: 'html' }));
+            katexExtensionReady = true;
+        }).catch((error) => {
+            katexExtensionPromise = null;
+            throw error;
+        });
+    }
+    return katexExtensionPromise;
+};
 
 // Configure GFM Extensions
 marked.use(markedAlert());
@@ -1550,7 +1673,7 @@ const setupGoals = () => {
 
 const updateGoalProgress = (content) => {
     // Phase 3.3: canonical word count — same stripped count as footer/toolbar.
-    const wordCount = markdownService.extractStats(content || '').words;
+    const wordCount = extractMarkdownStats(content || '').words;
 
     const progressBar = document.getElementById('goal-progress-bar');
     const goalText = document.getElementById('goal-text');
@@ -2268,7 +2391,7 @@ function extractMarkdownBlockStarts(markdown) {
 function blockTypeFromElement(el) {
     const tag = el.tagName.toLowerCase();
     if (/^h[1-6]$/.test(tag)) return 'heading';
-    if (tag === 'pre' || el.classList?.contains('mermaid')) return 'code';
+    if (tag === 'pre' || el.matches?.('.mermaid, .mermaid-diagram, .mermaid-error')) return 'code';
     if (tag === 'table') return 'table';
     if (tag === 'ul' || tag === 'ol') return 'list';
     if (tag === 'blockquote') return 'quote';
@@ -2281,7 +2404,7 @@ function blockTypeFromElement(el) {
 function elementBlockScanType(el) {
     const tag = el.tagName.toLowerCase();
     if (/^h[1-6]$/.test(tag)) return 'heading';
-    if (tag === 'pre') return 'code';
+    if (tag === 'pre' || el.matches?.('.mermaid, .mermaid-diagram, .mermaid-error')) return 'code';
     if (tag === 'table') return 'table';
     if (tag === 'ul' || tag === 'ol') return 'list';
     if (tag === 'blockquote' || el.classList?.contains('markdown-alert')) return 'quote';
@@ -2452,8 +2575,11 @@ const normalizeMermaidPreviewErrors = (root) => {
 };
 
 // Render markdown text as html
-// Parse stays sync (already behind debouncedConvert); DOM write + secondary UI use rAF
-const convert = (markdown) => {
+// The text renderer stays synchronous; KaTeX is loaded only when math is present.
+// DOM writes and secondary UI work still happen in requestAnimationFrame below.
+const convert = async (markdown) => {
+    const token = ++_convertToken;
+
     // Reset TOC items and heading-id allocator each render (GFM uniquify)
     tocItems = [];
     allocateHeadingId = createHeadingIdAllocator();
@@ -2477,10 +2603,20 @@ const convert = (markdown) => {
     // Preview Mode uses renderableMarkdown (attrs stripped) for clean rendering.
     const documentModeMarkdown = resolvedMarkdown;
 
-    const html = marked.parse(renderableMarkdown);
-    const sanitized = sanitizePreviewHtml(html);
+    if (shouldRenderKatex(currentSettings) && containsMathSyntax(renderableMarkdown)) {
+        try {
+            await ensureKatexExtension();
+        } catch (error) {
+            console.error('KaTeX could not be loaded; leaving math source visible:', error);
+        }
+        if (token !== _convertToken) return;
+    }
 
-    const token = ++_convertToken;
+    const html = marked.parse(renderableMarkdown);
+    const localBlobImageUrls = [...collectReferencedImageIds([markdown])]
+        .map((id) => imageStoreGet(id))
+        .filter((url) => typeof url === 'string' && url.startsWith('blob:'));
+    const sanitized = sanitizePreviewHtml(html, { LOCAL_BLOB_IMAGE_URLS: localBlobImageUrls });
 
     // Paint preview on next frame so the editor stays responsive after debounce
     requestAnimationFrame(() => {
@@ -2594,8 +2730,9 @@ const convert = (markdown) => {
                     pre.replaceWith(div);
                 });
 
-                mermaid.run({
-                    nodes: outputElement.querySelectorAll('.mermaid')
+                loadMermaid().then(renderer => {
+                    if (token !== _convertToken) return;
+                    return renderer.run({ nodes: outputElement.querySelectorAll('.mermaid') });
                 }).then(() => {
                     if (token !== _convertToken) return;
                     normalizeMermaidPreviewErrors(outputElement);
@@ -2881,26 +3018,10 @@ const copyHTMLToClipboard = async () => {
 
 const updateStats = (rawText) => {
     const text = blankFrontMatterLines(rawText) ?? '';
-    // Strip markdown syntax before counting words (matches stats modal / GitHub)
-    const stripped = text
-        .replace(/```[\s\S]*?```/g, '')
-        .replace(/`[^`]*`/g, '')
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-        .replace(/[#*_~`]/g, '')
-        .trim();
-
-    // Count words
-    const words = stripped.split(/\s+/).filter(word => word.length > 0);
-    const wordCount = stripped === '' ? 0 : words.length;
-
-    // Count total characters
-    const charCount = text.length;
+    const { words: wordCount, characters: charCount, paragraphs } = extractMarkdownStats(text);
 
     // Calculate reading time (configurable words per minute)
     const readingTime = Math.ceil(wordCount / APP_CONFIG.READING_SPEED_WPM) || 0;
-
-    // Count paragraphs
-    const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
 
     // Count sentences (approximate)
     const sentences = text.split(/[.(!?)]+/).filter(s => s.trim().length > 0).length;
@@ -3372,7 +3493,8 @@ const setupHeaderQuickTabs = () => {
 
 const setupAiWriterButton = () => {
     const aiWriterBtn = document.querySelector("#ai-writer-button");
-    if (!aiWriterBtn) return;
+    if (!aiWriterBtn || aiWriterBtn.dataset.aiSetup === 'true') return;
+    aiWriterBtn.dataset.aiSetup = 'true';
 
     aiWriterBtn.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -3478,8 +3600,10 @@ const setupCalloutDropdown = () => {
 
 // ----- download utils -----
 
-const downloadMarkdown = () => {
-    const content = resolveImageReferences(editor?.getValue() ?? '', false);
+const downloadMarkdown = async () => {
+    let content;
+    try { content = await localMediaStore.portableMarkdown(editor?.getValue() ?? '', imageStore); }
+    catch (error) { showToast(error.message, 'error'); return; }
     const filename = getExportFilename('md');
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -3526,9 +3650,12 @@ const exportToPDF = async () => {
     }
 };
 
-const exportToHTML = () => {
+const exportToHTML = async () => {
     const title = getActiveDocTitle();
     const filename = getExportFilename('html');
+    let content;
+    try { content = await getPortablePreviewHtml(); }
+    catch (error) { showToast(error?.message || 'Could not prepare images for HTML export.', 'error'); return; }
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3589,7 +3716,7 @@ const exportToHTML = () => {
 </style>
 </head>
 <body class="markdown-body">
-${document.getElementById('output').innerHTML}
+${content}
 </body>
 </html>`;
 
@@ -3604,10 +3731,12 @@ ${document.getElementById('output').innerHTML}
         trackExportCompleted('html');
 };
 
-const exportToDOCX = () => {
+const exportToDOCX = async () => {
     const title = getActiveDocTitle();
     const filename = getExportFilename('doc');
-    const content = document.getElementById('output').innerHTML;
+    let content;
+    try { content = await getPortablePreviewHtml(); }
+    catch (error) { showToast(error?.message || 'Could not prepare images for Word export.', 'error'); return; }
     const html = `<!DOCTYPE html>
 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
 <head>
@@ -4555,7 +4684,7 @@ const exportToPDFWithOptions = async () => {
     }
 };
 
-const exportToHTMLWithOptions = () => {
+const exportToHTMLWithOptions = async () => {
     const theme = document.getElementById('export-html-theme')?.value || 'light';
     const includeCSS = document.getElementById('export-include-css')?.checked ?? true;
     const minify = document.getElementById('export-minify-html')?.checked ?? false;
@@ -4563,7 +4692,9 @@ const exportToHTMLWithOptions = () => {
     showExportLoading('Generating HTML file...', 40);
     const title = getActiveDocTitle();
     const filename = getExportFilename('html');
-    const content = document.getElementById('output').innerHTML;
+    let content;
+    try { content = await getPortablePreviewHtml(); }
+    catch (error) { failExportLoading('Could not prepare images for HTML export'); showToast(error?.message || 'Could not prepare images for HTML export.', 'error'); return; }
 
     let themeStyles = '';
     if (theme === 'dark') {
@@ -4796,11 +4927,11 @@ const printDocumentWithOptions = () => {
 };
 
 // Download Markdown with options
-const downloadMarkdownWithOptions = () => {
+const downloadMarkdownWithOptions = async () => {
     showExportLoading('Preparing Markdown file...', 50);
-    const content = resolveImageReferences(editor?.getValue() ?? '', false);
     const filename = getExportFilename('md');
     try {
+        const content = await localMediaStore.portableMarkdown(editor?.getValue() ?? '', imageStore);
         updateExportProgress(80, 'Downloading...');
         const blob = new Blob([content], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
@@ -4820,12 +4951,13 @@ const downloadMarkdownWithOptions = () => {
 };
 
 // Export DOCX with options
-const exportToDOCXWithOptions = () => {
+const exportToDOCXWithOptions = async () => {
     const title = getActiveDocTitle();
     const filename = getExportFilename('doc');
-    const content = document.getElementById('output').innerHTML;
-
     showExportLoading('Generating Word document...', 40);
+    let content;
+    try { content = await getPortablePreviewHtml(); }
+    catch (error) { failExportLoading('Could not prepare images for Word export'); showToast(error?.message || 'Could not prepare images for Word export.', 'error'); return; }
 
     const html = `<!DOCTYPE html>
 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -5036,6 +5168,7 @@ const setupImageUpload = () => {
 
     // Handle image file selection
     imageInput.addEventListener('change', handleImageUpload);
+    imageInput.dataset.ready = 'true';
 
     // Drag and drop support
     editorElement.addEventListener('dragover', (e) => {
@@ -5117,7 +5250,7 @@ const processImageFile = (file) => {
                 showToast('SVG rejected: empty or unsafe content', 'error');
                 return;
             }
-            insertImageIntoEditor(file, cleanDataUrl);
+            void insertImageIntoEditor(file, cleanDataUrl);
         };
         textReader.onerror = () => {
             showToast('Failed to process SVG image', 'error');
@@ -5137,7 +5270,7 @@ const processImageFile = (file) => {
 
         try {
             const dataUrl = await safeBase64FromArrayBuffer(buffer, file.type);
-            insertImageIntoEditor(file, dataUrl);
+            await insertImageIntoEditor(file, dataUrl);
         } catch {
             showToast('Failed to process image', 'error');
         }
@@ -5151,18 +5284,26 @@ const processImageFile = (file) => {
 };
 
 // Helper: insert image reference into editor after processing
-const insertImageIntoEditor = (file, base64Image) => {
+const insertImageIntoEditor = async (file, base64Image) => {
     const selection = editor?.getSelection();
+    const targetDocId = activeDocId;
+    const targetModel = editor?.getModel();
+    const targetVersion = targetModel?.getVersionId();
     const fileName = sanitizeMarkdownAlt(file.name.replace(/\.[^/.]+$/, "")); // Remove extension + escape alt text
 
     // Generate short unique ID and store base64 in the image store (LRU-capped)
     const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
-    imageStoreSet(imgId, base64Image);
-    if (!saveImageStore()) {
-        imageStore.delete(imgId);
-        showToast('Browser storage is full. The image was not inserted; export a backup or free up space first.', 'error');
+    let blob;
+    try { blob = await localMediaStore.putDataUrl(imgId, base64Image); }
+    catch {
+        showToast('Could not save this image locally. It was not inserted; export a backup or free up browser storage.', 'error');
         return;
     }
+    if (activeDocId !== targetDocId || editor?.getModel() !== targetModel || targetModel?.getVersionId() !== targetVersion) {
+        showToast('The document changed while the image was being saved. Please insert it again.', 'warning');
+        return;
+    }
+    imageStoreSet(imgId, URL.createObjectURL(blob));
 
     // Insert short readable reference instead of enormous base64 string
     const markdown = `![${fileName}](markups-img:${imgId})`;
@@ -5599,7 +5740,6 @@ const setupPreviewSettings = () => {
     if (mathRenderingCheckbox) {
         mathRenderingCheckbox.addEventListener('change', (e) => {
             currentSettings.preview.mathRendering = e.target.checked;
-            markdownService.setKatexEnabled(e.target.checked);
             updatePreview();
             showToast(e.target.checked ? 'Math rendering enabled' : 'Math rendering disabled', 'info', 1500);
         });
@@ -5610,7 +5750,6 @@ const setupPreviewSettings = () => {
     if (mermaidCheckbox) {
         mermaidCheckbox.addEventListener('change', (e) => {
             currentSettings.preview.mermaid = e.target.checked;
-            markdownService.setMermaidEnabled(e.target.checked);
             updatePreview();
             showToast(e.target.checked ? 'Mermaid diagrams enabled' : 'Mermaid diagrams disabled', 'info', 1500);
         });
@@ -6975,20 +7114,24 @@ const saveDarkModeSettings = (settings) => {
 
 // ----- Image Store Persistence (LRU + tab-close cleanup) -----
 
-const loadImageStore = () => {
+const loadImageStore = async () => {
     const saved = Storehouse.getItem(localStorageNamespace, localStorageImagesKey);
     if (saved && typeof saved === 'object') {
-        // Load via LRU setter so oversized stores are trimmed on boot
+        // Legacy copy remains untouched for recovery; never persist object URLs.
         Object.entries(saved).forEach(([key, value]) => {
-            imageStoreSet(key, value);
+            if (typeof value === 'string' && value.startsWith('data:image/')) imageStore.set(key, value);
         });
     }
-};
-
-const saveImageStore = () => {
-    const expiredAt = new Date(2099, 1, 1);
-    const obj = Object.fromEntries(imageStore);
-    return Storehouse.setItem(localStorageNamespace, localStorageImagesKey, obj, expiredAt) !== false;
+    try {
+        await localMediaStore.migrateLegacy(saved);
+        for (const [id, url] of await localMediaStore.previewEntries()) imageStore.set(id, url);
+    } catch (error) {
+        // Keep the legacy image copy untouched and report only the failure
+        // class; never send image data or document content to logs/analytics.
+        console.warn('[Markups] Local image storage initialization failed:', error?.name || 'UnknownError');
+        const quotaHint = error?.name === 'QuotaExceededError' ? ' Browser storage may be full.' : '';
+        showToast(`Browser image storage could not be initialized. Existing Markdown and any legacy image backup remain unchanged; check storage before adding images.${quotaHint}`, 'warning');
+    }
 };
 
 const resolveImageReferences = (text, forPreview = true) => {
@@ -6996,6 +7139,23 @@ const resolveImageReferences = (text, forPreview = true) => {
         /markups-img:(img_\w+)/g,
         (match, imgId) => forPreview ? (imageStoreGet(imgId) || match) : match
     );
+};
+
+// Preview uses revocable Blob URLs for memory efficiency. Files that outlive this
+// page must contain data URLs instead, so exported HTML never points at this tab.
+const getPortablePreviewHtml = async () => {
+    const output = document.getElementById('output');
+    if (!output) throw new Error('The rendered document is unavailable.');
+    const clone = output.cloneNode(true);
+    const byUrl = new Map([...imageStore].filter(([, value]) => typeof value === 'string').map(([id, value]) => [value, id]));
+    for (const img of clone.querySelectorAll('img[src^="blob:"]')) {
+        const id = byUrl.get(img.getAttribute('src'));
+        const data = id ? await localMediaStore.getDataUrl(id, imageStore.get(id)) : null;
+        if (!data) throw new Error('A preview image could not be recovered for this export.');
+        img.setAttribute('src', data);
+    }
+    if (clone.querySelector('img[src^="blob:"]')) throw new Error('A preview image could not be recovered for this export.');
+    return clone.innerHTML;
 };
 
 /**
@@ -7922,12 +8082,9 @@ const initializeApp = async () => {
     defineCustomThemes();
 
     const lastContent = loadLastContent();
-    loadImageStore(); // Load image store before editor setup so convert() can resolve refs
+    await loadImageStore(); // Resolve durable images before the first preview.
     editor = setupEditor();
     setupSpellcheck(editor);
-    if (typeof window !== 'undefined') {
-        window.editor = editor;
-    }
     // Flush any actions queued before the editor was ready (EDITOR_READY)
     if (pendingEditorActions.length) {
         const queued = pendingEditorActions;
@@ -7944,6 +8101,9 @@ const initializeApp = async () => {
 
     // Initialize UI components
     setupToolbar();
+    // Bind the always-visible AI entry point before later async tab hydration.
+    // Users can open the lazy-loaded panel as soon as the editor is ready.
+    setupAiWriterButton();
     initToolbarDensity();
     if (document.getElementById('enhanced-toolbar')) {
         toolbarManager.initialize('#enhanced-toolbar', { render: false });
@@ -7981,8 +8141,15 @@ const initializeApp = async () => {
     setupVideoControls();
     setupImageControls();
     await initTabs();
-    pruneUnreferencedImages();
-    window.addEventListener('pagehide', () => {
+    await pruneUnreferencedImages();
+    // Expose the debug/test editor only after startup has restored the active
+    // tab. Otherwise a caller can set content during boot and have initTabs()
+    // immediately replace it with the restored document.
+    if (typeof window !== 'undefined') {
+        window.editor = editor;
+    }
+    window.addEventListener('pagehide', (event) => {
+        if (event.persisted) return; // Keep object URLs alive for back/forward cache.
         for (const [key, value] of [...imageStore.entries()]) {
             if (typeof value === 'string' && value.startsWith('blob:')) {
                 revokeImageStoreValue(value);
@@ -8027,6 +8194,7 @@ const initializeApp = async () => {
     setupExportModal();
     shareManager.initialize({
         getMarkdown: () => editor?.getValue() ?? '',
+        getPortableMarkdown: (markdown) => localMediaStore.portableMarkdown(markdown, imageStore),
         getTitle: () => {
             const fromPage = document.getElementById('page-filename')?.textContent?.trim();
             if (fromPage && fromPage !== 'Untitled.md') return fromPage.replace(/\.md$/i, '');
@@ -8037,6 +8205,14 @@ const initializeApp = async () => {
             }
         },
         onIncomingDoc: ({ markdown, title }) => openMarkdownInNewTab({ markdown, title })
+    });
+    initializeCloudAccount({
+        getCurrentDocument: () => {
+            const current = documents.find(doc => doc.id === activeDocId);
+            return current ? { noteId: current.noteId, title: current.title, content: editor?.getValue() ?? current.content } : null;
+        },
+        getPortableMarkdown: (markdown) => localMediaStore.portableMarkdown(markdown, imageStore),
+        openCloudDocument: ({ title, content }) => openMarkdownInNewTab({ title, markdown: content })
     });
     handleIncomingShare();
 
@@ -8051,7 +8227,20 @@ const initializeApp = async () => {
     initVersionHistory({
         editorInstance: editor,
         defaultContent: defaultInput,
-        hasEdited
+        hasEdited,
+        getActiveNoteId: () => documents.find(doc => doc.id === activeDocId)?.noteId,
+        onRestored: ({ noteId, content }) => {
+            const document = documents.find(doc => doc.noteId === noteId);
+            if (document) {
+                document.content = content;
+                document.lastModified = Date.now();
+                if (document.id === activeDocId) {
+                    editor?.setValue(content);
+                    hasEdited = true;
+                    setHasEdited(true);
+                }
+            }
+        }
     });
     setupMobileSwipeGestures();
 
@@ -8066,9 +8255,6 @@ const initializeApp = async () => {
 
     // Breadcrumb: current heading path in status bar
     setupBreadcrumb(editor);
-
-    // AI Writer — lazy-loaded module, same pattern as image-resize
-    setupAiWriterButton();
 
     // Browser-style file tabs in the header
     setupHeaderQuickTabs();
@@ -8144,7 +8330,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 // Register service worker
-if ('serviceWorker' in navigator) {
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
@@ -8176,3 +8362,5 @@ window.addEventListener("load", () => {
         }
     });
 });
+
+

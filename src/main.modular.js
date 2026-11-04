@@ -1,15 +1,17 @@
 /**
- * Markdown Live Preview — Modular entry point
+ * Markdown Live Preview — Experimental modular entry point
  *
- * This file is the modular drop-in for src/main.js. It sets up the global
- * editor/prism/mermaid/CSS environment that main.js does, then delegates the
- * rest of the application lifecycle to src/app.js. All `marked.use(...)`
- * calls live in src/core/markdown/index.js so we don't double-register
- * extensions when both main.js and the modular app initialise markdown.
+ * This alternate boot path is used for architecture and parity checks. It is
+ * not currently a production drop-in: the full shared browser suite exposes
+ * feature gaps compared with src/main.js. Keep the deployed entry on main.js
+ * until every required user workflow is implemented and verified here.
  *
- * To switch the production bundle to the modular app, change
- * `index.html` line 141 from `/src/main.js` to `/src/main.modular.js` and
- * set `MARKUPS_ENTRY=modular` (or `vite build --mode modular`).
+ * It sets up editor/Prism/Mermaid/CSS globals and delegates lifecycle work to
+ * src/app.js. All `marked.use(...)` calls live in src/core/markdown/index.js
+ * so extensions are not registered twice.
+ *
+ * Build with `MARKUPS_ENTRY=modular` or `vite build --mode modular` only for
+ * local parity validation; do not deploy this entry until the parity gate passes.
  *
  * @module main.modular
  */
@@ -89,6 +91,14 @@ import 'github-markdown-css/github-markdown-light.css';
 // ============================================================
 
 import { app } from './app.js';
+import { tabsManager } from './features/tabs/index.js';
+import { mobileUIManager } from './features/mobile/index.js';
+
+// The static page can become interactive before async IndexedDB hydration
+// finishes. Do not accept a view click until its event handlers exist.
+const startupViewControls = ['toolbar-preview-toggle', 'view-code', 'view-split', 'view-preview']
+    .map(id => document.getElementById(id)).filter(Boolean);
+startupViewControls.forEach(button => { button.disabled = true; });
 
 function onReady(callback) {
     if (document.readyState === 'loading') {
@@ -118,10 +128,26 @@ onReady(async () => {
                 goals: '#goals-button'
             }
         });
+        startupViewControls.forEach(button => { button.disabled = false; });
 
         // Expose app to window for debugging
         if (import.meta.env.DEV) {
             window.app = app;
+            // Match the production entry's dev diagnostics so the shared E2E
+            // suite can exercise either boot path without production globals.
+            window.editor = app.getEditor();
+            window.mobileUIManager = mobileUIManager;
+            Object.defineProperties(window, {
+                __markups_documents: {
+                    configurable: true,
+                    get: () => tabsManager.getAllTabs()
+                },
+                __markups_activeDocId: {
+                    configurable: true,
+                    get: () => tabsManager.getActiveTab()?.id ?? null
+                }
+            });
+            window.__markups_createFile = () => app.createFile();
             window.mdPreview = {
                 app,
                 editor: () => import('./core/editor/index.js'),
@@ -139,12 +165,16 @@ onReady(async () => {
         // Show error message
         const errorContainer = document.createElement('div');
         errorContainer.className = 'app-error';
-        errorContainer.innerHTML = `
-            <h1>Failed to Load</h1>
-            <p>Something went wrong while loading the application.</p>
-            <pre>${error.message}</pre>
-            <button onclick="location.reload()">Reload</button>
-        `;
+        const heading = document.createElement('h1');
+        heading.textContent = 'Failed to Load';
+        const explanation = document.createElement('p');
+        explanation.textContent = 'Something went wrong while loading the application.';
+        const detail = document.createElement('pre');
+        detail.textContent = error?.message || 'Unknown error';
+        const reload = document.createElement('button');
+        reload.textContent = 'Reload';
+        reload.addEventListener('click', () => location.reload());
+        errorContainer.append(heading, explanation, detail, reload);
         errorContainer.style.cssText = `
             position: fixed;
             inset: 0;

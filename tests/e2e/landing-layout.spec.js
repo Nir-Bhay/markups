@@ -5,11 +5,13 @@ import { mkdirSync } from 'node:fs';
 // Screenshots are evidence/artifacts, not visual-appearance approval.
 for (const width of [320, 390, 768, 1440]) {
   test('landing responsive layout at ' + width + 'px', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
     await page.setViewportSize({ width, height: 900 });
     const response = await page.goto('/landing');
     expect(response?.status()).toBe(200);
-    await expect(page.locator('.hero h1')).toBeVisible();
-    await expect(page.locator('.editor-frame')).toBeVisible();
+    await expect(page.locator('#hero-title')).toBeVisible();
+    await expect(page.locator('.hero-visual')).toBeVisible();
     await expect(page.locator('#faq h2')).toBeVisible();
 
     const dimensions = await page.evaluate(() => ({
@@ -22,6 +24,7 @@ for (const width of [320, 390, 768, 1440]) {
 
     mkdirSync('test-results/landing-screenshots', { recursive: true });
     await page.screenshot({ path: 'test-results/landing-screenshots/landing-' + width + '.png', fullPage: true });
+    expect(errors, 'Landing hydration must not throw or discard its prerender').toEqual([]);
   });
 }
 

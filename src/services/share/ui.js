@@ -35,6 +35,7 @@ function getModal() {
 
 let lastTrigger = null;
 let shareFocusTrap = null;
+let shareRefreshToken = 0;
 
 export function openShareModal(triggerEl = null) {
     lastTrigger = triggerEl instanceof Element ? triggerEl : document.activeElement;
@@ -97,12 +98,15 @@ export async function refreshShareLink() {
     const copyBtn = document.getElementById('share-copy-link-btn');
     const nativeBtn = document.getElementById('share-native-link-btn');
     if (!output) return;
-    const markdown = shareManager.getMarkdown();
+    const source = shareManager.getMarkdown();
     const title = shareManager.getTitle();
+    const token = ++shareRefreshToken;
     output.value = 'Generating link…';
     setStatus('');
     try {
+        const markdown = await shareManager.getPortableMarkdown(source);
         const result = await buildShareUrl(markdown, title, window.location.href);
+        if (token !== shareRefreshToken) return;
         if (result.tooLarge) {
             output.value = '';
             output.placeholder = 'Link too large — use file share below.';
@@ -120,8 +124,9 @@ export async function refreshShareLink() {
         updateLinkMeter(result.url.length);
         setStatus(`Link ready (${result.url.length} chars). Anyone opening it sees the same doc on this site.`);
     } catch {
+        if (token !== shareRefreshToken) return;
         output.value = '';
-        setStatus('Could not generate a link in this browser. Use file share instead.', true);
+        setStatus('Could not prepare this document for sharing. Restore missing images or use another export.', true);
     }
 }
 
@@ -171,9 +176,16 @@ async function handleNativeLink() {
 }
 
 async function handleDownloadOrNativeFile() {
-    const markdown = shareManager.getMarkdown();
+    const source = shareManager.getMarkdown();
     const filename = `${shareManager.getTitle() || 'document'}.md`;
     setStatus('Preparing file…');
+    let markdown;
+    try {
+        markdown = await shareManager.getPortableMarkdown(source);
+    } catch (error) {
+        setStatus(error?.message || 'Could not prepare the document for download.', true);
+        return;
+    }
     const result = await shareFileOrDownload({ content: markdown, filename, title: shareManager.getTitle() });
     if (result.method === 'web-share') {
         setStatus('Shared through the system share sheet.');
@@ -194,10 +206,11 @@ async function handlePasteUpload(event) {
         return;
     }
     const button = document.getElementById('share-upload-btn');
-    const markdown = shareManager.getMarkdown();
+    const source = shareManager.getMarkdown();
     if (button) button.disabled = true;
     setStatus('Uploading to a free public paste (large docs only)…');
     try {
+        const markdown = await shareManager.getPortableMarkdown(source);
         const result = await uploadLargeDocAsLink(markdown, { filename: `${shareManager.getTitle() || 'document'}.md` });
         const output = document.getElementById('share-paste-output');
         if (output) {
@@ -242,12 +255,14 @@ export async function handleIncomingShare() {
 
 export const shareManager = {
     _getMarkdown: () => '',
+    _getPortableMarkdown: (markdown) => markdown,
     _getTitle: () => 'document',
     _bound: false,
     onIncomingDoc: null,
 
-    initialize({ getMarkdown, getTitle, onIncomingDoc } = {}) {
+    initialize({ getMarkdown, getPortableMarkdown, getTitle, onIncomingDoc } = {}) {
         if (getMarkdown) this._getMarkdown = getMarkdown;
+        if (getPortableMarkdown) this._getPortableMarkdown = getPortableMarkdown;
         if (getTitle) this._getTitle = getTitle;
         if (onIncomingDoc) this.onIncomingDoc = onIncomingDoc;
         if (this._bound) return;
@@ -292,6 +307,10 @@ export const shareManager = {
         } catch {
             return '';
         }
+    },
+
+    async getPortableMarkdown(markdown = this.getMarkdown()) {
+        return await this._getPortableMarkdown(String(markdown ?? ''));
     },
 
     getTitle() {

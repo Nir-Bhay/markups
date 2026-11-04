@@ -200,10 +200,10 @@ class ModesManager {
      * Set split ratio
      * @param {number} ratio - Split ratio (0-100)
      */
-    setSplitRatio(ratio) {
+    setSplitRatio(ratio, { apply = true, persist = true } = {}) {
         this.splitRatio = Math.max(10, Math.min(90, ratio));
-        this._applyMode();
-        this._saveSettings();
+        if (apply) this._applyMode();
+        if (persist) this._saveSettings();
     }
 
     /**
@@ -242,6 +242,18 @@ class ModesManager {
                     this.editorContainer.style.width = '';
                     this.previewContainer.style.width = '';
                 }
+            }
+        } else {
+            // Inline split dimensions otherwise win over the full-width
+            // editor/preview rules when changing out of Split view.
+            for (const pane of [this.editorContainer, this.previewContainer]) {
+                if (!pane) continue;
+                pane.style.width = '';
+                pane.style.height = '';
+                pane.style.flex = '';
+                pane.style.flexBasis = '';
+                pane.style.flexGrow = '';
+                pane.style.flexShrink = '';
             }
         }
 
@@ -285,10 +297,13 @@ class ModesManager {
                 newRatio = ((e.clientY - rect.top) / rect.height) * 100;
             }
 
-            this.setSplitRatio(newRatio);
+            this.setSplitRatio(newRatio, { persist: false });
         };
 
         const onMouseUp = () => {
+            if (isResizing) {
+                this.setSplitRatio(this.splitRatio, { apply: false, persist: true });
+            }
             isResizing = false;
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);

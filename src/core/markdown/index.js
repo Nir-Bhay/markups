@@ -14,11 +14,29 @@ import { markedEmoji } from 'marked-emoji';
 import { emojiMarkedOptions } from '../../utils/emoji-shortcodes.js';
 import Prism from 'prismjs';
 import DOMPurify from 'dompurify';
-import mermaid from 'mermaid';
-import katex from 'katex';
+import markedKatex from 'marked-katex-extension';
 import { sanitizePreviewHtml } from '../../utils/sanitize.js';
 import { processPreviewVideos, stripVideoAttributeBlocks } from '../../utils/video-embed.js';
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
+import { deriveDocumentTitle, extractMarkdownStats } from '../../utils/markdown-stats.js';
+export { deriveDocumentTitle };
+
+let mermaidModule = null;
+let mermaidModulePromise = null;
+
+function loadMermaidModule() {
+    if (mermaidModule) return Promise.resolve(mermaidModule);
+    if (!mermaidModulePromise) {
+        mermaidModulePromise = import('mermaid').then(({ default: module }) => {
+            mermaidModule = module;
+            return module;
+        }).catch((error) => {
+            mermaidModulePromise = null;
+            throw error;
+        });
+    }
+    return mermaidModulePromise;
+}
 
 // Import Prism language components
 import 'prismjs/components/prism-javascript';
@@ -44,52 +62,6 @@ import 'prismjs/components/prism-sql';
 Prism.languages.xml = Prism.languages.markup;
 Prism.languages.svg = Prism.languages.svg || Prism.languages.markup;
 Prism.languages.html = Prism.languages.html || Prism.languages.markup;
-
-/**
- * KaTeX renderer extension
- */
-const katexExtension = {
-    name: 'katex',
-    level: 'inline',
-    start(src) {
-        const match = src.match(/\$[^\$\n]/);
-        return match ? match.index : -1;
-    },
-    tokenizer(src) {
-        // Block math: $$...$$
-        const blockMatch = /^\$\$([^\$]+)\$\$/.exec(src);
-        if (blockMatch) {
-            return {
-                type: 'katex',
-                raw: blockMatch[0],
-                text: blockMatch[1].trim(),
-                displayMode: true
-            };
-        }
-        // Inline math: $...$
-        const inlineMatch = /^\$([^\$\n]+)\$/.exec(src);
-        if (inlineMatch) {
-            return {
-                type: 'katex',
-                raw: inlineMatch[0],
-                text: inlineMatch[1].trim(),
-                displayMode: false
-            };
-        }
-    },
-    renderer(token) {
-        try {
-            return katex.renderToString(token.text, {
-                displayMode: token.displayMode,
-                throwOnError: false,
-                output: 'htmlAndMathml'
-            });
-        } catch (err) {
-            console.error('KaTeX error:', err);
-            return `<code class="katex-error">${token.text}</code>`;
-        }
-    }
-};
 
 /**
  * MarkdownService class
@@ -147,6 +119,13 @@ class MarkdownService {
 
         this.initialized = false;
         this.mermaidEnabled = true;
+        this.mermaidOptions = {
+            startOnLoad: false,
+            theme: 'default',
+            securityLevel: 'strict',
+            fontFamily: 'inherit'
+        };
+        this.mermaidConfigured = false;
         this.katexEnabled = true;
         this.renderCount = 0;
 
@@ -187,7 +166,7 @@ class MarkdownService {
             markedFootnote(),
             {
                 extensions: [
-                    katexExtension,
+                    ...markedKatex({ throwOnError: false, output: 'htmlAndMathml' }).extensions,
                     ...markedEmoji(emojiMarkedOptions).extensions
                 ]
             }
@@ -220,15 +199,27 @@ class MarkdownService {
      * @private
      */
     _initializeMermaid(options = {}) {
-        mermaid.initialize({
-            startOnLoad: false,
-            theme: 'default',
-            // SECURITY: 'strict' prevents mermaid from executing javascript: callbacks
-            // inside diagram `click` definitions (mermaid #1 XSS vector).
-            securityLevel: 'strict',
-            fontFamily: 'inherit',
-            ...options
-        });
+        this.mermaidOptions = { ...this.mermaidOptions, ...options };
+        this.mermaidConfigured = false;
+
+        // SECURITY: 'strict' prevents Mermaid from executing javascript: callbacks
+        // inside diagram `click` definitions (Mermaid #1 XSS vector). Preserve this
+        // default even when callers update only the theme.
+        this.mermaidOptions.securityLevel = options.securityLevel || this.mermaidOptions.securityLevel || 'strict';
+
+        if (mermaidModule) {
+            mermaidModule.initialize(this.mermaidOptions);
+            this.mermaidConfigured = true;
+        }
+    }
+
+    async _getMermaid() {
+        const mermaid = await loadMermaidModule();
+        if (!this.mermaidConfigured) {
+            mermaid.initialize(this.mermaidOptions);
+            this.mermaidConfigured = true;
+        }
+        return mermaid;
     }
 
     /**
@@ -277,7 +268,7 @@ class MarkdownService {
 
             // Sanitize HTML
             if (options.sanitize !== false) {
-                html = this.sanitize(html);
+                html = sanitizePreviewHtml(html, options.sanitizeOptions || {});
             }
 
             return html;
@@ -343,6 +334,9 @@ class MarkdownService {
         container.querySelectorAll('.mermaid-error').forEach((el) => el.remove());
 
         const mermaidBlocks = container.querySelectorAll('code.language-mermaid');
+        if (mermaidBlocks.length === 0) return;
+
+        const mermaid = await this._getMermaid();
 
         for (let i = 0; i < mermaidBlocks.length; i++) {
             if (token !== null && token !== this._renderToken) return;
@@ -362,12 +356,23 @@ class MarkdownService {
                 // securityLevel: 'strict' already prevents script execution, but we
                 // still run it through DOMPurify to strip any unexpected attrs.
                 const cleanSvg = sanitizePreviewHtml(svg, {
-                    ADD_TAGS: ['svg', 'g', 'path', 'circle', 'rect', 'line', 'polyline', 'text', 'tspan', 'defs', 'marker', 'title', 'style'],
+                    // Mermaid diagrams combine SVG with HTML and MathML inside
+                    // foreignObject labels. DOMPurify requires that integration
+                    // point to be explicitly allowed before preserving the safe
+                    // HTML/MathML subtree.
+                    USE_PROFILES: { html: true, svg: true, mathMl: true },
+                    HTML_INTEGRATION_POINTS: { 'annotation-xml': true, foreignobject: true },
+                    // Mermaid uses SVG foreignObject nodes for rich labels. Those
+                    // labels may contain KaTeX's MathML subtree; stripping the
+                    // foreignObject silently removes equations from diagrams.
+                    // The shared sanitizer still forbids active content and
+                    // dangerous attributes inside this allowlisted subtree.
+                    ADD_TAGS: ['svg', 'g', 'path', 'circle', 'rect', 'line', 'polyline', 'text', 'tspan', 'defs', 'marker', 'title', 'style', 'foreignObject'],
                     ADD_ATTR: ['viewBox', 'd', 'transform', 'fill', 'stroke', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'points', 'x', 'y', 'width', 'height', 'font-size', 'text-anchor']
                 });
 
                 const wrapper = document.createElement('div');
-                wrapper.className = 'mermaid-diagram';
+                wrapper.className = 'mermaid mermaid-diagram';
                 wrapper.innerHTML = cleanSvg;
                 // Preserve the diagram source so Document Mode serialization can
                 // rebuild the fence instead of walking the rendered SVG.
@@ -449,10 +454,7 @@ class MarkdownService {
      * @param {string} theme - Theme name ('default', 'dark', 'forest', 'neutral')
      */
     setMermaidTheme(theme) {
-        mermaid.initialize({
-            startOnLoad: false,
-            theme: theme
-        });
+        this._initializeMermaid({ theme });
     }
 
     /**
@@ -506,28 +508,7 @@ class MarkdownService {
      * @returns {Object} Statistics
      */
     extractStats(markdown) {
-        const words = markdown
-            .replace(/```[\s\S]*?```/g, '') // Remove code blocks
-            .replace(/`[^`]*`/g, '') // Remove inline code
-            .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // Extract link text
-            .replace(/[#*_~`]/g, '') // Remove markdown symbols
-            .trim()
-            .split(/\s+/)
-            .filter(w => w.length > 0);
-
-        const chars = markdown.replace(/\s/g, '').length;
-        const lines = markdown.split('\n').length;
-        // Phase 3.3: whitespace-only lines separate paragraphs (matches footer).
-        const paragraphs = markdown.split(/\n\s*\n/).filter(p => p.trim()).length;
-
-        return {
-            words: words.length,
-            characters: markdown.length,
-            charactersNoSpaces: chars,
-            lines,
-            paragraphs,
-            readingTime: Math.ceil(words.length / 200) // ~200 WPM
-        };
+        return extractMarkdownStats(markdown);
     }
 
     /**
@@ -609,22 +590,5 @@ export const markdownService = new MarkdownService();
 
 // Also export the class for testing
 export { MarkdownService };
-
-/**
- * Derive a document title from markdown content (Phase 2.2).
- * First `# ` H1 line (trimmed, capped) wins; anything else is 'Untitled'.
- * Pure function — unit-tested, shared by main.js save path.
- * @param {string} content - Markdown source
- * @param {number} [maxLength=20] - Title cap
- * @returns {string}
- */
-export function deriveDocumentTitle(content = '', maxLength = 20) {
-    const nl = content.indexOf('\n');
-    const firstLine = nl === -1 ? content : content.slice(0, nl);
-    if (firstLine && firstLine.startsWith('# ')) {
-        return firstLine.substring(2).trim().substring(0, maxLength) || 'Untitled';
-    }
-    return 'Untitled';
-}
 
 export default markdownService;

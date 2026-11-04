@@ -10,7 +10,7 @@ test('preserves IndexedDB documents when the localStorage backup is full', async
             } catch {
                 // Non-JSON localStorage entries pass through unchanged.
             }
-            if (item?.namespace === 'com.markdownlivepreview' && item?.key === 'docs') {
+            if ((item?.namespace === 'com.markdownlivepreview' && item?.key === 'docs') || key === 'com.markdownlivepreview.tabs') {
                 throw new DOMException('Quota exceeded', 'QuotaExceededError');
             }
             return nativeSetItem.call(this, key, value);
@@ -36,7 +36,7 @@ test('preserves IndexedDB documents when the localStorage backup is full', async
     await expect(page.locator('#save-status')).toContainText('All changes saved');
 });
 
-test('does not insert an image reference when image data cannot be persisted', async ({ page }) => {
+test('stores images in IndexedDB even when the legacy localStorage image mirror is full', async ({ page }) => {
     await page.addInitScript(() => {
         const nativeSetItem = Storage.prototype.setItem;
         Storage.prototype.setItem = function (key, value) {
@@ -55,6 +55,9 @@ test('does not insert an image reference when image data cannot be persisted', a
 
     await page.goto('/');
     await expect(page.locator('#editor')).toBeVisible();
+    await expect(page.locator('#image-input')).toHaveAttribute('data-ready', 'true');
+    await page.locator('#editor').click();
+    await page.keyboard.press('Control+End');
     await page.locator('#image-input').setInputFiles({
         name: 'tiny.png',
         mimeType: 'image/png',
@@ -64,7 +67,18 @@ test('does not insert an image reference when image data cannot be persisted', a
         )
     });
 
-    await expect(page.getByText(/The image was not inserted/i)).toBeVisible();
-    await expect.poll(() => page.evaluate(() => window.editor.getValue())).not.toContain('markups-img:');
-    await expect(page.locator('#output img')).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => window.editor.getValue())).toContain('markups-img:img_');
+    await expect(page.locator('#output img')).toHaveCount(1);
+    await expect.poll(() => page.evaluate(() => {
+        const document = window.__markups_documents.find((item) => item.id === window.__markups_activeDocId);
+        return document?.content || '';
+    })).toContain('markups-img:img_');
+    await expect(page.locator('#save-status')).toHaveAttribute('data-state', 'saved');
+
+    await page.reload();
+    await expect(page.locator('#editor')).toBeVisible();
+    await page.waitForFunction(() => typeof window.editor?.getValue === 'function');
+    await expect.poll(() => page.evaluate(() => window.editor.getValue())).toContain('markups-img:img_');
+    await expect(page.locator('#output img')).toHaveCount(1);
+    await expect(page.locator('#output img')).toHaveAttribute('src', /^blob:/);
 });

@@ -8,6 +8,13 @@ const required = [
  'index.html', 'landing/index.html', 'privacy-policy/index.html',
  'terms/index.html', 'cookie-policy/index.html', 'accessibility/index.html',
  'seo/online-markdown-editor/index.html', 'seo/markdown-to-pdf/index.html',
+ 'markdown-guide/index.html', 'blog/index.html',
+ 'blog/markdown-instructions-for-coding-agents/index.html',
+ 'blog/architecture-decision-records-markdown-template/index.html',
+ 'blog/markdown-meeting-notes-template/index.html',
+ 'blog/github-readme-template/index.html',
+ 'blog/safe-markdown-html-rendering/index.html',
+ 'css/editorial.css',
  'image/og-image.png'
 ];
 const failures=[];
@@ -27,6 +34,8 @@ for(const path of required.filter(x=>x.endsWith('index.html'))) {
   const html=readFileSync(file,'utf8');
   if(/https:\/\/markups\.dev\/images\/og-image\.png/.test(html)) failures.push('stale OG image URL in '+path);
   if(!/<title[^>]*>/.test(html)) failures.push('missing title: '+path);
+  if(!/<h1\b/i.test(html)) failures.push('missing h1: '+path);
+  if(!/<link\b[^>]*rel=["']canonical["'][^>]*href=["']https:\/\/markups\.dev\//i.test(html)) failures.push('missing canonical: '+path);
 }
 console.log(JSON.stringify({check:'built-pages',checked:required.length,failures},null,2));
 if(failures.length) process.exitCode=1;

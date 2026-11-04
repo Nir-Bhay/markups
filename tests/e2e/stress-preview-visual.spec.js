@@ -1,6 +1,6 @@
 /**
  * Full visual/DOM QA against markups-markdown-preview-stress-test.md
- * Produces docs/qa/stress-preview-report.{json,md} + screenshots.
+ * Produces ignored test-results/qa reports and screenshots.
  */
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 const STRESS_PATH = path.resolve(ROOT, 'public/qa/markups-markdown-preview-stress-test.md');
-const QA_OUTPUT_DIR = process.env.RUNNER_TEMP || path.resolve(ROOT, 'docs/qa');
+const QA_OUTPUT_DIR = process.env.RUNNER_TEMP || path.resolve(ROOT, 'test-results/qa');
 const REPORT_JSON = path.join(QA_OUTPUT_DIR, 'stress-preview-report.json');
 const REPORT_MD = path.join(QA_OUTPUT_DIR, 'stress-preview-report.md');
 const SHOT_DIR = path.join(QA_OUTPUT_DIR, 'stress-shots');
@@ -87,6 +87,12 @@ async function setMarkdown(page, markdown, waitToken) {
 test.describe('Stress preview visual QA', () => {
   test('full stress document review', async ({ page }) => {
     test.setTimeout(300_000);
+    const invalidLineNumberErrors = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error' && message.text().includes('Illegal value for lineNumber')) {
+        invalidLineNumberErrors.push(message.text());
+      }
+    });
     fs.mkdirSync(SHOT_DIR, { recursive: true });
     fs.mkdirSync(path.dirname(REPORT_JSON), { recursive: true });
 
@@ -103,10 +109,12 @@ test.describe('Stress preview visual QA', () => {
     await waitForApp(page);
     await setMarkdown(page, markdown, 'Markups Markdown Preview Stress Test');
 
-    // Wait for mermaid SVGs to populate
+    // Mermaid renders large diagrams sequentially. Wait for the complete
+    // stress fixture to settle before measuring it; a five-diagram threshold
+    // sampled only the first few SVGs and created a false rendering blocker.
     await page.waitForFunction(() => {
       const d = document.querySelector('#output');
-      return d && d.querySelectorAll('.mermaid svg').length >= 5;
+      return d && d.querySelectorAll('.mermaid svg').length >= 19;
     }, null, { timeout: 60_000 }).catch(() => {});
 
     await page.waitForTimeout(3000);
@@ -244,6 +252,8 @@ test.describe('Stress preview visual QA', () => {
         textLen: text.length,
       };
     });
+
+    expect(invalidLineNumberErrors, 'stale Monaco selections must not crash toolbar formatting state').toEqual([]);
 
     // Section presence checks (scroll + text)
     const sectionResults = [];

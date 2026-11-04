@@ -8,6 +8,24 @@ test('loads the editor shell', async ({ page }) => {
     await expect(page.locator('#output')).toBeVisible();
 });
 
+test('brand is the home link and the header has no About link', async ({ page }) => {
+    await page.goto('/');
+
+    const brand = page.locator('.header-brand');
+    const logo = brand.locator('.brand-logo');
+    await expect(brand).toHaveAttribute('href', '/');
+    await expect(brand).toHaveAccessibleName('Markups home');
+    await expect(page.locator('.header-tour-link')).toHaveCount(0);
+    await expect(logo).toBeVisible();
+    await expect(logo).toHaveText('M');
+
+    await brand.hover();
+    await expect(brand).toHaveCSS('text-decoration-line', 'none');
+
+    await brand.click();
+    await expect(page).toHaveURL(/\/$/);
+});
+
 test.describe('responsive toolbar', () => {
     for (const width of [320, 480, 768, 900, 1280]) {
         test(`stays usable at ${width}px`, async ({ page }) => {
