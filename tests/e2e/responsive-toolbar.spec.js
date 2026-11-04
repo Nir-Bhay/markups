@@ -30,6 +30,9 @@ test.describe('responsive toolbar UX', () => {
         await expect(density).toHaveAttribute('aria-expanded', 'true');
         await expect(page.locator('.toolbar-tools-group')).toBeVisible();
 
+        // Customize is intentionally hidden on compact viewports; verify at desktop
+        // width after checking the compact density expansion.
+        await page.setViewportSize({ width: 1280, height: 900 });
         await page.locator('#toolbar-customize').click();
         const panel = page.locator('#toolbar-customize-sheet');
         await expect(panel).toBeVisible();

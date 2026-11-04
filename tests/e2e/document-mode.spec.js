@@ -84,6 +84,7 @@ test('Document Mode syncs the edited block without re-rendering the preview', as
             return { missingBlock: true, paragraphCount: output.querySelectorAll('p').length };
         }
         const hasSourceLine = first.hasAttribute('data-source-line');
+        const secondSourceLine = second.getAttribute('data-source-line');
 
         first.textContent = 'First paragraph EDITED';
         output.dispatchEvent(new Event('input', { bubbles: true }));
@@ -95,11 +96,12 @@ test('Document Mode syncs the edited block without re-rendering the preview', as
         await new Promise((resolve) => setTimeout(resolve, 700));
         const afterSecond = window.editor.getValue();
 
-        return { innerHtmlWrites, hasSourceLine, afterFirst, afterSecond };
+        return { innerHtmlWrites, hasSourceLine, secondSourceLine, afterFirst, afterSecond };
     });
 
     expect(result.missingBlock).toBeUndefined();
     expect(result.hasSourceLine).toBe(true);
+    expect(result.secondSourceLine).toBe('14');
     expect(result.innerHtmlWrites).toBe(0);
 
     // First edit landed, everything else survived.

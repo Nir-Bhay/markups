@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index,follow">
+  <title>Markdown Guide: Syntax, Extensions, and Markups Support</title>
+  <meta name="description" content="A detailed Markdown guide covering core syntax, GitHub Flavored Markdown, diagrams, math, safe rendering, portability, Markups features, and export limitations.">
+  <link rel="canonical" href="https://markups.dev/markdown-guide">
+  <link rel="stylesheet" href="/css/content-pages.css">
+  <link rel="stylesheet" href="/css/editorial.css">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://markups.dev/markdown-guide">
+  <meta property="og:title" content="Markdown Guide: Syntax, Extensions, and Markups Support">
+  <meta property="og:description" content="Learn Markdown from basic syntax to common extensions, compatibility, safe rendering, and the features verified in Markups today.">
+  <meta property="og:image" content="https://markups.dev/image/og-image.png">
+  <meta property="og:site_name" content="Markups">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="The Markups Markdown Guide">
+  <meta name="twitter:description" content="Markdown syntax, extensions, portability, and current Markups behavior in one detailed guide.">
+  <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org","@type":"Article",
+    "headline":"Markdown Guide: Syntax, Extensions, and Markups Support",
+    "description":"A detailed reference for Markdown syntax, common dialect extensions, Markups rendering behavior, security, compatibility, and exports.",
+    "datePublished":"2026-11-04","dateModified":"2026-11-04",
+    "author":{"@type":"Organization","name":"Markups Editorial","url":"https://markups.dev/blog"},
+    "publisher":{"@type":"Organization","name":"Markups","url":"https://markups.dev","logo":{"@type":"ImageObject","url":"https://markups.dev/image/og-image.png"}},
+    "mainEntityOfPage":"https://markups.dev/markdown-guide",
+    "articleSection":"Markdown reference","inLanguage":"en"
+  }
+  </script>
+</head>
+<body>
+  <div class="page-shell editorial-shell">
+    <header class="hero">
+      <div class="eyebrow">Markups Guide · Markdown reference</div>
+      <h1>The Markdown guide: syntax, extensions, and how Markups works</h1>
+      <p class="lede">Learn the plain-text basics, understand why Markdown behaves differently across apps, and see which syntax and rendering features are verified in Markups. Examples are paired with practical limits and source references.</p>
+      <div class="actions">
+        <a class="button primary" href="/">Try the Markups editor</a>
+        <a class="button" href="/seo/cheatsheet">Open the quick cheatsheet</a>
+      </div>
+      <div class="editorial-meta"><span>Markups Editorial</span><span>Verified November 4, 2026</span><span>About 16 min read</span></div>
+    </header>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="/">Markups</a></li><li aria-current="page">Markdown guide</li></ol></nav>
+    <main class="editorial-main">
+      <article class="card article-body">
+        <p><strong>Markdown is plain text with lightweight markers for document structure.</strong> A Markdown file stores headings, paragraphs, lists, links, and code in a text format that people can edit in many tools. A Markdown processor turns that source into HTML or another presentation. Core Markdown syntax is portable; extensions such as tables, diagrams, or math depend on the processor and the destination where the file is viewed.</p>
+
+        <nav class="article-toc" aria-label="On this page">
+          <h2>Contents</h2>
+          <ol>
+            <li><a href="#how-markdown-works">How Markdown works</a></li>
+            <li><a href="#core-syntax">Core syntax and examples</a></li>
+            <li><a href="#dialects">CommonMark, GFM, and extensions</a></li>
+            <li><a href="#markups-support">What Markups supports today</a></li>
+            <li><a href="#pipeline">How Markdown is processed in Markups</a></li>
+            <li><a href="#use-markups">How to use Markdown in Markups</a></li>
+            <li><a href="#integration">Integrating Markdown in an application</a></li>
+            <li><a href="#portability">Portability and troubleshooting</a></li>
+            <li><a href="#limits-roadmap">Limits and future features</a></li>
+          </ol>
+        </nav>
+
+        <h2 id="how-markdown-works">How Markdown works</h2>
+        <p>A Markdown document is not itself a formatted Word or web page. It is a source file—often saved with a <code>.md</code> or <code>.markdown</code> extension—that a compatible application interprets. The symbols remain visible in the source and carry meaning to a renderer.</p>
+        <p>For example, <code># Project notes</code> is a heading in the source. A renderer converts it to an HTML heading. A Markdown editor usually shows both the editable text and a rendered preview so a writer can inspect structure without losing the original file.</p>
+        <p>There is more than one Markdown specification. <a href="https://spec.commonmark.org/" target="_blank" rel="noopener noreferrer">CommonMark</a> describes a standardized baseline; <a href="https://github.github.com/gfm/" target="_blank" rel="noopener noreferrer">GitHub Flavored Markdown (GFM)</a> adds syntax such as tables and task lists. Other products add their own extensions. Always check the renderer that will display the final document.</p>
+
+        <h2 id="core-syntax">Core syntax and examples</h2>
+        <h3>Headings and paragraphs</h3>
+        <p>Use one to six number signs for a heading. Put a blank line between paragraphs to make their separation explicit.</p>
+        <pre><code># Main heading
+## Section heading
+
+This is one paragraph.
+
+This is another paragraph.</code></pre>
+
+        <h3>Emphasis</h3>
+        <p>Single asterisks or underscores commonly mark emphasis; double characters mark stronger emphasis. For portable writing, keep the markers around a complete word or phrase.</p>
+        <pre><code>*emphasis* and **strong emphasis**</code></pre>
+
+        <h3>Lists</h3>
+        <p>Unordered lists use a hyphen, plus sign, or asterisk. Ordered lists use numbers followed by a period. Indent nested items consistently.</p>
+        <pre><code>- Draft the note
+- Review the examples
+  - Check the rendered preview
+
+1. Gather the requirements
+2. Record the decision</code></pre>
+
+        <h3>Links and images</h3>
+        <p>Links place the label in square brackets and the destination in parentheses. An image adds an exclamation mark before the same pattern. Add useful alternative text because the image itself may not load or be visible to every reader.</p>
+        <pre><code>[Markdown guide](https://example.com/guide)
+![Flow diagram showing the review steps](review-flow.png)</code></pre>
+
+        <h3>Blockquotes and code</h3>
+        <p>Start quoted lines with <code>&gt;</code>. Use a backtick around inline code and a fenced block for multiple lines. Add a language after the opening fence when the renderer supports code highlighting.</p>
+        <pre><code>&gt; Keep the source readable for the next person.
+
+Use `npm run build` to create the production bundle.
+
+&#96;&#96;&#96;js
+const heading = "A clearer document";
+console.log(heading);
+&#96;&#96;&#96;</code></pre>
+        <p>Other common core constructs include thematic breaks made from three or more hyphens, asterisks, or underscores; inline links; reference-style links; and escaped punctuation when a symbol should be shown literally.</p>
+
+        <h2 id="dialects">CommonMark, GFM, and extensions</h2>
+        <p>Syntax beyond the shared baseline can be useful, but it is not guaranteed to travel with a file. The table below describes broad compatibility, not a promise that every renderer behaves identically.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Feature</th><th>Common usage</th><th>Portability note</th></tr></thead>
+          <tbody>
+            <tr><td>Headings, paragraphs, lists, emphasis, quotes, links, code fences</td><td>Core Markdown patterns</td><td>Widely supported; exact edge-case parsing can still differ.</td></tr>
+            <tr><td>Tables, task lists, strikethrough, bare URL links</td><td>Common GFM extensions</td><td>Check whether the destination renderer implements GFM.</td></tr>
+            <tr><td>Alerts, footnotes, emoji shortcodes</td><td>Tool-specific extensions</td><td>May appear as ordinary text or unsupported syntax elsewhere.</td></tr>
+            <tr><td>Math and Mermaid diagrams</td><td>Specialized rendering extensions</td><td>The file needs a compatible math or diagram renderer.</td></tr>
+            <tr><td>Raw HTML</td><td>Allowed by some parsers and contexts</td><td>Can create security risk; behavior and allowed elements vary.</td></tr>
+          </tbody>
+        </table></div>
+        <p>For example, a task list marker such as <code>- [ ]</code> can render as a checkbox in GFM. The specification does not require every application to make that checkbox interactive. A table works in many developer tools but may not render in a minimal Markdown viewer. Keep the source file when you need the original syntax and preview the document in its actual destination.</p>
+
+        <h2 id="markups-support">What Markups supports today</h2>
+        <p>This list was checked against the current Markups source on November 4, 2026. It describes implemented behavior, not an industry-wide Markdown promise.</p>
+        <ul>
+          <li><strong>GFM parsing:</strong> the Marked parser is configured with GFM enabled. This includes common GFM constructs such as tables, task-list markers, strikethrough, and autolinks supported by the selected parser version.</li>
+          <li><strong>Line breaks:</strong> Markups sets the parser's <code>breaks</code> option to true. A source line break can render as a visible break here, even though another renderer may require two trailing spaces or a blank line.</li>
+          <li><strong>Heading identifiers:</strong> a heading-ID extension creates IDs used for linking to headings. Generated slug rules may differ elsewhere.</li>
+          <li><strong>Alerts and footnotes:</strong> configured extensions recognize their respective syntax. Treat these as extensions when sharing with a renderer that may not support them.</li>
+          <li><strong>Emoji shortcodes:</strong> supported shortcode names can render as emoji, such as <code>:smile:</code>. Shortcode dictionaries vary by tool.</li>
+          <li><strong>Code highlighting:</strong> fenced code uses Prism highlighting for the languages bundled with the application, including JavaScript, TypeScript, Python, JSON, Markdown, CSS, HTML/XML, Bash, YAML, Java, C, C++, C#, Rust, Go, and SQL. Unknown labels fall back to plain text.</li>
+          <li><strong>Math:</strong> KaTeX renders supported LaTeX-style inline and display math. Availability and macro behavior can vary by parser and renderer.</li>
+          <li><strong>Diagrams:</strong> Mermaid fenced blocks can render diagrams in the preview. A viewer without Mermaid support may display the source fence instead.</li>
+          <li><strong>Video links:</strong> supported video URLs and attachment links can be converted into preview embeds. This extension does not mean every media host or URL is supported.</li>
+        </ul>
+        <p>Open the <a href="/seo/cheatsheet">Markdown cheatsheet</a> for short examples, the <a href="/seo/examples/mermaid">Mermaid examples</a> and <a href="/seo/examples/math">math examples</a> for extension-specific syntax, and the <a href="/seo/compatibility-lab">Compatibility Lab</a> to test a realistic document.</p>
+
+        <h2 id="pipeline">How Markdown is processed in Markups</h2>
+        <ol>
+          <li>The editor holds the Markdown source.</li>
+          <li>Marked parses the source with the configured GFM option and registered extensions.</li>
+          <li>The parsed HTML passes through Markups' preview sanitization helper before it enters the preview.</li>
+          <li>Code, supported video links, and Mermaid diagrams receive their specific rendering steps. Mermaid SVG output is sanitized again before insertion.</li>
+          <li>Preview rendering can emit updates for the editor's surrounding features.</li>
+        </ol>
+        <p>Sanitization matters because a Markdown parser's job is to produce formatted output, not automatically to define a safe HTML policy. Markups uses DOMPurify through its sanitization helper. See the <a href="/blog/safe-markdown-html-rendering">safe-rendering checklist</a> for the security boundary and what to retest when a renderer changes.</p>
+
+        <h2 id="use-markups">How to use Markdown in Markups</h2>
+        <ol>
+          <li>Open the <a href="/">Markups editor</a> and start a document or open an existing Markdown file.</li>
+          <li>Write in the source editor. Use headings to show the document outline and fenced code blocks to preserve code formatting.</li>
+          <li>Check the live preview for heading hierarchy, links, tables, code, diagrams, and math.</li>
+          <li>Use a toolbar action, snippet, or template when it helps insert a supported pattern; verify the result in both source and preview.</li>
+          <li>Keep a Markdown copy when portability or future editing matters. Choose an export only after checking the format limitations.</li>
+        </ol>
+        <p>The Markups project also contains tabs, document navigation, autosave, snippets, templates, a Markdown linter, table of contents, live-preview editing, media controls, and export tools. Which controls are visible can depend on the current application surface and mode; consult the product UI and <a href="/landing">product overview</a> for the current workflow.</p>
+
+        <h3>Export notes</h3>
+        <ul>
+          <li><strong>Markdown:</strong> retains editable plain-text source and its syntax.</li>
+          <li><strong>HTML:</strong> creates a rendered-document format; check how your destination handles styles and embedded media.</li>
+          <li><strong>PDF:</strong> Markups currently creates an image-based PDF. The exported page is not a searchable/selectable text PDF.</li>
+          <li><strong>Word-compatible output:</strong> the current Word export is an HTML-based <code>.doc</code> file, not a native OOXML <code>.docx</code>.</li>
+        </ul>
+        <p>Long documents, fonts, external images, diagrams, and browser rendering can affect export appearance. Review the resulting file in the application where it will be used. The <a href="/seo/tutorials/markdown-to-pdf">PDF tutorial</a> gives format-specific steps and limits.</p>
+
+        <h2 id="integration">Integrating Markdown in an application</h2>
+        <p>A typical web application separates parsing from sanitization. The following browser example is illustrative; adjust imports, configuration, allowed HTML, and error handling to your application.</p>
+        <pre><code>import { marked } from "marked";
+import DOMPurify from "dompurify";
+
+marked.setOptions({ gfm: true });
+
+function renderMarkdown(source, preview) {
+  const parsedHtml = marked.parse(source);
+  const safeHtml = DOMPurify.sanitize(parsedHtml);
+  preview.innerHTML = safeHtml;
+}</code></pre>
+        <p>For a production integration, verify the parser's current API and asynchronous behavior, define a deliberate sanitizer policy, and audit extensions that mutate the document after parsing. Do not put untrusted Markdown into <code>innerHTML</code> without sanitizing the final HTML. A Content Security Policy can be useful defense in depth, but it is not a replacement for safe output handling.</p>
+
+        <h2 id="portability">Portability and troubleshooting</h2>
+        <ul>
+          <li><strong>A heading link does not work:</strong> the destination may generate a different heading ID. Check the rendered destination and update the link.</li>
+          <li><strong>A table or checklist shows raw syntax:</strong> the destination may not implement GFM. Use a simpler list or link to a rendered copy.</li>
+          <li><strong>A line break disappears:</strong> line-break rules differ. Add a blank line for a paragraph or use the destination's documented hard-break syntax.</li>
+          <li><strong>A diagram or equation does not render:</strong> the destination needs a compatible Mermaid or math extension. Keep the original source in the file.</li>
+          <li><strong>Code has no colors:</strong> highlighting is presentation, not part of Markdown semantics. Add a language label and check that the target tool bundles that language.</li>
+          <li><strong>An image is broken:</strong> confirm that the path is correct relative to the Markdown file and that the destination can access it.</li>
+        </ul>
+        <p>If a document is intended for many platforms, prefer core syntax for essential meaning. Use extensions when their extra presentation adds real value and provide a readable fallback for the content that matters.</p>
+
+        <h2 id="limits-roadmap">Limits and future features</h2>
+        <p>Markdown cannot guarantee the same rendered result in every application. CommonMark and GFM have defined behavior, but tools choose which extensions and styling to include. Markups adds optional renderers for math, diagrams, alerts, footnotes, emoji, video links, and syntax highlighting; those extensions will not automatically appear in a viewer without matching support.</p>
+        <p>No public, committed Markups feature roadmap was found in the sources checked for this guide. For that reason, it does not list speculative “upcoming” Markdown features. Treat future support as unknown until it appears in a released build and product documentation. This guide should be updated when a feature is actually shipped and verified.</p>
+
+        <h3>Common questions</h3>
+        <p><strong>Is Markdown the same as HTML?</strong> No. Markdown is a source format that a parser may convert to HTML. The two are related through rendering, but they are not interchangeable documents.</p>
+        <p><strong>Does Markdown always support tables?</strong> No. Tables are a widely used extension, including in GFM, but they are not part of every minimal Markdown dialect.</p>
+        <p><strong>Can Markdown contain math or diagrams?</strong> Yes, in a compatible extension. The source needs a math or diagram renderer at the destination.</p>
+        <p><strong>Is Markdown safe to render as HTML?</strong> The format name does not make output safe. Applications should sanitize generated HTML and review extensions; see the <a href="/blog/safe-markdown-html-rendering">safe Markdown rendering guide</a>.</p>
+
+        <aside class="editorial-note"><strong>Research note:</strong> this guide was prepared with AI assistance and checked against the linked specifications, Markups source, and export documentation on November 4, 2026. Product support describes the inspected code at that date; it is not a promise about future releases.</aside>
+        <section class="article-sources" aria-labelledby="sources-heading"><h2 id="sources-heading">Sources and further reading</h2><ul>
+          <li><a href="https://spec.commonmark.org/" target="_blank" rel="noopener noreferrer">CommonMark specification</a> — a standardized core Markdown specification.</li>
+          <li><a href="https://github.github.com/gfm/" target="_blank" rel="noopener noreferrer">GitHub Flavored Markdown specification</a> — GFM syntax and extensions, including tables and task lists.</li>
+          <li><a href="https://marked.js.org/" target="_blank" rel="noopener noreferrer">Marked documentation</a> — parser options and API reference.</li>
+          <li><a href="https://katex.org/docs/supported.html" target="_blank" rel="noopener noreferrer">KaTeX supported functions</a> — math commands supported by KaTeX.</li>
+          <li><a href="https://mermaid.js.org/intro/" target="_blank" rel="noopener noreferrer">Mermaid documentation</a> — diagram syntax and usage.</li>
+          <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html" target="_blank" rel="noopener noreferrer">OWASP XSS Prevention Cheat Sheet</a> — HTML sanitization and output-safety guidance.</li>
+          <li><a href="https://github.com/Nir-Bhay/markups/blob/main/src/core/markdown/index.js" target="_blank" rel="noopener noreferrer">Markups Markdown service source</a> — current parser and extension configuration.</li>
+          <li><a href="/seo/compatibility-lab">Markups Compatibility Lab</a> — a downloadable fixture to inspect tables, code, Mermaid, and math output.</li>
+        </ul></section>
+        <div class="article-cta"><p><strong>Try the examples in a live preview.</strong><br>Start a Markdown draft and compare source syntax with its rendered output.</p><a class="button primary" href="/">Open Markups</a></div>
+        <div class="editorial-links"><a href="/seo/cheatsheet">Quick cheatsheet</a><a href="/seo/examples/mermaid">Mermaid examples</a><a href="/seo/examples/math">Math examples</a><a href="/blog">Markups Blog</a></div>
+      </article>
+    </main>
+    <footer class="footer"><p>Learn more about <a href="/seo/markdown-to-html">Markdown to HTML</a>, <a href="/seo/markdown-live-preview-editor">live preview</a>, and the <a href="/landing">Markups editor</a>.</p></footer>
+  </div>
+<script type="module" src="/src/editorialTelemetry.js"></script>
+</body>
+</html>

@@ -5,8 +5,12 @@ import { marked } from 'marked';
 import 'github-markdown-css/github-markdown-light.css';
 import exportCss from './styles/export.css?raw';
 import { sanitizePreviewHtml, ensurePreviewLinksOpenInNewTab, escapeHtml, sanitizeMarkdownAlt } from './utils/sanitize.js';
+import { trackEditorStartOnce, trackExportCompleted } from './utils/productAnalytics.js';
+import { initializeTelemetry } from './utils/telemetryBootstrap.js';
 import { safeBase64FromArrayBuffer } from './utils/file.js';
 import { modesManager } from './features/modes/index.js';
+import { setupSpellcheck } from './features/spellcheck/index.js';
+import { blankFrontMatterLines, parseFrontMatter, renderFrontMatterCard } from './utils/front-matter.js';
 
 // html2pdf / html2canvas / jspdf — lazy-loaded on first export (P3-T1)
 let _html2pdf = null;
@@ -85,13 +89,31 @@ Prism.languages.XML = Prism.languages.markup;
 Prism.languages.svg = Prism.languages.svg || Prism.languages.markup;
 Prism.languages.html = Prism.languages.html || Prism.languages.markup;
 
-// Mermaid for diagrams
-import mermaid from 'mermaid';
-mermaid.initialize({ startOnLoad: false, theme: 'default', suppressErrors: true, securityLevel: 'strict' });
+// Mermaid is large and optional for ordinary text editing. Load it only when
+// a rendered document actually contains a Mermaid fence.
+let mermaid = null;
+let mermaidLoading = null;
+function loadMermaid() {
+    if (mermaid) return Promise.resolve(mermaid);
+    if (!mermaidLoading) {
+        mermaidLoading = import('mermaid').then(({ default: module }) => {
+            mermaid = module;
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: document.body.classList.contains('dark-mode') ? 'dark' : 'default',
+                suppressErrors: true,
+                securityLevel: 'strict'
+            });
+            return mermaid;
+        }).catch(error => {
+            mermaidLoading = null;
+            throw error;
+        });
+    }
+    return mermaidLoading;
+}
 
 // KaTeX for math
-import 'katex/dist/katex.min.css';
-import markedKatex from 'marked-katex-extension';
 
 // Image resize — dynamically imported after editor init (P3-T1)
 import {
@@ -116,8 +138,9 @@ import { initializeImportDialog, openImportDialog } from './features/import/dial
 import { noteStorage } from './core/storage/noteStorage.js';
 import { fileTreeStorage, ROOT_FOLDER_ID } from './core/storage/fileTreeStorage.js';
 import { runMigration, ensureFileTreeFromNotes } from './core/storage/migration.js';
-import { markdownService, deriveDocumentTitle } from './core/markdown/index.js';
+import { deriveDocumentTitle, extractMarkdownStats } from './utils/markdown-stats.js';
 import { createExplorerManager } from './features/explorer/index.js';
+import { modal } from './ui/modal/index.js';
 
 // Import debounce utility for performance optimization
 import { debounce } from './utils/debounce.js';
@@ -132,7 +155,8 @@ import {
     pickHtml2CanvasScale,
     raceExportJob,
     renderWorkbenchToPdf,
-    stripExportChrome
+    stripExportChrome,
+    captureSubtreeCanvas
 } from './services/export/pdfPrep.js';
 
 // Import UI components from modular architecture
@@ -155,7 +179,9 @@ import { appContextMenuManager } from './features/app-context-menu/index.js';
 import { editorService } from './core/editor/index.js';
 import { createFocusTrap } from './utils/dom.js';
 import { validateImageSignature, sanitizeSvgToDataUrl } from './utils/file.js';
+import { localMediaStore } from './core/storage/mediaStore.js';
 import { initVersionHistory, setHasEdited, stopVersionHistoryPolling } from './features/version-history/index.js';
+import { initializeCloudAccount } from './features/cloud/index.js';
 import { trackedAddEventListener } from './utils/listener-registry.js';
 
 let lastGlobalErrorToastAt = 0;
@@ -182,6 +208,10 @@ import markedFootnote from 'marked-footnote';
 import { markedEmoji } from 'marked-emoji';
 import { emojiMarkedOptions } from './utils/emoji-shortcodes.js';
 // Note: markdownlint is Node.js only, using custom browser-based linting instead
+
+// Initialize telemetry before the editor loads content. The bootstrap only
+// sends sanitized page metadata and skips OAuth/share URLs entirely.
+initializeTelemetry();
 
 // Global configuration constants
 const APP_CONFIG = {
@@ -254,6 +284,15 @@ const collectReferencedImageIds = (texts) => {
     return ids;
 };
 
+let deletedNoteImageRefs = new Set();
+
+const refreshDeletedNoteImageRefs = async () => {
+    const deletedNotes = await noteStorage.getDeletedNotes();
+    if (noteStorage.getLastError()) return false;
+    deletedNoteImageRefs = collectReferencedImageIds(deletedNotes.map((note) => note.content));
+    return true;
+};
+
 let _lastEditorValueForImageRefs = null;
 
 const getOpenDocumentImageRefs = () => {
@@ -261,10 +300,12 @@ const getOpenDocumentImageRefs = () => {
     if (current !== _lastEditorValueForImageRefs) {
         _lastEditorValueForImageRefs = current;
     }
-    return collectReferencedImageIds([
+    const refs = collectReferencedImageIds([
         ...(Array.isArray(documents) ? documents.map((d) => d.content) : []),
         ...(_lastEditorValueForImageRefs !== null ? [_lastEditorValueForImageRefs] : [])
     ]);
+    for (const id of deletedNoteImageRefs) refs.add(id);
+    return refs;
 };
 
 /**
@@ -304,13 +345,17 @@ const imageStoreSet = (imgId, value) => {
 const imageStoreGet = (imgId) => imageStore.get(imgId);
 
 /** Drop store entries not referenced by any remaining document/editor content. */
-const pruneUnreferencedImages = (extraTexts = []) => {
+const pruneUnreferencedImages = async (extraTexts = []) => {
+    // A restored note must be able to resolve local images it references.
+    // If Trash cannot be read, keep the cache rather than evicting blindly.
+    if (!await refreshDeletedNoteImageRefs()) return false;
     const texts = [
         ...(Array.isArray(documents) ? documents.map((d) => d.content) : []),
         ...(editor ? [editor?.getValue()] : []),
         ...extraTexts
     ];
     const referenced = collectReferencedImageIds(texts);
+    for (const id of deletedNoteImageRefs) referenced.add(id);
     let changed = false;
     for (const key of [...imageStore.keys()]) {
         if (!referenced.has(key)) {
@@ -318,9 +363,6 @@ const pruneUnreferencedImages = (extraTexts = []) => {
             imageStore.delete(key);
             changed = true;
         }
-    }
-    if (changed) {
-        saveImageStore();
     }
     return changed;
 };
@@ -341,9 +383,7 @@ const cleanupImagesAfterTabClose = (closedContent) => {
             changed = true;
         }
     }
-    if (changed) {
-        saveImageStore();
-    }
+    return changed;
 };
 
 /** Clear entire image store (revokes blob URLs). */
@@ -353,7 +393,6 @@ const clearImageStore = () => {
         revokeImageStoreValue(value);
     }
     imageStore.clear();
-    saveImageStore();
 };
 // default welcome content — shown to first-time users, auto-cleared on first real keystroke
 const defaultInput = `# Welcome to Markups ✨
@@ -376,7 +415,7 @@ Start typing here to begin — this welcome content will disappear automatically
 | Images & links | Drag-drop or \`![alt](url)\` |
 | Math equations (LaTeX) | \`$E=mc^2$\` |
 | Diagrams (Mermaid) | Fenced \`mermaid\` blocks |
-| Export to PDF, HTML, DOCX, PNG | Click **Export** ↗ |
+| Export to PDF, HTML, Word (.doc), PNG | Click **Export** ↗ |
 | Multiple tabs | Click **+** in the tab bar |
 
 ## Quick Examples
@@ -391,20 +430,11 @@ ${"\`"}${"\`"}${"\`"}
 
 ### Math
 
-Inline: $E = mc^2$ · Block:
-
-$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$
+Write math inline or on its own line for an equation. The Markdown guide shows supported syntax and rendering limits.
 
 ### Diagram
 
-${"\`"}${"\`"}${"\`"}mermaid
-graph LR
-    A[Write Markdown] --> B[Live Preview]
-    B --> C{Export}
-    C --> D[PDF]
-    C --> E[HTML]
-    C --> F[Image]
-${"\`"}${"\`"}${"\`"}
+Select **Diagram** in the toolbar to insert a Mermaid example. It renders in the preview.
 
 ### Blockquote
 
@@ -426,6 +456,8 @@ let activeDocId = null;
 let explorerManager = null;
 let backlinksPanel = null;
 let backlinksManager = null;
+let _localDocsBackupUnavailable = false;
+let _documentSaveFailureActive = false;
 
 const mapNoteToDocument = (note, node) => {
     const title = (node.name || note.title || 'Untitled').replace(/\.md$/i, '');
@@ -514,6 +546,7 @@ const initTabs = async () => {
         onCreateFolder: (folderId) => createFolder(folderId),
         onRenameNode: (node, newName) => renameNode(node, newName),
         onDeleteNode: (node) => deleteNode(node),
+        onOpenTrash: () => openTrash(),
         onMoveNode: (payload) => moveNodeInTree(payload),
         onLayoutChange: () => {
             if (editor) editor?.layout();
@@ -524,6 +557,7 @@ const initTabs = async () => {
     renderTabs();
     await syncTreeFromDocuments();
     loadActiveDocument();
+    setSaveStatus('saved');
 
     window.__markups_createFile = createFileInSelectedFolder;
 };
@@ -681,6 +715,7 @@ const openMarkdownInNewTab = async ({ markdown, title } = {}) => {
     editor?.focus();
     hasEdited = true;
     setHasEdited(true);
+    return newDoc;
 };
 
 const addNewTab = async (parentFolderId) => {
@@ -842,62 +877,50 @@ const moveNodeInTree = async ({ draggedNode, targetNode, position, sortMode }) =
 
 const deleteNode = async (node) => {
     const isFolder = node.type === 'folder';
+    const allNodes = await fileTreeStorage.getTree();
+    const subtreeIds = new Set([node.id]);
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const item of allNodes) {
+            if (!subtreeIds.has(item.id) && subtreeIds.has(item.parentId)) {
+                subtreeIds.add(item.id);
+                changed = true;
+            }
+        }
+    }
+    const descendants = Math.max(0, subtreeIds.size - 1);
     const message = isFolder
-        ? `Delete folder "${node.name}"?`
-        : `Delete file "${node.name}.md"?`;
-    if (!confirm(`${message}\n\nThis action cannot be undone.`)) return;
+        ? `Move folder "${node.name}"${descendants ? ` and its ${descendants} item${descendants === 1 ? '' : 's'}` : ''} to Trash? You can restore it later.`
+        : `Move file "${node.name}.md" to Trash? You can restore it later.`;
+    if (!confirm(message)) return;
 
-    if (isFolder) {
-        const allNodes = await fileTreeStorage.getTree();
-        const countDescendants = (folderId) => {
-            let count = 0;
-            const stack = [folderId];
-            while (stack.length > 0) {
-                const currentId = stack.pop();
-                const children = allNodes.filter((item) => item.parentId === currentId);
-                children.forEach((child) => {
-                    count += 1;
-                    if (child.type === 'folder') {
-                        stack.push(child.id);
-                    }
-                });
-            }
-            return count;
-        };
-
-        const totalItems = countDescendants(node.id);
-        if (totalItems > 0) {
-            const secondConfirm = confirm(
-                `Folder "${node.name}" contains ${totalItems} item${totalItems === 1 ? '' : 's'}.\n\nDelete everything inside it?`
-            );
-            if (!secondConfirm) return;
-        }
-    }
-
-    const result = await fileTreeStorage.deleteNodeRecursive(node.id);
-    if (result.deletedNoteIds.length > 0) {
+    if (subtreeIds.has(activeDocId)) {
         try {
-            // Use allSettled so one failed IDB delete doesn't abort the whole teardown
-            // (previously an unhandled rejection from a single failed write could crash
-            // the tab-close flow). Remaining deletions continue even if some reject.
-            const outcomes = await Promise.allSettled(
-                result.deletedNoteIds.map((noteId) => noteStorage.deleteNote(noteId))
-            );
-            const failures = outcomes.filter((o) => o.status === 'rejected');
-            if (failures.length > 0) {
-                console.error(
-                    `deleteNode: failed to delete ${failures.length}/${result.deletedNoteIds.length} note(s):`,
-                    failures.map((f) => f.reason)
-                );
-                showToast(`Could not delete ${failures.length} note(s)`, 'error');
+            livePreviewEditController?.syncFromPreview();
+            await saveCurrentDoc();
+            const activeDoc = documents.find((doc) => doc.id === activeDocId);
+            const savedNote = activeDoc?.noteId ? await noteStorage.getNote(activeDoc.noteId) : null;
+            if (!savedNote || savedNote.content !== (editor?.getValue() ?? '') || savedNote.title !== activeDoc.title) {
+                showToast('Could not save this document. It remains open; retry before moving it to Trash.', 'error');
+                return;
             }
-        } catch (err) {
-            // Degrade gracefully: the file-tree node is already gone; a failure here
-            // must not throw out of the delete handler.
-            console.error('deleteNode: note cleanup threw unexpectedly:', err);
-            showToast('Some notes could not be cleaned up', 'error');
+        } catch (error) {
+            console.error('Could not save the active document before moving it to Trash:', error);
+            showToast('Could not save this document. It remains open; retry before moving it to Trash.', 'error');
+            return;
         }
     }
+
+    let result;
+    try {
+        result = await fileTreeStorage.deleteNodeRecursive(node.id);
+    } catch (error) {
+        console.error('Could not move the file-tree item to Trash:', error);
+        showToast('Could not move this item to Trash. Your notes remain available.', 'error');
+        return;
+    }
+    if (!result.deletedNodeIds.length) return;
 
     documents = documents.filter((doc) => !result.deletedNodeIds.includes(doc.id));
     // Phase 2.4 fix: prune dirty-check snapshots for deleted docs.
@@ -914,10 +937,95 @@ const deleteNode = async (node) => {
     window.__markups_documents = documents;
     window.__markups_activeDocId = activeDocId;
     saveDocsToStorage();
-    pruneUnreferencedImages();
+    await pruneUnreferencedImages();
     renderTabs();
     await syncTreeFromDocuments();
     loadActiveDocument();
+    showToast('Moved to Trash. Its versions and linked data are kept.', 'success');
+};
+
+const openTrash = async () => {
+    const list = document.createElement('div');
+    list.className = 'trash-list';
+    const modalId = modal.open({ title: 'Trash', content: list, size: 'md' });
+
+    const renderTrash = async () => {
+        const [roots, linkedDeletedNoteIds, deletedNotes] = await Promise.all([
+            fileTreeStorage.getTrashRoots(),
+            fileTreeStorage.getTrashNoteIds(),
+            noteStorage.getDeletedNotes()
+        ]);
+        list.replaceChildren();
+        const linkedDeletedNoteIdSet = new Set(linkedDeletedNoteIds);
+        const entries = [
+            ...roots.map((node) => ({ type: 'node', id: node.id, label: node.type === 'file' ? `${node.name}.md` : node.name, deletedAt: node.deletedAt })),
+            ...deletedNotes.filter((note) => !linkedDeletedNoteIdSet.has(note.id)).map((note) => ({ type: 'note', id: note.id, label: `${note.title || 'Untitled'}.md`, deletedAt: note.deletedAt }))
+        ];
+
+        if (entries.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'trash-empty';
+            empty.textContent = 'Trash is empty.';
+            list.appendChild(empty);
+            return;
+        }
+
+        for (const entry of entries) {
+            const row = document.createElement('div');
+            row.className = 'trash-item';
+            const label = document.createElement('div');
+            label.className = 'trash-item-label';
+            label.append(document.createTextNode(entry.label));
+            const date = document.createElement('span');
+            date.className = 'trash-item-date';
+            date.textContent = entry.deletedAt ? `Moved ${new Date(entry.deletedAt).toLocaleString()}` : 'Moved to Trash';
+            label.appendChild(date);
+            const restore = document.createElement('button');
+            restore.type = 'button';
+            restore.className = 'trash-item-restore';
+            restore.textContent = 'Restore';
+            restore.setAttribute('aria-label', `Restore ${entry.label}`);
+            restore.addEventListener('click', async () => {
+                restore.disabled = true;
+                try {
+                    livePreviewEditController?.syncFromPreview();
+                    await saveCurrentDoc();
+                    if (entry.type === 'node') {
+                        const result = await fileTreeStorage.restoreNodeRecursive(entry.id);
+                        if (!result) throw new Error('Trash item is no longer available');
+                        const allLiveNodes = await fileTreeStorage.getTree();
+                        const restoredIds = new Set(result.restoredNodeIds);
+                        for (const fileNode of allLiveNodes) {
+                            if (!restoredIds.has(fileNode.id) || fileNode.type !== 'file' || !fileNode.noteId) continue;
+                            if (documents.some((doc) => doc.id === fileNode.id)) continue;
+                            const note = await noteStorage.getNote(fileNode.noteId);
+                            if (note) documents.push(mapNoteToDocument(note, fileNode));
+                        }
+                    } else {
+                        const restored = await fileTreeStorage.restoreStandaloneNote(entry.id);
+                        if (!restored) throw new Error('Note is no longer available');
+                        documents.push(mapNoteToDocument(restored.note, restored.node));
+                    }
+                    await refreshDeletedNoteImageRefs();
+                    window.__markups_documents = documents;
+                    saveDocsToStorage();
+                    renderTabs();
+                    await syncTreeFromDocuments();
+                    showToast('Restored from Trash.', 'success');
+                    await renderTrash();
+                } catch (error) {
+                    console.error('Could not restore Trash item:', error);
+                    showToast('Could not restore this item. Its saved data is still kept in Trash.', 'error');
+                    restore.disabled = false;
+                }
+            });
+            row.append(label, restore);
+            list.appendChild(row);
+        }
+    };
+
+    await renderTrash();
+    return modalId;
 };
 
 // Phase 2.0: last persisted {content, title} per doc id. Skips the whole
@@ -943,21 +1051,45 @@ const saveCurrentDoc = async () => {
     doc.content = content;
     doc.title = title;
     doc.lastModified = Date.now();
-    lastSavedSnapshot.set(doc.id, { content, title });
+    setSaveStatus('saving');
 
     const noteId = doc.noteId;
-    if (noteId) {
-        await noteStorage.updateNote(noteId, {
+    if (!noteId) {
+        lastSavedSnapshot.delete(doc.id);
+        setSaveStatus('error');
+        if (!_documentSaveFailureActive) {
+            showToast('This document is not connected to local storage. Export a backup before leaving.', 'error');
+            _documentSaveFailureActive = true;
+        }
+        return;
+    }
+
+    try {
+        const updatedNote = await noteStorage.updateNote(noteId, {
             title: doc.title,
             content: doc.content
         });
+        if (!updatedNote) {
+            throw new Error('Note storage did not confirm the update');
+        }
         await fileTreeStorage.renameNode(doc.id, doc.title);
+    } catch (error) {
+        lastSavedSnapshot.delete(doc.id);
+        setSaveStatus('error');
+        console.error('Document autosave failed:', error);
+        if (!_documentSaveFailureActive) {
+            showToast('Save failed. Your changes are still open; press Ctrl+S to retry or export a backup.', 'error');
+            _documentSaveFailureActive = true;
+        }
+        return;
     }
 
+    lastSavedSnapshot.set(doc.id, { content, title });
+    _documentSaveFailureActive = false;
     saveDocsToStorage();
     renderTabs(); // Refresh titles
     syncTreeFromDocuments();
-    showAutosaveIndicator();
+    setSaveStatus(editor?.getValue() === content ? 'saved' : 'unsaved');
 };
 
 const loadActiveDocument = () => {
@@ -972,6 +1104,7 @@ const loadActiveDocument = () => {
             editor?.setValue(doc.content);
             editor?.setScrollTop(0);
         }
+        setSaveStatus('saved');
     }
 };
 
@@ -979,63 +1112,22 @@ const saveDocsToStorage = () => {
     const expiredAt = new Date(2099, 1, 1);
     try {
         const saved = Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
-        if (saved !== false) return;
-
-        const quotaError = new Error('Document storage quota exceeded');
-        quotaError.name = 'QuotaExceededError';
-        throw quotaError;
-    } catch (error) {
-        if (error?.name === 'QuotaExceededError' || String(error).includes('QuotaExceededError')) {
-            const before = documents.length;
-            const reduced = documents.slice(-5);
-            const evicted = documents.filter((d) => !reduced.some((r) => r.id === d.id));
-            documents = reduced;
-            const reducedIds = new Set(reduced.map((d) => d.id));
-            if (!reducedIds.has(activeDocId)) {
-                activeDocId = reduced.length > 0 ? reduced[0].id : null;
-                window.__markups_activeDocId = activeDocId;
-                if (activeDocId === null) {
-                    editor?.setValue('');
-                }
+        if (saved === false) {
+            if (!_localDocsBackupUnavailable) {
+                showToast('Browser backup storage is full. Your documents remain in the database; export a backup when possible.', 'warning');
             }
-            if (before !== reduced.length) {
-                // Phase 2.3: evicted docs must not linger in IndexedDB — otherwise
-                // the next reload rebuilds them from the tree and tabs/explorer
-                // fork permanently. Best-effort, never throws out of quota path.
-                void (async () => {
-                    try {
-                        for (const doc of evicted) {
-                            lastSavedSnapshot.delete(doc.id);
-                            try {
-                                const result = await fileTreeStorage.deleteNodeRecursive(doc.id);
-                                await Promise.allSettled(
-                                    result.deletedNoteIds.map((noteId) => noteStorage.deleteNote(noteId))
-                                );
-                            } catch (err) {
-                                console.error('quota-trim: IDB cleanup failed for', doc.id, err);
-                            }
-                        }
-                    } catch (err) {
-                        console.error('quota-trim: cleanup threw unexpectedly:', err);
-                    }
-                })();
-                renderTabs();
-                syncTreeFromDocuments();
-                loadActiveDocument();
-            }
-            try {
-                const saved = Storehouse.setItem(localStorageNamespace, localStorageDocsKey, documents, expiredAt);
-                if (saved === false) {
-                    showToast('Could not save documents. Browser storage is full.', 'error');
-                } else {
-                    showToast('Storage quota exceeded. Kept the most recent documents only.', 'warning');
-                }
-            } catch {
-                showToast('Could not save documents. Browser storage is full.', 'error');
-            }
-            return;
+            _localDocsBackupUnavailable = true;
+            return false;
         }
-        showToast('Document save failed. Please try again.', 'error');
+        _localDocsBackupUnavailable = false;
+        return true;
+    } catch (error) {
+        console.error('Could not update the local document backup:', error);
+        if (!_localDocsBackupUnavailable) {
+            showToast('Could not update the browser backup. Your documents remain in the database.', 'warning');
+        }
+        _localDocsBackupUnavailable = true;
+        return false;
     }
 };
 
@@ -1074,11 +1166,19 @@ const setupEditor = () => {
     };
 
     editor?.onDidChangeModelContent((e) => {
+        // Count one genuine edit per browser session; do not transmit draft text.
+        // Monaco setValue() produces a flush event, which is not a user edit.
+        if (!isProgrammaticChange && !isApplyingPreviewEdit && !e.isFlush && e.changes?.length) {
+            trackEditorStartOnce();
+        }
+
         // Auto-clear welcome content on first real user keystroke
         if (!isApplyingPreviewEdit && isShowingWelcome && !isProgrammaticChange && e.changes && e.changes.length > 0) {
             const change = e.changes[0];
-            // User typed or pasted something — clear welcome content, keep only what they entered
-            if (change.text.length > 0) {
+            // Only a real insertion clears the welcome template.
+            // A partial replace, such as a spell suggestion, must keep the rest of the document.
+            const isInsertion = change.rangeLength === 0;
+            if (change.text.length > 0 && isInsertion) {
                 isShowingWelcome = false;
                 const typed = change.text;
                 editor?.setValue(typed);
@@ -1099,6 +1199,9 @@ const setupEditor = () => {
         if (changed) {
             hasEdited = true;
             setHasEdited(true);
+        }
+        if (!isProgrammaticChange && !e.isFlush) {
+            setSaveStatus('unsaved');
         }
         const value = editor?.getValue();
         if (!isApplyingPreviewEdit) {
@@ -1215,10 +1318,32 @@ marked.use(markedHighlight({
 }));
 
 // Configure marked with KaTeX
-marked.use(markedKatex({
-    throwOnError: false,
-    output: 'html' // or 'mathml'
-}));
+let katexExtensionPromise = null;
+let katexExtensionReady = false;
+
+const containsMathSyntax = (markdown) => {
+    const withoutCode = markdown
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/`[^`\n]*`/g, '');
+    return /\$\$[\s\S]+?\$\$|\$(?!\$)[^$\r\n]+\$|\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\]/.test(withoutCode);
+};
+
+const ensureKatexExtension = () => {
+    if (katexExtensionReady) return Promise.resolve();
+    if (!katexExtensionPromise) {
+        katexExtensionPromise = Promise.all([
+            import('marked-katex-extension'),
+            import('katex/dist/katex.min.css')
+        ]).then(([{ default: markedKatex }]) => {
+            marked.use(markedKatex({ throwOnError: false, output: 'html' }));
+            katexExtensionReady = true;
+        }).catch((error) => {
+            katexExtensionPromise = null;
+            throw error;
+        });
+    }
+    return katexExtensionPromise;
+};
 
 // Configure GFM Extensions
 marked.use(markedAlert());
@@ -1548,7 +1673,7 @@ const setupGoals = () => {
 
 const updateGoalProgress = (content) => {
     // Phase 3.3: canonical word count — same stripped count as footer/toolbar.
-    const wordCount = markdownService.extractStats(content || '').words;
+    const wordCount = extractMarkdownStats(content || '').words;
 
     const progressBar = document.getElementById('goal-progress-bar');
     const goalText = document.getElementById('goal-text');
@@ -1641,7 +1766,7 @@ const setupLinter = () => {
 
 // Simple browser-based markdown linter
 const runLinter = () => {
-    const content = editor?.getValue() ?? '';
+    const content = blankFrontMatterLines(editor?.getValue() ?? '') ?? '';
     const lines = content.split('\n');
     const issues = [];
 
@@ -2266,7 +2391,7 @@ function extractMarkdownBlockStarts(markdown) {
 function blockTypeFromElement(el) {
     const tag = el.tagName.toLowerCase();
     if (/^h[1-6]$/.test(tag)) return 'heading';
-    if (tag === 'pre' || el.classList?.contains('mermaid')) return 'code';
+    if (tag === 'pre' || el.matches?.('.mermaid, .mermaid-diagram, .mermaid-error')) return 'code';
     if (tag === 'table') return 'table';
     if (tag === 'ul' || tag === 'ol') return 'list';
     if (tag === 'blockquote') return 'quote';
@@ -2279,7 +2404,7 @@ function blockTypeFromElement(el) {
 function elementBlockScanType(el) {
     const tag = el.tagName.toLowerCase();
     if (/^h[1-6]$/.test(tag)) return 'heading';
-    if (tag === 'pre') return 'code';
+    if (tag === 'pre' || el.matches?.('.mermaid, .mermaid-diagram, .mermaid-error')) return 'code';
     if (tag === 'table') return 'table';
     if (tag === 'ul' || tag === 'ol') return 'list';
     if (tag === 'blockquote' || el.classList?.contains('markdown-alert')) return 'quote';
@@ -2450,8 +2575,11 @@ const normalizeMermaidPreviewErrors = (root) => {
 };
 
 // Render markdown text as html
-// Parse stays sync (already behind debouncedConvert); DOM write + secondary UI use rAF
-const convert = (markdown) => {
+// The text renderer stays synchronous; KaTeX is loaded only when math is present.
+// DOM writes and secondary UI work still happen in requestAnimationFrame below.
+const convert = async (markdown) => {
+    const token = ++_convertToken;
+
     // Reset TOC items and heading-id allocator each render (GFM uniquify)
     tocItems = [];
     allocateHeadingId = createHeadingIdAllocator();
@@ -2463,14 +2591,32 @@ const convert = (markdown) => {
     let renderableMarkdown = resolvedMarkdown.replace(/(!\[[^\]]*\]\([^)]+\))\s*\{[^}]*\}/g, '$1');
     renderableMarkdown = stripVideoAttributeBlocks(renderableMarkdown);
 
+    const parsedFrontMatter = currentSettings.preview.frontMatterCard !== false
+        ? parseFrontMatter(renderableMarkdown)
+        : null;
+    const frontMatterCardHtml = parsedFrontMatter
+        ? renderFrontMatterCard(parsedFrontMatter.frontMatter)
+        : '';
+    if (parsedFrontMatter) renderableMarkdown = blankFrontMatterLines(renderableMarkdown);
+
     // Document Mode needs the original markdown (with attrs) for serialization.
     // Preview Mode uses renderableMarkdown (attrs stripped) for clean rendering.
     const documentModeMarkdown = resolvedMarkdown;
 
-    const html = marked.parse(renderableMarkdown);
-    const sanitized = sanitizePreviewHtml(html);
+    if (shouldRenderKatex(currentSettings) && containsMathSyntax(renderableMarkdown)) {
+        try {
+            await ensureKatexExtension();
+        } catch (error) {
+            console.error('KaTeX could not be loaded; leaving math source visible:', error);
+        }
+        if (token !== _convertToken) return;
+    }
 
-    const token = ++_convertToken;
+    const html = marked.parse(renderableMarkdown);
+    const localBlobImageUrls = [...collectReferencedImageIds([markdown])]
+        .map((id) => imageStoreGet(id))
+        .filter((url) => typeof url === 'string' && url.startsWith('blob:'));
+    const sanitized = sanitizePreviewHtml(html, { LOCAL_BLOB_IMAGE_URLS: localBlobImageUrls });
 
     // Paint preview on next frame so the editor stays responsive after debounce
     requestAnimationFrame(() => {
@@ -2513,7 +2659,7 @@ const convert = (markdown) => {
             captureMedia(f, () => wrap?.dataset?.sourceLine);
         });
 
-        outputElement.innerHTML = sanitized;
+        outputElement.innerHTML = frontMatterCardHtml + sanitized;
 
         // Feature 2: Custom CSS injection
         injectCustomCss(outputElement);
@@ -2584,8 +2730,9 @@ const convert = (markdown) => {
                     pre.replaceWith(div);
                 });
 
-                mermaid.run({
-                    nodes: outputElement.querySelectorAll('.mermaid')
+                loadMermaid().then(renderer => {
+                    if (token !== _convertToken) return;
+                    return renderer.run({ nodes: outputElement.querySelectorAll('.mermaid') });
                 }).then(() => {
                     if (token !== _convertToken) return;
                     normalizeMermaidPreviewErrors(outputElement);
@@ -2869,27 +3016,12 @@ const copyHTMLToClipboard = async () => {
 
 // ----- stats utils -----
 
-const updateStats = (text) => {
-    // Strip markdown syntax before counting words (matches stats modal / GitHub)
-    const stripped = text
-        .replace(/```[\s\S]*?```/g, '')
-        .replace(/`[^`]*`/g, '')
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-        .replace(/[#*_~`]/g, '')
-        .trim();
-
-    // Count words
-    const words = stripped.split(/\s+/).filter(word => word.length > 0);
-    const wordCount = stripped === '' ? 0 : words.length;
-
-    // Count total characters
-    const charCount = text.length;
+const updateStats = (rawText) => {
+    const text = blankFrontMatterLines(rawText) ?? '';
+    const { words: wordCount, characters: charCount, paragraphs } = extractMarkdownStats(text);
 
     // Calculate reading time (configurable words per minute)
     const readingTime = Math.ceil(wordCount / APP_CONFIG.READING_SPEED_WPM) || 0;
-
-    // Count paragraphs
-    const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
 
     // Count sentences (approximate)
     const sentences = text.split(/[.(!?)]+/).filter(s => s.trim().length > 0).length;
@@ -3361,7 +3493,8 @@ const setupHeaderQuickTabs = () => {
 
 const setupAiWriterButton = () => {
     const aiWriterBtn = document.querySelector("#ai-writer-button");
-    if (!aiWriterBtn) return;
+    if (!aiWriterBtn || aiWriterBtn.dataset.aiSetup === 'true') return;
+    aiWriterBtn.dataset.aiSetup = 'true';
 
     aiWriterBtn.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -3467,8 +3600,10 @@ const setupCalloutDropdown = () => {
 
 // ----- download utils -----
 
-const downloadMarkdown = () => {
-    const content = resolveImageReferences(editor?.getValue() ?? '', false);
+const downloadMarkdown = async () => {
+    let content;
+    try { content = await localMediaStore.portableMarkdown(editor?.getValue() ?? '', imageStore); }
+    catch (error) { showToast(error.message, 'error'); return; }
     const filename = getExportFilename('md');
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -3480,6 +3615,7 @@ const downloadMarkdown = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast(`Downloaded: ${filename}`, 'success');
+        trackExportCompleted('md');
 };
 
 const exportToPDF = async () => {
@@ -3508,14 +3644,18 @@ const exportToPDF = async () => {
 
         await html2pdf().set(options).from(element).save();
         showToast(`PDF exported: ${filename}`, 'success');
+        trackExportCompleted('pdf');
     } catch (_) {
         showToast('Failed to export PDF', 'error');
     }
 };
 
-const exportToHTML = () => {
+const exportToHTML = async () => {
     const title = getActiveDocTitle();
     const filename = getExportFilename('html');
+    let content;
+    try { content = await getPortablePreviewHtml(); }
+    catch (error) { showToast(error?.message || 'Could not prepare images for HTML export.', 'error'); return; }
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3576,7 +3716,7 @@ const exportToHTML = () => {
 </style>
 </head>
 <body class="markdown-body">
-${document.getElementById('output').innerHTML}
+${content}
 </body>
 </html>`;
 
@@ -3588,12 +3728,15 @@ ${document.getElementById('output').innerHTML}
     a.click();
     URL.revokeObjectURL(url);
     showToast(`HTML exported: ${filename}`, 'success');
+        trackExportCompleted('html');
 };
 
-const exportToDOCX = () => {
+const exportToDOCX = async () => {
     const title = getActiveDocTitle();
     const filename = getExportFilename('doc');
-    const content = document.getElementById('output').innerHTML;
+    let content;
+    try { content = await getPortablePreviewHtml(); }
+    catch (error) { showToast(error?.message || 'Could not prepare images for Word export.', 'error'); return; }
     const html = `<!DOCTYPE html>
 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
 <head>
@@ -3623,7 +3766,8 @@ ${content}
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    showToast(`DOCX exported: ${filename}`, 'success');
+    showToast(`Word (.doc) exported: ${filename}`, 'success');
+        trackExportCompleted('doc');
 };
 
 // Export as Plain Text
@@ -3647,6 +3791,7 @@ const exportToTXT = () => {
     a.click();
     URL.revokeObjectURL(url);
     showToast(`Text exported: ${filename}`, 'success');
+        trackExportCompleted('txt');
 };
 
 // Export as PNG Image
@@ -3656,10 +3801,8 @@ const exportToPNG = async () => {
         const html2canvas = await getHtml2Canvas();
         const element = document.querySelector('#output');
 
-        const canvas = await html2canvas(element, {
+        const canvas = await captureSubtreeCanvas(html2canvas, element, {
             scale: 2,
-            useCORS: true,
-            logging: false,
             backgroundColor: '#ffffff'
         });
         const link = document.createElement('a');
@@ -3667,6 +3810,7 @@ const exportToPNG = async () => {
         link.href = canvas.toDataURL('image/png');
         link.click();
         showToast('Image exported successfully!', 'success');
+        trackExportCompleted('png');
     } catch (_) {
         showToast('Failed to export image', 'error');
     }
@@ -4049,7 +4193,7 @@ const updateExportUI = (format) => {
         pdf: { text: 'Export PDF', icon: 'picture_as_pdf', label: '' },
         html: { text: 'Export HTML', icon: 'html', label: 'HTML Preview' },
         markdown: { text: 'Download Markdown', icon: 'download', label: 'Markdown file' },
-        docx: { text: 'Export DOCX', icon: 'description', label: 'Word Document' },
+        docx: { text: 'Export Word (.doc)', icon: 'description', label: 'Word-compatible HTML' },
         txt: { text: 'Export Text', icon: 'text_snippet', label: 'Plain Text Preview' },
         png: { text: 'Export Image', icon: 'image', label: 'Image Preview' },
         print: { text: 'Print Document', icon: 'print', label: 'Print Preview' }
@@ -4519,6 +4663,7 @@ const exportToPDFWithOptions = async () => {
         workbench = null;
         activeExportAbort = null;
         showToast(`PDF exported: ${filename}`, 'success');
+        trackExportCompleted('pdf');
         hideExportLoading();
     } catch (err) {
         destroyExportWorkbench(workbench);
@@ -4539,7 +4684,7 @@ const exportToPDFWithOptions = async () => {
     }
 };
 
-const exportToHTMLWithOptions = () => {
+const exportToHTMLWithOptions = async () => {
     const theme = document.getElementById('export-html-theme')?.value || 'light';
     const includeCSS = document.getElementById('export-include-css')?.checked ?? true;
     const minify = document.getElementById('export-minify-html')?.checked ?? false;
@@ -4547,7 +4692,9 @@ const exportToHTMLWithOptions = () => {
     showExportLoading('Generating HTML file...', 40);
     const title = getActiveDocTitle();
     const filename = getExportFilename('html');
-    const content = document.getElementById('output').innerHTML;
+    let content;
+    try { content = await getPortablePreviewHtml(); }
+    catch (error) { failExportLoading('Could not prepare images for HTML export'); showToast(error?.message || 'Could not prepare images for HTML export.', 'error'); return; }
 
     let themeStyles = '';
     if (theme === 'dark') {
@@ -4601,6 +4748,7 @@ ${content}
         a.click();
         URL.revokeObjectURL(url);
         showToast(`HTML exported: ${filename}`, 'success');
+        trackExportCompleted('html');
         hideExportLoading();
     } catch (err) {
         console.error('HTML export error:', err);
@@ -4664,10 +4812,8 @@ const exportToPNGWithOptions = async () => {
         updateExportProgress(60, 'Rendering image canvas...');
         const html2canvas = await getHtml2Canvas();
         const canvas = await raceExportJob(
-            html2canvas(wrapper, {
+            captureSubtreeCanvas(html2canvas, wrapper, {
                 scale: resolution,
-                useCORS: true,
-                logging: false,
                 backgroundColor: transparentBg ? null : (includeShadow ? '#f5f5f5' : '#ffffff'),
                 width: includeShadow ? width + 80 : width,
                 windowWidth: width + (includeShadow ? 80 : 0)
@@ -4686,6 +4832,7 @@ const exportToPNGWithOptions = async () => {
         link.click();
         activeExportAbort = null;
         showToast(`Image exported: ${filename}`, 'success');
+        trackExportCompleted('png');
         hideExportLoading();
     } catch (err) {
         if (wrapper.parentNode) document.body.removeChild(wrapper);
@@ -4780,11 +4927,11 @@ const printDocumentWithOptions = () => {
 };
 
 // Download Markdown with options
-const downloadMarkdownWithOptions = () => {
+const downloadMarkdownWithOptions = async () => {
     showExportLoading('Preparing Markdown file...', 50);
-    const content = resolveImageReferences(editor?.getValue() ?? '', false);
     const filename = getExportFilename('md');
     try {
+        const content = await localMediaStore.portableMarkdown(editor?.getValue() ?? '', imageStore);
         updateExportProgress(80, 'Downloading...');
         const blob = new Blob([content], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
@@ -4794,6 +4941,7 @@ const downloadMarkdownWithOptions = () => {
         a.click();
         URL.revokeObjectURL(url);
         showToast(`Markdown downloaded: ${filename}`, 'success');
+        trackExportCompleted('md');
         hideExportLoading();
     } catch (err) {
         console.error('Markdown export error:', err);
@@ -4803,12 +4951,13 @@ const downloadMarkdownWithOptions = () => {
 };
 
 // Export DOCX with options
-const exportToDOCXWithOptions = () => {
+const exportToDOCXWithOptions = async () => {
     const title = getActiveDocTitle();
     const filename = getExportFilename('doc');
-    const content = document.getElementById('output').innerHTML;
-
     showExportLoading('Generating Word document...', 40);
+    let content;
+    try { content = await getPortablePreviewHtml(); }
+    catch (error) { failExportLoading('Could not prepare images for Word export'); showToast(error?.message || 'Could not prepare images for Word export.', 'error'); return; }
 
     const html = `<!DOCTYPE html>
 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -4892,12 +5041,13 @@ ${content}
         a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
-        showToast(`DOCX exported: ${filename}`, 'success');
+        showToast(`Word (.doc) exported: ${filename}`, 'success');
+        trackExportCompleted('doc');
         hideExportLoading();
     } catch (err) {
         console.error('DOCX export error:', err);
-        failExportLoading('Failed to export DOCX');
-        showToast('Failed to export DOCX', 'error');
+        failExportLoading('Failed to export Word (.doc)');
+        showToast('Failed to export Word (.doc)', 'error');
     }
 };
 
@@ -4943,6 +5093,7 @@ const exportToTXTWithOptions = () => {
         a.click();
         URL.revokeObjectURL(url);
         showToast(`Text exported: ${filename}`, 'success');
+        trackExportCompleted('txt');
         hideExportLoading();
     } catch (err) {
         console.error('TXT export error:', err);
@@ -5017,6 +5168,7 @@ const setupImageUpload = () => {
 
     // Handle image file selection
     imageInput.addEventListener('change', handleImageUpload);
+    imageInput.dataset.ready = 'true';
 
     // Drag and drop support
     editorElement.addEventListener('dragover', (e) => {
@@ -5098,7 +5250,7 @@ const processImageFile = (file) => {
                 showToast('SVG rejected: empty or unsafe content', 'error');
                 return;
             }
-            insertImageIntoEditor(file, cleanDataUrl);
+            void insertImageIntoEditor(file, cleanDataUrl);
         };
         textReader.onerror = () => {
             showToast('Failed to process SVG image', 'error');
@@ -5118,7 +5270,7 @@ const processImageFile = (file) => {
 
         try {
             const dataUrl = await safeBase64FromArrayBuffer(buffer, file.type);
-            insertImageIntoEditor(file, dataUrl);
+            await insertImageIntoEditor(file, dataUrl);
         } catch {
             showToast('Failed to process image', 'error');
         }
@@ -5132,14 +5284,26 @@ const processImageFile = (file) => {
 };
 
 // Helper: insert image reference into editor after processing
-const insertImageIntoEditor = (file, base64Image) => {
+const insertImageIntoEditor = async (file, base64Image) => {
     const selection = editor?.getSelection();
+    const targetDocId = activeDocId;
+    const targetModel = editor?.getModel();
+    const targetVersion = targetModel?.getVersionId();
     const fileName = sanitizeMarkdownAlt(file.name.replace(/\.[^/.]+$/, "")); // Remove extension + escape alt text
 
     // Generate short unique ID and store base64 in the image store (LRU-capped)
     const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
-    imageStoreSet(imgId, base64Image);
-    saveImageStore();
+    let blob;
+    try { blob = await localMediaStore.putDataUrl(imgId, base64Image); }
+    catch {
+        showToast('Could not save this image locally. It was not inserted; export a backup or free up browser storage.', 'error');
+        return;
+    }
+    if (activeDocId !== targetDocId || editor?.getModel() !== targetModel || targetModel?.getVersionId() !== targetVersion) {
+        showToast('The document changed while the image was being saved. Please insert it again.', 'warning');
+        return;
+    }
+    imageStoreSet(imgId, URL.createObjectURL(blob));
 
     // Insert short readable reference instead of enormous base64 string
     const markdown = `![${fileName}](markups-img:${imgId})`;
@@ -5243,6 +5407,7 @@ const getDefaultSettings = () => ({
         syntaxHighlight: true,
         mathRendering: true,
         mermaid: true,
+        frontMatterCard: true,
         videoMode: 'smart',
         imageMode: 'smart'
     },
@@ -5373,6 +5538,7 @@ const setupSettingsModal = () => {
         setCheckbox('syntax-highlight-checkbox', currentSettings.preview.syntaxHighlight);
         setCheckbox('math-rendering-checkbox', currentSettings.preview.mathRendering);
         setCheckbox('mermaid-checkbox', currentSettings.preview.mermaid);
+        setCheckbox('front-matter-checkbox', currentSettings.preview.frontMatterCard !== false);
         setDropdown('video-mode-dropdown', currentSettings.preview.videoMode || 'smart');
 
         // Theme
@@ -5574,7 +5740,6 @@ const setupPreviewSettings = () => {
     if (mathRenderingCheckbox) {
         mathRenderingCheckbox.addEventListener('change', (e) => {
             currentSettings.preview.mathRendering = e.target.checked;
-            markdownService.setKatexEnabled(e.target.checked);
             updatePreview();
             showToast(e.target.checked ? 'Math rendering enabled' : 'Math rendering disabled', 'info', 1500);
         });
@@ -5585,9 +5750,17 @@ const setupPreviewSettings = () => {
     if (mermaidCheckbox) {
         mermaidCheckbox.addEventListener('change', (e) => {
             currentSettings.preview.mermaid = e.target.checked;
-            markdownService.setMermaidEnabled(e.target.checked);
             updatePreview();
             showToast(e.target.checked ? 'Mermaid diagrams enabled' : 'Mermaid diagrams disabled', 'info', 1500);
+        });
+    }
+
+    const frontMatterCheckbox = document.getElementById('front-matter-checkbox');
+    if (frontMatterCheckbox) {
+        frontMatterCheckbox.addEventListener('change', (e) => {
+            currentSettings.preview.frontMatterCard = e.target.checked;
+            updatePreview();
+            showToast(e.target.checked ? 'Front matter card enabled' : 'Front matter card disabled', 'info', 1500);
         });
     }
 
@@ -6397,6 +6570,11 @@ const setupKeyboardShortcuts = () => {
             saveThemeSettings(nextTheme);
             showToast(`Theme: ${getThemeName(nextTheme)}`, 'info', 1500);
         }
+        // Ctrl/Cmd + Shift + P: Open the command palette.
+        else if (ctrlKey && event.shiftKey && event.key.toLowerCase() === 'p') {
+            event.preventDefault();
+            toggleCommandPalette();
+        }
         // Ctrl/Cmd + K: Reset
         else if (ctrlKey && event.key === 'k') {
             event.preventDefault();
@@ -6873,6 +7051,25 @@ const _saveLastContent = (content) => {
     showAutosaveIndicator();
 };
 
+const setSaveStatus = (status) => {
+    const element = document.querySelector('#save-status');
+    const label = element?.querySelector('span');
+    if (!element || !label) return;
+
+    const labels = {
+        unsaved: 'Unsaved changes',
+        saving: 'Saving…',
+        saved: 'All changes saved',
+        error: 'Save failed — retry or export'
+    };
+
+    element.dataset.state = status;
+    element.classList.toggle('is-unsaved', status === 'unsaved');
+    element.classList.toggle('is-saving', status === 'saving');
+    element.classList.toggle('is-error', status === 'error');
+    label.textContent = labels[status] || labels.saved;
+};
+
 const showAutosaveIndicator = () => {
     const indicator = document.querySelector('#autosave-indicator');
     if (!indicator) return;
@@ -6917,20 +7114,24 @@ const saveDarkModeSettings = (settings) => {
 
 // ----- Image Store Persistence (LRU + tab-close cleanup) -----
 
-const loadImageStore = () => {
+const loadImageStore = async () => {
     const saved = Storehouse.getItem(localStorageNamespace, localStorageImagesKey);
     if (saved && typeof saved === 'object') {
-        // Load via LRU setter so oversized stores are trimmed on boot
+        // Legacy copy remains untouched for recovery; never persist object URLs.
         Object.entries(saved).forEach(([key, value]) => {
-            imageStoreSet(key, value);
+            if (typeof value === 'string' && value.startsWith('data:image/')) imageStore.set(key, value);
         });
     }
-};
-
-const saveImageStore = () => {
-    const expiredAt = new Date(2099, 1, 1);
-    const obj = Object.fromEntries(imageStore);
-    Storehouse.setItem(localStorageNamespace, localStorageImagesKey, obj, expiredAt);
+    try {
+        await localMediaStore.migrateLegacy(saved);
+        for (const [id, url] of await localMediaStore.previewEntries()) imageStore.set(id, url);
+    } catch (error) {
+        // Keep the legacy image copy untouched and report only the failure
+        // class; never send image data or document content to logs/analytics.
+        console.warn('[Markups] Local image storage initialization failed:', error?.name || 'UnknownError');
+        const quotaHint = error?.name === 'QuotaExceededError' ? ' Browser storage may be full.' : '';
+        showToast(`Browser image storage could not be initialized. Existing Markdown and any legacy image backup remain unchanged; check storage before adding images.${quotaHint}`, 'warning');
+    }
 };
 
 const resolveImageReferences = (text, forPreview = true) => {
@@ -6938,6 +7139,23 @@ const resolveImageReferences = (text, forPreview = true) => {
         /markups-img:(img_\w+)/g,
         (match, imgId) => forPreview ? (imageStoreGet(imgId) || match) : match
     );
+};
+
+// Preview uses revocable Blob URLs for memory efficiency. Files that outlive this
+// page must contain data URLs instead, so exported HTML never points at this tab.
+const getPortablePreviewHtml = async () => {
+    const output = document.getElementById('output');
+    if (!output) throw new Error('The rendered document is unavailable.');
+    const clone = output.cloneNode(true);
+    const byUrl = new Map([...imageStore].filter(([, value]) => typeof value === 'string').map(([id, value]) => [value, id]));
+    for (const img of clone.querySelectorAll('img[src^="blob:"]')) {
+        const id = byUrl.get(img.getAttribute('src'));
+        const data = id ? await localMediaStore.getDataUrl(id, imageStore.get(id)) : null;
+        if (!data) throw new Error('A preview image could not be recovered for this export.');
+        img.setAttribute('src', data);
+    }
+    if (clone.querySelector('img[src^="blob:"]')) throw new Error('A preview image could not be recovered for this export.');
+    return clone.innerHTML;
 };
 
 /**
@@ -7637,10 +7855,162 @@ const setupDivider = () => {
 };
 
 // ----- Global Escape Key Handler -----
+const PALETTE_THEME_CYCLE = ['vs', 'vs-dark', 'hc-black'];
+let paletteActiveIndex = 0;
+let paletteFiltered = [];
+
+const cyclePaletteTheme = () => {
+    const currentIndex = PALETTE_THEME_CYCLE.indexOf(currentTheme);
+    const nextTheme = PALETTE_THEME_CYCLE[(currentIndex + 1) % PALETTE_THEME_CYCLE.length];
+    currentTheme = nextTheme;
+    currentSettings.theme = nextTheme;
+    document.querySelectorAll('input[name="editor-theme"]').forEach((radio) => {
+        radio.checked = radio.value === nextTheme;
+    });
+    applyTheme(nextTheme);
+    saveThemeSettings(nextTheme);
+    showToast(`Theme: ${getThemeName(nextTheme)}`, 'info', 1500);
+};
+
+const buildPaletteCommands = () => [
+    { id: 'new-doc', title: 'New document', hint: 'Create an empty document', action: () => addNewTab() },
+    { id: 'save-md', title: 'Save as Markdown', hint: 'Ctrl+S', action: () => downloadMarkdown() },
+    { id: 'import', title: 'Import file', hint: 'Ctrl+O', action: () => importFile() },
+    { id: 'share', title: 'Share document', action: () => document.getElementById('share-btn')?.click() },
+    { id: 'copy-md', title: 'Copy Markdown', action: () => copyMarkdownToClipboard() },
+    { id: 'export-modal', title: 'Export…', hint: 'Ctrl+Shift+E', action: () => openExportModal() },
+    { id: 'export-pdf', title: 'Export to PDF', hint: 'Ctrl+P', action: () => exportToPDF() },
+    { id: 'export-html', title: 'Export to HTML', action: () => exportToHTML() },
+    { id: 'export-docx', title: 'Export to DOC', action: () => exportToDOCX() },
+    { id: 'export-png', title: 'Export to PNG', action: () => exportToPNG() },
+    { id: 'export-txt', title: 'Export to plain text', action: () => exportToTXT() },
+    { id: 'find-replace', title: 'Find & Replace', action: () => document.getElementById('find-replace-btn')?.click() },
+    { id: 'view-code', title: 'View: Editor only', action: () => setViewMode('code') },
+    { id: 'view-split', title: 'View: Split', action: () => setViewMode('split') },
+    { id: 'view-preview', title: 'View: Preview only', action: () => setViewMode('preview') },
+    { id: 'focus', title: 'Toggle Focus Mode', action: () => document.getElementById('focus-button')?.click() },
+    { id: 'typewriter', title: 'Toggle Typewriter Mode', action: () => document.getElementById('typewriter-button')?.click() },
+    { id: 'fullscreen', title: 'Toggle Fullscreen', action: () => toggleFullscreen() },
+    { id: 'theme-cycle', title: 'Cycle editor theme', hint: 'Ctrl+D', action: () => cyclePaletteTheme() },
+    { id: 'settings', title: 'Open Settings', action: () => document.getElementById('settings-btn')?.click() },
+    { id: 'help', title: 'Keyboard shortcuts', hint: 'Ctrl+H', action: () => document.getElementById('help-button')?.click() },
+    { id: 'reset-doc', title: 'Reset editor content', action: () => reset() }
+];
+
+const isCommandPaletteOpen = () => document.getElementById('command-palette')?.style.display === 'flex';
+
+const renderPaletteList = () => {
+    const list = document.getElementById('command-palette-list');
+    if (!list) return;
+    list.replaceChildren();
+    if (paletteFiltered.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'command-palette-empty';
+        empty.textContent = 'No matching commands';
+        list.appendChild(empty);
+        return;
+    }
+    paletteFiltered.forEach((command, index) => {
+        const item = document.createElement('li');
+        item.className = `command-palette-item${index === paletteActiveIndex ? ' active' : ''}`;
+        item.setAttribute('role', 'option');
+        item.innerHTML = '<span class="cmd-title"></span><span class="cmd-hint"></span>';
+        item.querySelector('.cmd-title').textContent = command.title;
+        item.querySelector('.cmd-hint').textContent = command.hint || '';
+        item.addEventListener('click', () => executePaletteCommand(command));
+        item.addEventListener('mousemove', () => {
+            paletteActiveIndex = index;
+            updatePaletteActiveItem();
+        });
+        list.appendChild(item);
+    });
+    list.children[paletteActiveIndex]?.scrollIntoView({ block: 'nearest' });
+};
+
+const updatePaletteActiveItem = () => {
+    const list = document.getElementById('command-palette-list');
+    list?.querySelectorAll('.command-palette-item').forEach((item, index) => {
+        item.classList.toggle('active', index === paletteActiveIndex);
+    });
+    list?.children[paletteActiveIndex]?.scrollIntoView({ block: 'nearest' });
+};
+
+const executePaletteCommand = (command) => {
+    closeCommandPalette();
+    try {
+        command.action();
+    } catch (error) {
+        console.error('Command failed:', command.id, error);
+        showToast('Command failed', 'error');
+    }
+};
+
+const filterPaletteCommands = (query) => {
+    const normalized = query.trim().toLowerCase();
+    paletteFiltered = buildPaletteCommands().filter((command) => (
+        !normalized || command.title.toLowerCase().includes(normalized) || (command.hint || '').toLowerCase().includes(normalized)
+    ));
+    paletteActiveIndex = 0;
+    renderPaletteList();
+};
+
+const openCommandPalette = () => {
+    const palette = document.getElementById('command-palette');
+    const overlay = document.getElementById('command-palette-overlay');
+    const input = document.getElementById('command-palette-input');
+    if (!palette || !input) return;
+    palette.style.display = 'flex';
+    if (overlay) overlay.style.display = 'block';
+    input.value = '';
+    filterPaletteCommands('');
+    input.focus();
+};
+
+const closeCommandPalette = () => {
+    const palette = document.getElementById('command-palette');
+    const overlay = document.getElementById('command-palette-overlay');
+    if (palette) palette.style.display = 'none';
+    if (overlay) overlay.style.display = 'none';
+};
+
+const toggleCommandPalette = () => (isCommandPaletteOpen() ? closeCommandPalette() : openCommandPalette());
+
+const setupCommandPalette = () => {
+    const input = document.getElementById('command-palette-input');
+    const overlay = document.getElementById('command-palette-overlay');
+    if (!input) return;
+    input.addEventListener('input', () => filterPaletteCommands(input.value));
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            event.stopPropagation();
+            if (paletteFiltered.length > 0) {
+                const direction = event.key === 'ArrowDown' ? 1 : -1;
+                paletteActiveIndex = (paletteActiveIndex + direction + paletteFiltered.length) % paletteFiltered.length;
+                updatePaletteActiveItem();
+            }
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            event.stopPropagation();
+            if (paletteFiltered[paletteActiveIndex]) executePaletteCommand(paletteFiltered[paletteActiveIndex]);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            closeCommandPalette();
+        }
+    });
+    overlay?.addEventListener('click', closeCommandPalette);
+};
+
 const setupGlobalEscapeKey = () => {
     trackedAddEventListener(document, 'keydown', (e) => {
         if (e.key === 'Escape') {
             let closed = false;
+
+            if (isCommandPaletteOpen()) {
+                closeCommandPalette();
+                closed = true;
+            }
 
             // Close all modals
             const modals = [
@@ -7712,11 +8082,9 @@ const initializeApp = async () => {
     defineCustomThemes();
 
     const lastContent = loadLastContent();
-    loadImageStore(); // Load image store before editor setup so convert() can resolve refs
+    await loadImageStore(); // Resolve durable images before the first preview.
     editor = setupEditor();
-    if (typeof window !== 'undefined') {
-        window.editor = editor;
-    }
+    setupSpellcheck(editor);
     // Flush any actions queued before the editor was ready (EDITOR_READY)
     if (pendingEditorActions.length) {
         const queued = pendingEditorActions;
@@ -7733,6 +8101,9 @@ const initializeApp = async () => {
 
     // Initialize UI components
     setupToolbar();
+    // Bind the always-visible AI entry point before later async tab hydration.
+    // Users can open the lazy-loaded panel as soon as the editor is ready.
+    setupAiWriterButton();
     initToolbarDensity();
     if (document.getElementById('enhanced-toolbar')) {
         toolbarManager.initialize('#enhanced-toolbar', { render: false });
@@ -7770,8 +8141,15 @@ const initializeApp = async () => {
     setupVideoControls();
     setupImageControls();
     await initTabs();
-    pruneUnreferencedImages();
-    window.addEventListener('pagehide', () => {
+    await pruneUnreferencedImages();
+    // Expose the debug/test editor only after startup has restored the active
+    // tab. Otherwise a caller can set content during boot and have initTabs()
+    // immediately replace it with the restored document.
+    if (typeof window !== 'undefined') {
+        window.editor = editor;
+    }
+    window.addEventListener('pagehide', (event) => {
+        if (event.persisted) return; // Keep object URLs alive for back/forward cache.
         for (const [key, value] of [...imageStore.entries()]) {
             if (typeof value === 'string' && value.startsWith('blob:')) {
                 revokeImageStoreValue(value);
@@ -7800,6 +8178,7 @@ const initializeApp = async () => {
     setupKeyboardShortcuts();
     setupVimKeybindings();
     setupGlobalEscapeKey();
+    setupCommandPalette();
 
     const themeSettings = loadThemeSettings() || 'vs';
     initThemeSelector(themeSettings);
@@ -7815,6 +8194,7 @@ const initializeApp = async () => {
     setupExportModal();
     shareManager.initialize({
         getMarkdown: () => editor?.getValue() ?? '',
+        getPortableMarkdown: (markdown) => localMediaStore.portableMarkdown(markdown, imageStore),
         getTitle: () => {
             const fromPage = document.getElementById('page-filename')?.textContent?.trim();
             if (fromPage && fromPage !== 'Untitled.md') return fromPage.replace(/\.md$/i, '');
@@ -7825,6 +8205,14 @@ const initializeApp = async () => {
             }
         },
         onIncomingDoc: ({ markdown, title }) => openMarkdownInNewTab({ markdown, title })
+    });
+    initializeCloudAccount({
+        getCurrentDocument: () => {
+            const current = documents.find(doc => doc.id === activeDocId);
+            return current ? { noteId: current.noteId, title: current.title, content: editor?.getValue() ?? current.content } : null;
+        },
+        getPortableMarkdown: (markdown) => localMediaStore.portableMarkdown(markdown, imageStore),
+        openCloudDocument: ({ title, content }) => openMarkdownInNewTab({ title, markdown: content })
     });
     handleIncomingShare();
 
@@ -7839,7 +8227,20 @@ const initializeApp = async () => {
     initVersionHistory({
         editorInstance: editor,
         defaultContent: defaultInput,
-        hasEdited
+        hasEdited,
+        getActiveNoteId: () => documents.find(doc => doc.id === activeDocId)?.noteId,
+        onRestored: ({ noteId, content }) => {
+            const document = documents.find(doc => doc.noteId === noteId);
+            if (document) {
+                document.content = content;
+                document.lastModified = Date.now();
+                if (document.id === activeDocId) {
+                    editor?.setValue(content);
+                    hasEdited = true;
+                    setHasEdited(true);
+                }
+            }
+        }
     });
     setupMobileSwipeGestures();
 
@@ -7854,9 +8255,6 @@ const initializeApp = async () => {
 
     // Breadcrumb: current heading path in status bar
     setupBreadcrumb(editor);
-
-    // AI Writer — lazy-loaded module, same pattern as image-resize
-    setupAiWriterButton();
 
     // Browser-style file tabs in the header
     setupHeaderQuickTabs();
@@ -7932,7 +8330,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 // Register service worker
-if ('serviceWorker' in navigator) {
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
@@ -7964,3 +8362,5 @@ window.addEventListener("load", () => {
         }
     });
 });
+
+

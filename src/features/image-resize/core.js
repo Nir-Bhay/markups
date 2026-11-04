@@ -21,6 +21,7 @@ import {
   formatBytes,
 } from './utils.js';
 import { applyImageStateToMarkdown, getHtmlImageOccurrenceIndex, isNonMarkdownPreviewImage } from './markdown-sync.js';
+import { getChromeBottom } from '../../utils/media-popover-position.js';
 
 export class ImageResizeManager {
     constructor() {
@@ -698,11 +699,26 @@ export class ImageResizeManager {
               animation: ir-fade-in 0.15s ease;
               max-width: 220px;
             `;
-            tip.innerHTML = [
-                `<span style="color:#64748b;font-size:10px;letter-spacing:.04em;text-transform:uppercase">${fileType}</span>`,
-                `<div style="margin-top:4px"><span style="color:#5865f2;font-weight:600">${curW} × ${curH}</span><span style="color:#94a3b8"> px (display)</span></div>`,
-                natW !== '?' ? `<div style="color:#94a3b8">${natW} × ${natH} natural</div>` : '',
-            ].join('');
+            const typeLabel = document.createElement('span');
+            typeLabel.style.cssText = 'color:#64748b;font-size:10px;letter-spacing:.04em;text-transform:uppercase';
+            typeLabel.textContent = fileType;
+
+            const displayRow = document.createElement('div');
+            displayRow.style.cssText = 'margin-top:4px';
+            const dimensions = document.createElement('span');
+            dimensions.style.cssText = 'color:#5865f2;font-weight:600';
+            dimensions.textContent = `${curW} × ${curH}`;
+            const displayUnit = document.createElement('span');
+            displayUnit.style.cssText = 'color:#94a3b8';
+            displayUnit.textContent = ' px (display)';
+            displayRow.append(dimensions, displayUnit);
+            tip.append(typeLabel, displayRow);
+            if (natW !== '?') {
+                const naturalRow = document.createElement('div');
+                naturalRow.style.cssText = 'color:#94a3b8';
+                naturalRow.textContent = `${natW} × ${natH} natural`;
+                tip.appendChild(naturalRow);
+            }
 
             document.body.appendChild(tip);
             _hoverTooltip = tip;
@@ -1013,15 +1029,7 @@ export class ImageResizeManager {
      * @private
      */
     _getChromeBottom() {
-        let bottom = 8;
-        const header = document.querySelector('.premium-header');
-        const formatBar = document.querySelector('.premium-toolbar');
-        if (header) bottom = Math.max(bottom, header.getBoundingClientRect().bottom);
-        if (formatBar) {
-            const rect = formatBar.getBoundingClientRect();
-            if (rect.height > 0) bottom = Math.max(bottom, rect.bottom);
-        }
-        return bottom + 8;
+        return getChromeBottom(16);
     }
 
     /** @private */
@@ -1996,7 +2004,7 @@ export class ImageResizeManager {
 
         const deltaX = e.clientX - this.startX;
         const deltaY = e.clientY - this.startY;
-        const freeResize = e.shiftKey ? !this.lockAspect : this.lockAspect === false;
+        const freeResize = e.shiftKey || this.lockAspect === false;
 
         this._resize(deltaX, deltaY, freeResize);
     }
@@ -2025,9 +2033,8 @@ export class ImageResizeManager {
         if (handle.includes('s')) newHeight = this.startHeight + deltaY;
         if (handle.includes('n')) newHeight = this.startHeight - deltaY;
 
-        // Maintain aspect ratio for corner handles (default: locked)
-        const isCorner = ['nw', 'ne', 'sw', 'se'].includes(handle);
-        if (!freeResize && isCorner) {
+        // Maintain aspect ratio for every handle when locking is enabled.
+        if (!freeResize) {
             const widthDelta = Math.abs(newWidth - this.startWidth);
             const heightDelta = Math.abs(newHeight - this.startHeight);
 
@@ -2051,7 +2058,7 @@ export class ImageResizeManager {
 
             if (snapResult.snapped) {
                 newWidth = snapResult.value;
-                if (!freeResize && isCorner) {
+                if (!freeResize) {
                     newHeight = newWidth / this.aspectRatio;
                 }
                 this.snapGuides.showGuide(newWidth, containerRect, snapResult.label);

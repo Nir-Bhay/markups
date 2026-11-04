@@ -1,0 +1,12 @@
+{
+  "checked_at_utc": "2026-11-04T06:22:44.472748+00:00",
+  "source_sitemap_urls": 34,
+  "live_sitemap_status": 200,
+  "live_sitemap_urls": 10,
+  "status_counts": {
+    "200": 11,
+    "404": 23
+  },
+  "all_built": true,
+  "google_index_status": "Unknown; HTTP eligibility does not prove indexing"
+}

@@ -4,8 +4,10 @@ This is the current navigation map for the Markups repository.
 
 ## Project identity
 
-Markups is a vanilla JavaScript/Vite Markdown editor PWA. It uses Monaco,
-Marked, DOMPurify, Mermaid, KaTeX, Dexie/IndexedDB, and local browser storage.
+Markups is a vanilla JavaScript/Vite Markdown editor PWA. Its separate `/landing`
+product page is React/TypeScript, pre-rendered during Vite builds and hydrated
+in the browser. The editor uses Monaco, Marked, DOMPurify, Mermaid, KaTeX,
+Dexie/IndexedDB, and local browser storage.
 
 ## Entry points
 
@@ -13,6 +15,9 @@ Marked, DOMPurify, Mermaid, KaTeX, Dexie/IndexedDB, and local browser storage.
 - `src/main.js` — current production application entry
 - `src/main.modular.js` — modular entry used by `npm run build:modular`
 - `src/app.js` — modular application coordinator
+- `landing/index.html` — landing route metadata, canonical, and JSON-LD
+- `landing/src/` — React landing page, components, and styles
+- `scripts/prerender-landing.mjs` — generates build-time landing markup
 - `vite.config.js` — multi-page inputs, chunks, and build configuration
 
 ## Source map
@@ -42,7 +47,7 @@ or deleting public-site content.
 
 - User-controlled names must be escaped before `innerHTML` insertion.
 - Storage quota failures must not be swallowed.
-- E2E coverage is currently absent.
+- E2E tests are present in tests/e2e/; run them to confirm status.
 - Coverage requires `@vitest/coverage-v8`.
 - Keep `main.js` and `main.modular.js` until the entry-point decision is made.
 
@@ -54,4 +59,4 @@ or deleting public-site content.
 4. Make one bounded change at a time.
 5. Run lint, unit tests, both builds, and relevant browser tests.
 
-Last reviewed: 2026-09-08.
+Last reviewed: 2026-11-03 (landing route source refresh).

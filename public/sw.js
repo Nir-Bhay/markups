@@ -1,6 +1,6 @@
 // Service Worker for Markdown Live Preview
 const APP_CACHE_PREFIX = 'markdown-live-preview-app';
-const APP_CACHE_VERSION = 'v2';
+const APP_CACHE_VERSION = 'v5';
 const APP_CACHE_NAME = `${APP_CACHE_PREFIX}-${APP_CACHE_VERSION}`;
 const STATIC_ASSETS = ['/', '/index.html', '/favicon.png'];
 
@@ -8,13 +8,31 @@ const STATIC_ASSET_PATTERN = /\.(?:js|css|png|jpg|jpeg|gif|svg|webp|woff|woff2|t
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(APP_CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
+    caches.open(APP_CACHE_NAME).then(async (cache) => {
+      return (async () => {
+        await cache.addAll(STATIC_ASSETS);
+        // Initial scripts may finish loading before this worker controls the
+        // page. Precache the compiled shell's local script/style/preload URLs,
+        // otherwise the first offline reload has HTML but cannot boot JS.
+        const shell = await cache.match('/');
+        const html = await shell.text();
+        const assets = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/gi)]
+          .map(match => new URL(match[1], self.location.origin))
+          .filter(url => url.origin === self.location.origin && /\.(?:js|css|woff2?)(?:$|\?)/i.test(url.pathname))
+          .map(url => url.href);
+        await cache.addAll([...new Set(assets)]);
+        const manifestResponse = await fetch('/precache-manifest.json', { cache: 'no-cache' });
+        if (!manifestResponse.ok) throw new Error('Offline asset manifest is unavailable.');
+        const manifest = await manifestResponse.json();
+        const compiledAssets = manifest.filter(path => typeof path === 'string' && path.startsWith('/assets/') && !path.includes('..'));
+        await cache.addAll(compiledAssets);
+      })().catch((err) => {
         console.warn('Precache failed for some assets:', err);
       });
     })
   );
-  self.skipWaiting();
+  // Updates wait for existing editor tabs to close, or an explicit safe
+  // activation request. Do not replace a worker underneath an active draft.
 });
 
 self.addEventListener('activate', (event) => {
@@ -46,6 +64,8 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) {
     return;
   }
+  // Authenticated/provider endpoints are never app-shell cache entries.
+  if (url.pathname.startsWith('/api/')) return;
 
   // Ensure navigations and app shell check network first.
   if (request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
@@ -73,19 +93,22 @@ async function networkFirst(request) {
     }
     return networkResponse;
   } catch {
-    const cachedResponse = await cache.match(request);
+    // Static HTML may be served with Vary: Origin by the preview/CDN. A
+    // worker precache fetch and a navigation send different Origin headers,
+    // although they address the exact same public shell URL.
+    const cachedResponse = await cache.match(request, { ignoreVary: request.mode === 'navigate' });
     return cachedResponse || Response.error();
   }
 }
 
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(APP_CACHE_NAME);
-  const cachedResponse = await cache.match(request);
+  const cachedResponse = await cache.match(request, { ignoreVary: true });
 
   const networkPromise = fetch(request)
     .then((networkResponse) => {
       if (isCacheable(networkResponse)) {
-        cache.put(request, networkResponse.clone());
+        return cache.put(request, networkResponse.clone()).then(() => networkResponse);
       }
       return networkResponse;
     })

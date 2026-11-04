@@ -55,6 +55,8 @@ const THEME_PROPERTIES = {
     }
 };
 
+const isSupportedTheme = (theme) => Object.values(THEMES).includes(theme);
+
 /**
  * ThemeManager class
  * Manages application theme
@@ -70,6 +72,8 @@ class ThemeManager {
         this.currentTheme = THEMES.SYSTEM;
         this.resolvedTheme = THEMES.LIGHT;
         this.mediaQuery = null;
+        this._themeToggleButton = null;
+        this._onThemeToggle = () => this.toggle();
 
         ThemeManager.instance = this;
     }
@@ -80,11 +84,19 @@ class ThemeManager {
     initialize() {
         // Get saved theme preference
         const savedTheme = storageService.get(STORAGE_KEYS.APP_THEME);
-        this.currentTheme = savedTheme || THEMES.SYSTEM;
+        this.currentTheme = isSupportedTheme(savedTheme) ? savedTheme : THEMES.SYSTEM;
 
         // Setup system theme detection
         this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         this.mediaQuery.addEventListener('change', this._handleSystemThemeChange.bind(this));
+
+        // The modular entry owns this static control. Bind it here so theme
+        // preference changes work in both the UI and system-theme listener.
+        this._themeToggleButton = document.getElementById('dark-mode-toggle');
+        if (this._themeToggleButton && this._themeToggleButton.dataset.themeManagerBound !== 'true') {
+            this._themeToggleButton.addEventListener('click', this._onThemeToggle);
+            this._themeToggleButton.dataset.themeManagerBound = 'true';
+        }
 
         // Apply initial theme
         this._applyTheme();
@@ -105,7 +117,7 @@ class ThemeManager {
      * @returns {string} 'light' or 'dark'
      */
     getResolvedTheme() {
-        if (this.currentTheme === THEMES.SYSTEM) {
+        if (!isSupportedTheme(this.currentTheme) || this.currentTheme === THEMES.SYSTEM) {
             return this.mediaQuery?.matches ? THEMES.DARK : THEMES.LIGHT;
         }
         return this.currentTheme;
@@ -117,12 +129,19 @@ class ThemeManager {
      */
     _applyTheme() {
         this.resolvedTheme = this.getResolvedTheme();
-        const properties = THEME_PROPERTIES[this.resolvedTheme];
+        const properties = THEME_PROPERTIES[this.resolvedTheme] || THEME_PROPERTIES[THEMES.LIGHT];
+        const isDark = this.resolvedTheme === THEMES.DARK;
 
         // Apply CSS custom properties
         Object.entries(properties).forEach(([prop, value]) => {
             document.documentElement.style.setProperty(prop, value);
         });
+
+        // Most application and Markdown styles are scoped to body.dark-mode.
+        // Keep that class in sync with the resolved theme so the page never
+        // mixes a dark shell with a light editor/preview.
+        document.body?.classList.toggle('dark-mode', isDark);
+        this._themeToggleButton?.setAttribute('aria-pressed', String(isDark));
 
         // Set data attribute for CSS selectors
         document.documentElement.setAttribute('data-theme', this.resolvedTheme);
@@ -145,7 +164,7 @@ class ThemeManager {
      * @param {string} theme - Theme to set ('light', 'dark', 'system')
      */
     setTheme(theme) {
-        if (!Object.values(THEMES).includes(theme)) {
+        if (!isSupportedTheme(theme)) {
             console.warn(`Invalid theme: ${theme}`);
             return;
         }
