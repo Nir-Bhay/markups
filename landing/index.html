@@ -1,216 +1,87 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>How Markups works</title>
-  <meta name="description" content="A walkthrough of the Markups editor: split preview, math, diagrams, video, and what each export saves.">
-  <link rel="canonical" href="https://markups.dev/">
-  <meta name="robots" content="index, follow">
-  <meta property="og:title" content="How Markups works">
-  <meta property="og:description" content="A walkthrough of the Markups editor: split preview, math, diagrams, video, and what each export saves.">
-  <meta property="og:url" content="https://markups.dev/landing">
-  <meta property="og:image" content="https://markups.dev/image/og-image.png">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="How Markups works">
-  <meta name="twitter:description" content="A walkthrough of the Markups editor: split preview, math, diagrams, video, and what each export saves.">
-  <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
-  <link rel="icon" href="/favicon.ico">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./tour.css">
-</head>
-<body>
-  <a class="skip" href="#main">Skip to content</a>
-  <header class="nav">
-    <div class="nav-inner">
-      <a class="brand" href="#main">Markups</a>
-      <nav class="nav-links" aria-label="On this page">
-        <a href="#session">Session</a>
-        <a href="#preview">Preview</a>
-        <a href="#math-on">Math</a>
-        <a href="#diagrams">Diagrams</a>
-        <a href="#video">Video</a>
-        <a href="#export">Export</a>
-        <a href="#limits">Limits</a>
-        <a href="#faq">FAQ</a>
-      </nav>
-      <a class="btn" href="https://markups.dev/">Open the editor</a>
-    </div>
-  </header>
-  <main id="main">
-    <section class="hero">
-      <div class="wrap">
-        <p class="kicker">Product walkthrough</p>
-        <h1>How Markups works</h1>
-        <p class="lede">One editor, one preview, no account. This page shows each state. The button opens the real editor.</p>
-        <a class="btn" href="https://markups.dev/">Open the editor</a>
-      </div>
-    </section>
-
-    <section class="section" id="session">
-      <div class="wrap">
-        <h2>A session, with no account</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span class="on">Write</span><span>Split</span><span>Preview</span></div></div>
-          <div class="pane src"><b># </b>
-The document starts here.
-There is no signup in front of it.</div>
-        </div>
-        <p class="note">The editor opens in the browser. There is no account and no signup form.</p>
-        <p class="note">The left pane is the Monaco editor. What you type stays Markdown.</p>
-      </div>
-    </section>
-
-    <section class="section" id="preview">
-      <div class="wrap">
-        <h2>Split preview</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
-          <div class="split">
-            <div class="pane src"><b># Notes</b>
-
-Write on the left.
-The preview is the same text.</div>
-            <div class="pane prev"><div class="doc-title">Notes</div><p>Write on the left. The preview is the same text.</p></div>
-          </div>
-        </div>
-        <p class="note">The right pane is a view of the Markdown, not a second file. Headings, lists, links, tables, and fenced code update there as you type.</p>
-        <p class="note">If the preview looks wrong, the fix is in the source. The preview does not invent a sentence that is not in the Markdown.</p>
-      </div>
-    </section>
-
-    <section class="section" id="math-on">
-      <div class="wrap">
-        <h2>Math on</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
-          <div class="split">
-            <div class="pane src"><b>$$E = mc^2$$</b></div>
-            <div class="pane prev"><p class="formula">E = mc²</p></div>
-          </div>
-        </div>
-        <p class="note">KaTeX renders inline and display math in the preview. The TeX stays in the editor.</p>
-        <p class="note">A display formula is still one line of source on the left. The preview is where it becomes a formula.</p>
-      </div>
-    </section>
-
-    <section class="section" id="math-off">
-      <div class="wrap">
-        <h2>Math off</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
-          <div class="split">
-            <div class="pane src"><b>$$E = mc^2$$</b></div>
-            <div class="pane prev"><p class="gone">The formula is gone. The TeX line is not put back here.</p></div>
-          </div>
-        </div>
-        <p class="note">Turning math off removes the formula and does not restore the TeX source in the preview.</p>
-        <p class="note">The dollar-sign line is still in the editor. It does not come back in the preview pane.</p>
-      </div>
-    </section>
-
-    <section class="section" id="diagrams">
-      <div class="wrap">
-        <h2>A diagram, after the first paint</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Split</span><span>Preview</span></div></div>
-          <div class="split">
-            <div class="pane src"><b>```mermaid</b>
-graph TD
-  A --> B
-<b>```</b></div>
-            <div class="pane prev"><p>First paint: the fence is still source.</p><p>After that paint: the fence becomes an SVG.</p></div>
-          </div>
-        </div>
-        <p class="note">A mermaid block becomes an SVG after the first paint, not on the first paint.</p>
-        <p class="note">Turn Mermaid Diagrams off in Settings, Preview, and the fence stays a code block. There is no separate drawing tool.</p>
-      </div>
-    </section>
-
-    <section class="section" id="video">
-      <div class="wrap">
-        <h2>YouTube in the document</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="chrome"><span>Markups</span><div class="modes"><span>Write</span><span class="on">Preview</span></div></div>
-          <div class="video-box prev"><strong>Embedded video</strong><p>A YouTube URL, shown in the preview. The Markdown still holds the reference.</p></div>
-        </div>
-        <p class="note">YouTube insert is included. The preview shows the embed.</p>
-        <p class="note">This is not a video editor. It does not trim, caption, or re-encode the clip.</p>
-      </div>
-    </section>
-
-    <section class="section" id="export">
-      <div class="wrap">
-        <h2>What the PDF and Word buttons save</h2>
-        <div class="frame" aria-hidden="true">
-          <div class="file-box">
-            <div class="file-row">
-              <div class="file"><div class="ext">.pdf</div><p>A picture of the preview. Letter, portrait, three-quarter inch margin.</p></div>
-              <div class="file"><div class="ext">.doc</div><p>Word-compatible HTML, saved under a .doc name.</p></div>
-            </div>
-          </div>
-        </div>
-        <p class="note">PDF export is a picture of the preview. It is not a text PDF you can select and search.</p>
-        <p class="note">The Word button saves Word-compatible HTML as a .doc file. It is not an OOXML package, and it does not include Track Changes.</p>
-      </div>
-    </section>
-
-    <section class="section" id="limits">
-      <div class="wrap">
-        <h2>Limits</h2>
-        <div class="limits">
-          <div class="limit"><strong>Not a text PDF</strong><p>The PDF is a picture of the preview.</p></div>
-          <div class="limit"><strong>Not a native Word file</strong><p>The Word button writes HTML under a .doc name.</p></div>
-          <div class="limit"><strong>HTML and Markdown</strong><p>HTML export is a separate save. Raw Markdown is the source to keep if you want to edit again.</p></div>
-          <div class="limit"><strong>Not full offline use</strong><p>A page that already loaded can appear again if the network drops. That is not the same as opening the editor with no network from the start.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="faq">
-      <div class="wrap">
-        <h2>Questions</h2>
-        <div class="faq">
-          <details open>
-            <summary>Does Markups require an account?</summary>
-            <p>No. There is no account.</p>
-          </details>
-          <details>
-            <summary>What do the PDF and Word buttons save?</summary>
-            <p>PDF export is a picture of the preview. The Word button saves Word-compatible HTML as a .doc file.</p>
-          </details>
-          <details>
-            <summary>When does a mermaid block become an SVG?</summary>
-            <p>A mermaid block becomes an SVG after the first paint, not on the first paint.</p>
-          </details>
-          <details>
-            <summary>What happens if math is turned off?</summary>
-            <p>Turning math off removes the formula and does not restore the TeX source. YouTube insert is included.</p>
-          </details>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="wrap">
-        <div class="cta">
-          <div>
-            <h2>Open the editor</h2>
-            <p>The writing happens on the main page, not here.</p>
-          </div>
-          <a class="btn" href="https://markups.dev/">Open the editor</a>
-        </div>
-      </div>
-    </section>
-  </main>
-  <footer>
-    <div class="wrap">
-      <a href="https://markups.dev/">Editor</a>
-      · <a href="https://markups.dev/license">MIT license</a>
-      · <a href="https://github.com/Nir-Bhay/markups">Source</a>
-    </div>
-  </footer>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#F7F9FD" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta name="description" content="A focused, free open-source Markdown editor for the browser. Write with live preview, code, math, diagrams, and media, then export or share when you choose." />
+    <link rel="canonical" href="https://markups.dev/landing" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Markups" />
+    <meta property="og:title" content="Markups — Write in Markdown. See the whole picture." />
+    <meta property="og:description" content="A focused, free open-source Markdown editor for the browser. Write, preview, and export when you choose." />
+    <meta property="og:url" content="https://markups.dev/landing" />
+    <meta property="og:image" content="https://markups.dev/image/og-image.png" />
+    <meta property="og:image:alt" content="Markups Markdown writing workspace" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Markups — Write in Markdown. See the whole picture." />
+    <meta name="twitter:description" content="A focused, free open-source Markdown editor for the browser. No account needed to start writing." />
+    <meta name="twitter:image" content="https://markups.dev/image/og-image.png" />
+    <title>Markups — Write in Markdown. See the whole picture.</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebPage",
+            "@id": "https://markups.dev/landing#page",
+            "url": "https://markups.dev/landing",
+            "name": "Markups — Write in Markdown. See the whole picture.",
+            "description": "A focused, free open-source Markdown editor for the browser. Write, preview, and export when you choose.",
+            "isPartOf": { "@id": "https://markups.dev/#website" },
+            "about": { "@id": "https://markups.dev/#app" },
+            "inLanguage": "en"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://markups.dev/#website",
+            "url": "https://markups.dev/",
+            "name": "Markups"
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://markups.dev/#app",
+            "name": "Markups",
+            "url": "https://markups.dev/",
+            "applicationCategory": "ProductivityApplication",
+            "operatingSystem": "Web browser",
+            "description": "A free, open-source Markdown editor for writing, previewing, organizing, and exporting documents in the browser.",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "license": "https://github.com/Nir-Bhay/markups/blob/main/LICENSE"
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://markups.dev/landing#faq",
+            "mainEntity": [
+              { "@type": "Question", "name": "Is Markups free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. You can start writing in the browser without an account." } },
+              { "@type": "Question", "name": "Where are my documents saved?", "acceptedAnswer": { "@type": "Answer", "text": "Local documents are saved in this browser. Export or share them when you choose." } },
+              { "@type": "Question", "name": "Does Markups upload my document automatically?", "acceptedAnswer": { "@type": "Answer", "text": "No automatic Markups cloud backup is enabled in this build." } },
+              { "@type": "Question", "name": "Can I share a document?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. You can create a share link or share or download a Markdown file. Anyone with the link can read that document, so treat the link as the document." } },
+              { "@type": "Question", "name": "Which export formats are available?", "acceptedAnswer": { "@type": "Answer", "text": "Markdown, image-based PDF, standalone HTML, plain text, PNG, print, and Word-compatible .doc." } },
+              { "@type": "Question", "name": "Is the Word export a native .docx file?", "acceptedAnswer": { "@type": "Answer", "text": "No. It is Word-compatible HTML saved with a .doc extension, not a native OOXML .docx file." } },
+              { "@type": "Question", "name": "Can I connect Drive or GitHub?", "acceptedAnswer": { "@type": "Answer", "text": "Drive and GitHub workflows exist in the source but are not configured or available to users in this build. When enabled, they are manual and require you to choose a file; they do not run background sync. Local editing does not require a provider connection." } },
+              { "@type": "Question", "name": "How does the AI assistant work?", "acceptedAnswer": { "@type": "Answer", "text": "You configure a supported provider and your own key, then choose an action and the excerpt or document context to send. Requests go to that provider; they are not described as browser-only." } }
+            ]
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <main>
+        <h1>Write in Markdown. See the whole picture.</h1>
+        <p>Markups is a free, open-source Markdown editor for the browser, with live preview, diagrams, math, and document exports.</p>
+        <p>Interactive examples need JavaScript. You can still <a href="/">open the editor</a>.</p>
+      </main>
+    </noscript>
+    <script type="module" src="/landing/src/main.tsx"></script>
+  <script type="module" src="/src/editorialTelemetry.js"></script>
 </body>
 </html>

@@ -1,8 +1,18 @@
 # Markups — Implementation Plan (Production-Ready)
 
-**Date:** 2026-09-08 · **Sources:** `docs/PRODUCTION-AUDIT-REPORT.md` + `docs/CODE-REVIEW.md`
-(all claims re-verified against the live tree; a parallel session is actively fixing — re-grep
-line numbers before editing, they drift).
+## 2026-11-03 — Markups landing-page redesign
+
+The `/landing` route now uses the supplied React design under `landing/src/` and is pre-rendered by `scripts/prerender-landing.mjs`; `landing/index.html` owns its metadata and structured data. The root `/` editor remains a separate route. This work is tracked in `docs/seo-geo/MASTER-BACKLOG.md` as M-056. The static/build checks and remaining visual, accessibility, and preview gates are recorded in `docs/seo-geo/runs/2026-11-03-landing-refresh.md`.
+
+**Baseline date:** 2026-09-08 · **Sources:** `docs/PRODUCTION-AUDIT-REPORT.md` + `docs/CODE-REVIEW.md`.
+
+> **Status notice (2026-10-28):** This is a historical audit plan, not a verified inventory of
+> current defects. Its source assertions, line numbers, parallel-session ownership notes, and
+> unchecked items predate the ongoing branch work and have not all been revalidated. For current
+> implementation, release gates and owner actions, use
+> [`docs/appwrite/RECHECK-AND-OWNER-ACTIONS.md`](appwrite/RECHECK-AND-OWNER-ACTIONS.md) and
+> [`docs/PROGRESS-LOG.md`](PROGRESS-LOG.md). Recheck a historical item against current source and
+> tests before treating it as an open defect.
 **Rule for every phase:** no phase starts until the previous phase's verification commands pass.
 Fix → test → build → commit. One workstream per file (coordinate with the parallel session).
 
@@ -174,3 +184,33 @@ suite + e2e green; bundle re-measured.
 No perf refactors before Phase 2–3 green · no piecemeal manager deletions before Phase 6 ·
 no new features until Phase 9 gate passes once · no edits on files the parallel session owns
 without a handoff · no line-number references in commit messages (they drift — use symbols).
+
+## 2026-10-27 — Appwrite integration review (new owner request)
+
+The owner requested research and documents before implementation. This section tracks that review separately from the historical stabilization phases above.
+
+- [x] Verify connected Appwrite account plan and usage; distinguish Education entitlement from Free fallback.
+- [x] Audit current auth/provider/storage/history/share gaps with source evidence and official provider research.
+- [x] Produce review documents under `docs/appwrite/` with independent consent, small quotas, provider choices and future proof gates.
+- [ ] Create/read back empty `Markup` project in Singapore. The authorized connector call still routes to the unavailable `appwrite_call_write_tool`; Browser Use reached the Console but requires the owner to sign in before the UI create flow can proceed.
+- [ ] Confirm account-specific Education expiry/permitted use and review proposal with owner.
+- [x] Owner approved continuing implementation on 2026-10-28; local prerequisites and the first optional identity/provider/cloud implementation slice are complete. Live provider/cloud POCs remain gated on Appwrite sign-in/write access and provider credentials.
+
+- No Appwrite project/tables/functions, provider application registration, API keys or live credentials were created during the research stage.
+
+## 2026-10-28 — Opt-in cloud and provider implementation
+
+- [x] Add optional lazy Appwrite SDK boundary, auth/account panel, explicit per-document consent, manual cloud save/list/open/delete/sign-out and cloud-data deletion flow.
+- [x] Implement a disabled Appwrite Function API for selected text notes with owner checks, per-user/pilot limits, revision checks, idempotency, bounded history and retryable data deletion; add schema/provisioning manifest and local mock tests.
+- [x] Add foreground Google Drive Picker/OAuth Save/Open with in-memory access token; create separate copies by default and keep existing-file update disabled pending live `If-Match` proof.
+- [x] Add selected-repository GitHub bridge design/code with server-side installation token handling, blob size guard, expected SHA writes, uninstall webhook verification and tests.
+- [x] Move local images to IndexedDB blobs with a reversible legacy recovery path; make Markdown share/download portable when image references are present and keep cloud note data text-only.
+- [x] Bind version history to note identity and preserve the active draft before restore.
+- [x] Run full unit suite (96 files / 652 tests), lint, production build and modular build successfully.
+- [x] Run the full Playwright end-to-end suite: 50 tests passed, including storage/image recovery and the local cloud-panel setup-required state.
+- [ ] Run `npm audit --omit=dev` when npm registry access is available; the current audit endpoint request failed before returning advisory data.
+- [ ] Sign in to Appwrite in the in-app browser and check the Education term/usage eligibility before live work. Account readback shows the $0 GitHub Student Pack plan active, but its end date is not returned; current terms are six months, prohibit non-educational/commercial use, and set 2026-11-01 enforcement for older accounts. Then create/read back the already-authorized empty `Markup` Singapore project. The connector's write gateway remains unavailable and Browser Use ended at sign-in without changes. No cloud runtime is deployed.
+- [ ] Provision and validate TablesDB schema, private row ACLs, Function auth/JWT forwarding, transaction/revision guard, real OAuth callbacks and provider operations before enabling user accounts or cloud saves.
+- [ ] Confirm Appwrite Education expiry/permitted use and owner approval for live pilot before any deployment.
+
+Branch code for local note identity, provider Save/Open, manual text backup, history and media foundation exists. Automatic sync, cloud attachments/shares, chat/settings sync and collaboration remain unimplemented. Fresh local verification: **686 unit tests across 100 files**, lint (0 errors), production build and modular build pass. Latest modular full E2E is **42/53 passed, 11 failed**; the same-tree production full E2E completed **52 passed, 1 modular-only test skipped**. `npm outdated` and `npm audit --omit=dev` cannot reach the npm registry, so version freshness and vulnerability status are unknown. See [modular entry parity recheck](MODULAR-ENTRY-PARITY-RECHECK-2026-10-28.md). Full live-service behavior has not been proven.

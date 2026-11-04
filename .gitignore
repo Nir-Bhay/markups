@@ -48,6 +48,7 @@ test-results/
 
 # Misc
 *.local
+.git_disabled/
 
 # Agents and Analysis Tools
 .agent/

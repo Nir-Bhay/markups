@@ -47,6 +47,17 @@ class AutosaveIndicator {
         // Subscribe to save events
         eventBus.on(EVENTS.DOCUMENT_SAVING, () => this.showSaving());
         eventBus.on(EVENTS.DOCUMENT_SAVED, () => this.showSaved());
+        this.unsubscribeStatus = eventBus.on(EVENTS.AUTOSAVE_STATUS_CHANGED, ({ status }) => {
+            if (!this.element) return;
+            this.element.dataset.state = status;
+            if (status === 'error') this.showError('Save failed. Keep this tab open and export your work.');
+            else if (status === 'saved') this.showSaved();
+            else if (status === 'saving') this.showSaving();
+            else if (status === 'unsaved') {
+                this.element.textContent = 'Unsaved changes';
+                this.element.className = 'status-unsaved';
+            }
+        });
     }
 
     /**
@@ -60,6 +71,7 @@ class AutosaveIndicator {
         }
 
         this.element.textContent = '💾 Saving...';
+        this.element.dataset.state = 'saving';
         this.element.classList.add('saving');
         this.element.classList.remove('saved');
     }
@@ -70,15 +82,12 @@ class AutosaveIndicator {
     showSaved() {
         if (!this.element) return;
 
-        this.element.textContent = '✓ Saved';
+        this.element.textContent = 'All changes saved';
+        this.element.dataset.state = 'saved';
         this.element.classList.remove('saving');
         this.element.classList.add('saved');
 
-        // Clear after delay
-        this.timeout = setTimeout(() => {
-            this.element.textContent = '';
-            this.element.classList.remove('saved');
-        }, 2000);
+        // Keep the last confirmed state visible in the persistent status bar.
     }
 
     /**
@@ -93,13 +102,11 @@ class AutosaveIndicator {
         }
 
         this.element.textContent = `⚠ ${message}`;
+        this.element.dataset.state = 'error';
         this.element.classList.remove('saving', 'saved');
         this.element.classList.add('error');
 
-        this.timeout = setTimeout(() => {
-            this.element.textContent = '';
-            this.element.classList.remove('error');
-        }, 3000);
+        // An error must remain visible until a later save succeeds.
     }
 
     /**
@@ -120,6 +127,7 @@ class AutosaveIndicator {
      * Dispose indicator
      */
     dispose() {
+        this.unsubscribeStatus?.();
         this.clear();
         AutosaveIndicator.instance = null;
     }

@@ -170,6 +170,9 @@ describe('Data Migration', () => {
             expect(result.notesCount).toBe(1);
             const found = await noteStorage.getNoteByLegacyId('phase24-a');
             expect(found?.title).toBe('Phase24');
+            const backupNote = JSON.parse(localStorage.getItem('markups_migration_backup_v1')).notes[0];
+            expect(found?.stableId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+            expect(found?.stableId).toBe(backupNote.stableId);
 
             await noteStorage.deleteNote(found.id);
             localStorage.removeItem('markups_migrated');

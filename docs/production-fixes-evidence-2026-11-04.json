@@ -1,0 +1,116 @@
+{
+  "date": "2026-11-04",
+  "decision": "no-go-production; preview only after source checkout is reconciled",
+  "engineering_score": {
+    "earned": 80,
+    "maximum": 100,
+    "type": "evidence-weighted engineering judgment, not certification or deployment approval"
+  },
+  "runtime": "Node 24.22.2",
+  "latest_health_gate": {
+    "npm_audit_advisories": 0,
+    "unit_tests_passed": 729,
+    "unit_tests_failed": 0,
+    "production_build": "pass",
+    "modular_proof_build": "pass",
+    "eslint": "pass; 0 errors"
+  },
+  "compiled_browser": {
+    "latest_full_run_passed": 65,
+    "latest_full_run_failed": 0,
+    "engine": "Chromium/Edge",
+    "final_artifact": "test-results/built-release-final-stable",
+    "previous_flake": "Deep spellcheck context menu timed out using a fixed screen coordinate. The test now uses Monaco cursor coordinates with an explicit menu-visible assertion; final fresh full run passed.",
+    "stress_preview_blockers": 0,
+    "full_run_after_test_stabilization": true,
+    "focused_security_boundary_after_startup_fix": "1/1 passed",
+    "focused_spellcheck_after_test_stabilization": "1/1 passed"
+  },
+  "targeted_regression_evidence": {
+    "final_complete_compiled_suite": "65/65 passed after the editor readiness and spellcheck test fixes",
+    "exports": "3/3 passed",
+    "landing_routes": "16/16 passed",
+    "pdf_units": "10/10 passed",
+    "offline_repetitions": "3/3 passed",
+    "security_boundary_after_latest_app_change": "1/1 passed"
+  },
+  "static_seo": {
+    "html_artifacts": 40,
+    "sitemap_urls": 34,
+    "errors": 0,
+    "warnings": 0,
+    "live_indexing_or_google_search_console_verified": false
+  },
+  "lighthouse_final_build_local_mobile": {
+    "version": "13.6.0",
+    "browser": "Edge 156 headless",
+    "throttling": "simulated mobile, 4x CPU",
+    "landing_runs": [
+      {
+        "performance": 64,
+        "accessibility": 100,
+        "best_practices": 100,
+        "seo": 100,
+        "fcp_seconds": 2.4,
+        "lcp_seconds": 2.4,
+        "tbt_ms": 1780,
+        "cls": 0,
+        "benchmark_index": 1038.5,
+        "artifact": ".tmp/release-lighthouse-final-landing-1.json"
+      },
+      {
+        "performance": 65,
+        "accessibility": 100,
+        "best_practices": 100,
+        "seo": 100,
+        "fcp_seconds": 2.5,
+        "lcp_seconds": 2.5,
+        "tbt_ms": 2080,
+        "cls": 0,
+        "benchmark_index": 300.5,
+        "artifact": ".tmp/release-lighthouse-final-landing-2.json"
+      }
+    ],
+    "editor_run": {
+      "performance": 36,
+      "accessibility": 100,
+      "best_practices": 88,
+      "seo": 100,
+      "fcp_seconds": 2.3,
+      "lcp_seconds": 14,
+      "tbt_ms": 7010,
+      "cls": 0.059,
+      "benchmark_index": 338.5,
+      "best_practices_findings": "Lighthouse flags Monaco's hidden textarea for paste prevention and missing JS source maps; direct clipboard-permission browser probe successfully pasted into the editor.",
+      "artifact": ".tmp/release-lighthouse-final-editor-1.json"
+    },
+    "prior_landing_pair": "85/89 performance, LCP 1.7s; not reproduced in this final window",
+    "field_cwv": "not available from local lab; requires hosted preview and real-user data"
+  },
+  "built_initial_payload_gzip_kb_approx": {
+    "landing_chunk": 80,
+    "editor_main_chunk": 254,
+    "monaco_editor_api_chunk": 571
+  },
+  "external_gates": {
+    "appwrite_organization": "read-only",
+    "backend_resources_provisioned": false,
+    "last_live_routes_http_200": 11,
+    "last_live_routes_http_404": 23,
+    "last_live_sitemap_urls": 10,
+    "source_checkout": "outer workspace tracks markups as a gitlink, but nested source has no Git metadata and no submodule mapping"
+  },
+  "not_verified": [
+    "Firefox",
+    "WebKit",
+    "native Word viewer",
+    "Docker runtime",
+    "deployed CSP/security headers",
+    "deployed analytics and consent",
+    "production rollback",
+    "Google Search Console indexing and field Core Web Vitals",
+    "source candidate SHA"
+  ],
+  "deployed": false,
+  "pushed": false
+}

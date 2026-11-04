@@ -239,12 +239,34 @@ export function fallbackSanitizeHtml(html, config = PREVIEW_SANITIZE_CONFIG) {
  * @returns {string}
  */
 export function sanitizePreviewHtml(html, overrides = {}) {
-    const config = buildConfig(overrides);
-    const sanitized = DOMPurify.isSupported === false
-        ? sanitizeInlineColorStyles(html)
-        : DOMPurify.sanitize(sanitizeInlineColorStyles(html), config);
+    const { LOCAL_BLOB_IMAGE_URLS = [], ...configOverrides } = overrides || {};
+    const config = buildConfig(configOverrides);
+    const blobImageUrls = new Set(Array.isArray(LOCAL_BLOB_IMAGE_URLS)
+        ? LOCAL_BLOB_IMAGE_URLS.filter((url) => typeof url === 'string' && /^blob:https?:\/\//i.test(url))
+        : []);
+    const allowKnownLocalBlobImage = (node, data) => {
+        // Blob URLs are excluded by DOMPurify's normal URI policy. Allow only
+        // exact object URLs resolved from this document's own local image refs,
+        // and only on <img src>; never broaden blob: to links or arbitrary media.
+        if (node?.tagName === 'IMG' && data?.attrName === 'src' && blobImageUrls.has(data.attrValue)) {
+            data.forceKeepAttr = true;
+        }
+    };
 
-    return fallbackSanitizeHtml(sanitized, config);
+    if (blobImageUrls.size && DOMPurify.isSupported !== false) {
+        DOMPurify.addHook('uponSanitizeAttribute', allowKnownLocalBlobImage);
+    }
+    try {
+        const sanitized = DOMPurify.isSupported === false
+            ? sanitizeInlineColorStyles(html)
+            : DOMPurify.sanitize(sanitizeInlineColorStyles(html), config);
+
+        return fallbackSanitizeHtml(sanitized, config);
+    } finally {
+        if (blobImageUrls.size && DOMPurify.isSupported !== false) {
+            DOMPurify.removeHook('uponSanitizeAttribute', allowKnownLocalBlobImage);
+        }
+    }
 }
 
 /**

@@ -181,9 +181,7 @@ class ImportManager {
         let parsedUrl = null;
         try {
             parsedUrl = new URL(String(url || ''));
-        } catch {
-            parsedUrl = null;
-        }
+        } catch { /* Invalid URL remains null and is rejected below. */ }
         if (!parsedUrl || (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:')) {
             eventBus.emit(EVENTS.TOAST_SHOW, {
                 message: 'Only http(s) URLs can be imported.',

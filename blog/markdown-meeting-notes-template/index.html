@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index,follow">
+  <title>Markdown Meeting Notes Template for Decisions and Actions | Markups</title>
+  <meta name="description" content="Copy a practical Markdown meeting-notes template that separates discussion, decisions, action owners, due dates, and open questions.">
+  <link rel="canonical" href="https://markups.dev/blog/markdown-meeting-notes-template">
+  <link rel="stylesheet" href="/css/content-pages.css">
+  <link rel="stylesheet" href="/css/editorial.css">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://markups.dev/blog/markdown-meeting-notes-template">
+  <meta property="og:title" content="Markdown Meeting Notes Template for Decisions and Actions">
+  <meta property="og:description" content="Copy a practical Markdown meeting-notes template that separates discussion, decisions, action owners, due dates, and open questions.">
+  <meta property="og:image" content="https://markups.dev/image/og-image.png">
+  <meta property="og:site_name" content="Markups">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Markdown Meeting Notes Template">
+  <meta name="twitter:description" content="Copy a practical Markdown meeting-notes template that separates discussion, decisions, action owners, due dates, and open questions.">
+  <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org","@type":"Article",
+    "headline":"Markdown Meeting Notes Template for Decisions and Actions",
+    "description":"A copyable Markdown template and workflow for recording decisions, owners, deadlines, and open questions after a meeting.",
+    "datePublished":"2026-11-04","dateModified":"2026-11-04",
+    "author":{"@type":"Organization","name":"Markups Editorial","url":"https://markups.dev/blog"},
+    "publisher":{"@type":"Organization","name":"Markups","url":"https://markups.dev","logo":{"@type":"ImageObject","url":"https://markups.dev/image/og-image.png"}},
+    "mainEntityOfPage":"https://markups.dev/blog/markdown-meeting-notes-template",
+    "articleSection":"Team writing","inLanguage":"en"
+  }
+  </script>
+<link rel="stylesheet" href="/css/journal.css">
+</head>
+<body class="journal-article"><a class="skip-editorial" href="#main-content">Skip to content</a><nav class="editorial-nav" aria-label="Site navigation"><a class="editorial-brand" href="/landing"><span>M</span> Markups<span class="journal-label"> / Journal</span></a><div><a href="/blog">Articles</a><a href="/markdown-guide">Markdown guide</a><a href="/blog/markdown-troubleshooting">Troubleshooting</a><a href="/" class="editorial-editor">Open editor ↗</a></div></nav>
+  <div class="page-shell editorial-shell">
+    <header class="hero">
+      <div class="eyebrow">Markups Blog · Team writing</div>
+      <h1>Markdown meeting notes: a template for decisions and actions</h1>
+      <p class="lede">Notes are easier to use when readers can quickly tell what was discussed, what the group decided, who owns each follow-up, and what is still open.</p>
+      <div class="editorial-meta"><span>Markups Editorial</span><span>November 4, 2026</span><span>4 min read</span></div>
+    </header>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="/">Markups</a></li><li><a href="/blog">Blog</a></li><li aria-current="page">Meeting notes</li></ol></nav>
+    <main class="editorial-main" id="main-content">
+      <aside class="reading-sidebar"><p class="eyebrow">IN THIS ARTICLE</p><nav aria-label="Article contents"><a href="#template">Copy the meeting-notes template</a><a href="#make-actionable">Make actions unambiguous</a><a href="#before-after">Close the loop</a><a href="#when-to-use">When to create a separate decision record</a><a href="#sources-heading">Sources</a></nav><a class="sidebar-back" href="/blog">← All articles</a></aside><article class="card article-body"><figure class="workflow-figure"><figcaption>A practical mental model</figcaption><ol><li><span>01</span><strong>Inspect the source</strong></li><li><span>02</span><strong>Check the renderer</strong></li><li><span>03</span><strong>Verify the destination</strong></li></ol><p>Each step answers a different question. Verify the final document in its actual destination.</p></figure>
+        <p><strong>A useful meeting note is a record people can act on.</strong> Start with the purpose and date, then keep discussion, decisions, actions, and unanswered questions in separate sections. Markdown gives the note a readable structure while keeping the original file simple to edit, diff, and share.</p>
+        
+
+        <h2 id="template">Copy the meeting-notes template</h2>
+        <p>Replace the example labels with your team's terms. If the note will be shared beyond the people in the room, define acronyms and link background material.</p>
+        <pre><code># Project planning sync — 2026-11-04
+
+## Purpose
+Agree on the next release scope and identify blockers.
+
+## Attendees
+- Name — role or team
+- Name — role or team
+
+## Discussion
+### Topic: release scope
+- What changed since the last review?
+- Which constraints or risks need a follow-up?
+
+## Decisions
+- We will ship the smaller migration first. See [ADR 012](../decisions/012-smaller-migration.md).
+
+## Actions
+- [ ] Priya — draft the migration checklist — due 2026-11-08
+- [ ] Sam — verify the rollback steps — due 2026-11-10
+
+## Open questions
+- Does the change affect the existing import workflow?
+
+## Next check-in
+2026-11-11 — review the checklist and rollback test.</code></pre>
+
+        <h2 id="make-actionable">Make actions unambiguous</h2>
+        <p>Write each action as <strong>owner + verb + deliverable + due date</strong>. “Investigate export” is hard to hand off. “Maya — test the PDF export on the compatibility fixture — due Friday” tells everyone what completion means.</p>
+        <ul>
+          <li>Put confirmed decisions in their own section instead of leaving them inside a discussion paragraph.</li>
+          <li>Use an unchecked list item for a pending action and a checked item only when the source file is updated to show it is complete.</li>
+          <li>Record an open question when the group did not reach a decision. Name who will bring the answer back.</li>
+          <li>Link to tickets, documents, or an ADR instead of copying a large technical explanation into the notes.</li>
+        </ul>
+        <p>In GitHub Flavored Markdown, task-list markers such as <code>- [ ]</code> and <code>- [x]</code> render as checkbox indicators. Their interactive behavior depends on the product displaying the Markdown. In an editor preview, the source remains the place to update the task state unless the product explicitly supports editing the checkbox.</p>
+
+        <h2 id="before-after">Close the loop</h2>
+        <ol>
+          <li>Capture the purpose and attendee list before the meeting when practical.</li>
+          <li>During the meeting, use short bullets for observations and a separate line for each decision.</li>
+          <li>Before ending, read actions aloud and confirm the owner and deadline with the person responsible.</li>
+          <li>Afterward, share the note in the team's normal system and link it from the related issue or project page.</li>
+          <li>At the next check-in, mark completed actions in the source file or record why they remain open.</li>
+        </ol>
+        <p>A dated filename can help notes sort in a folder, for example <code>2026-11-04-release-planning.md</code>. Avoid putting confidential discussion or personal information into a broadly shared notes file unless the team has agreed on its access and retention rules.</p>
+
+        <h2 id="when-to-use">When to create a separate decision record</h2>
+        <p>Meeting notes capture the flow of a conversation; they are not always the best long-term home for a consequential architecture choice. When a decision affects system structure, dependencies, security, or an interface, create a concise <a href="/blog/architecture-decision-records-markdown-template">Architecture Decision Record</a> and link to it from the notes. This keeps the meeting context while making the enduring decision easier to find.</p>
+
+        <aside class="editorial-note"><strong>Research note:</strong> this article was prepared with AI assistance and checked against the linked Markdown documentation on November 4, 2026. The template is a practical starting point, not a formal meeting standard.</aside>
+        <section class="article-sources" aria-labelledby="sources-heading"><h2 id="sources-heading">Sources</h2><ul>
+          <li><a href="https://github.github.com/gfm/#task-list-items-extension" target="_blank" rel="noopener noreferrer">GitHub Flavored Markdown specification: Task list items</a> — defines the Markdown checkbox syntax and notes that interaction is implementation-dependent.</li>
+          <li><a href="https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax" target="_blank" rel="noopener noreferrer">GitHub Docs: Basic writing and formatting syntax</a> — examples of Markdown structure used in GitHub projects.</li>
+        </ul></section>
+        <p class="quiet-tool-link">Want to inspect a small example? <a href="/">Try it in a Markdown preview</a>, then verify your publishing destination.</p>
+        <div class="editorial-links"><a href="/markdown-guide">Full Markdown guide</a><a href="/blog/architecture-decision-records-markdown-template">ADR template</a><a href="/blog">All Markups articles</a></div>
+      </article>
+    </main>
+    <footer class="footer"><p>Explore more <a href="/blog">Markups writing guides</a>.</p></footer>
+  </div>
+<script src="/js/editorial.js" defer></script><script type="module" src="/src/editorialTelemetry.js"></script>
+</body>
+</html>

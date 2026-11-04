@@ -22,6 +22,9 @@ export const STORAGE_KEYS = {
     // Settings
     SCROLL_SYNC: 'scroll_bar_settings',
     DARK_MODE: 'dark_mode_settings',
+    APP_THEME: 'app_theme',
+    EDITOR_THEME: 'theme_settings',
+    // Legacy alias retained for callers that still use the old theme key.
     THEME: 'theme_settings',
     VIEW_MODE: 'view_mode',
 
@@ -73,6 +76,8 @@ export const STORAGE_KEYS = {
 export const STORAGE_DEFAULTS = {
     [STORAGE_KEYS.SCROLL_SYNC]: false,
     [STORAGE_KEYS.DARK_MODE]: false,
+    [STORAGE_KEYS.APP_THEME]: 'system',
+    [STORAGE_KEYS.EDITOR_THEME]: 'vs',
     [STORAGE_KEYS.THEME]: 'vs',
     [STORAGE_KEYS.VIEW_MODE]: 'split',
     [STORAGE_KEYS.WRITING_GOALS]: {

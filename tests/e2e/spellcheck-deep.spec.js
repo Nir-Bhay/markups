@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { setMarkdown, waitForApp, getMarkdown } from './helpers.js';
 
-const shots = path.join(process.env.USERPROFILE, 'spell-shots');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const shots = path.join(process.env.RUNNER_TEMP || path.resolve(__dirname, '../../test-results'), 'spell-shots');
 fs.mkdirSync(shots, { recursive: true });
 
 const sample = [
@@ -25,6 +27,23 @@ async function markers(page) {
         line: m.startLineNumber,
         col: m.startColumn
     })));
+}
+
+async function openEditorContextMenu(page, menu) {
+    const point = await page.evaluate(() => {
+        const editor = window.editor;
+        const position = editor?.getPosition();
+        const visiblePosition = position && editor?.getScrolledVisiblePosition(position);
+        const editorRect = editor?.getDomNode()?.getBoundingClientRect();
+        if (!visiblePosition || !editorRect) return null;
+        return {
+            x: editorRect.left + visiblePosition.left + 2,
+            y: editorRect.top + visiblePosition.top + visiblePosition.height / 2
+        };
+    });
+    if (!point) throw new Error('The editor cursor is not visible for the spellcheck context menu.');
+    await page.mouse.click(point.x, point.y, { button: 'right' });
+    await expect(menu).toBeVisible({ timeout: 5_000 });
 }
 
 test('deep spellcheck: markers, skips, menu, ignore, toggle', async ({ page }) => {
@@ -52,11 +71,8 @@ test('deep spellcheck: markers, skips, menu, ignore, toggle', async ({ page }) =
         window.editor.setPosition({ lineNumber: 1, column: 7 });
         window.editor.focus();
     });
-    const box = await page.locator('#editor').boundingBox();
-    await page.mouse.click(box.x + 40, box.y + 30, { button: 'right' });
-
     const menu = page.locator('.app-context-menu.visible');
-    await expect(menu).toBeVisible();
+    await openEditorContextMenu(page, menu);
     const labels = await menu.locator('.app-context-label').allTextContents();
     fs.writeFileSync(path.join(shots, 'menu-labels.json'), JSON.stringify(labels, null, 2));
     await menu.screenshot({ path: path.join(shots, 'menu.png') });
@@ -74,8 +90,7 @@ test('deep spellcheck: markers, skips, menu, ignore, toggle', async ({ page }) =
         window.editor.setPosition({ lineNumber: 1, column: 2 });
         window.editor.focus();
     });
-    await page.mouse.click(box.x + 40, box.y + 30, { button: 'right' });
-    await expect(menu).toBeVisible();
+    await openEditorContextMenu(page, menu);
     await menu.locator('.app-context-item', { hasText: 'Ignore word' }).click();
     await expect.poll(async () => await markers(page), { timeout: 10_000 }).toEqual([]);
 
@@ -85,18 +100,18 @@ test('deep spellcheck: markers, skips, menu, ignore, toggle', async ({ page }) =
         window.editor.setPosition({ lineNumber: 1, column: 3 });
         window.editor.focus();
     });
-    await page.mouse.click(box.x + 40, box.y + 30, { button: 'right' });
+    await openEditorContextMenu(page, menu);
     await menu.locator('.app-context-item', { hasText: 'Add to dictionary' }).click();
     await expect.poll(async () => await markers(page), { timeout: 10_000 }).toEqual([]);
 
     await setMarkdown(page, 'recieve again');
     await expect.poll(async () => (await markers(page)).length, { timeout: 10_000 }).toBe(1);
-    await page.mouse.click(box.x + 40, box.y + 30, { button: 'right' });
+    await openEditorContextMenu(page, menu);
     await menu.locator('.app-context-item', { hasText: 'Turn spell check off' }).click();
     await expect.poll(async () => await markers(page), { timeout: 10_000 }).toEqual([]);
     await page.locator('#editor').screenshot({ path: path.join(shots, 'toggled-off.png') });
 
-    await page.mouse.click(box.x + 40, box.y + 30, { button: 'right' });
+    await openEditorContextMenu(page, menu);
     await menu.locator('.app-context-item', { hasText: 'Turn spell check on' }).click();
     await expect.poll(async () => (await markers(page)).map((m) => m.message), { timeout: 10_000 })
         .toEqual(['Possible spelling: recieve']);

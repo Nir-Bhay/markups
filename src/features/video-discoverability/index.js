@@ -42,7 +42,9 @@ export function rewriteVideoLinkToBareUrl(markdown, targetUrl) {
 
     for (const re of patterns) {
         if (re.test(markdown)) {
-            return markdown.replace(re, url);
+            // Use a function so `$&`-style sequences in the URL are not
+            // interpreted as replacement patterns.
+            return markdown.replace(re, () => url);
         }
     }
 
@@ -51,7 +53,7 @@ export function rewriteVideoLinkToBareUrl(markdown, targetUrl) {
         `!?\\[[^\\]]*\\]\\(\\s*(${escaped}[,.);:!?]*)\\s*\\)(?:\\s*\\{[^}\\n]*\\})?`
     );
     if (loose.test(markdown)) {
-        return markdown.replace(loose, url);
+        return markdown.replace(loose, () => url);
     }
 
     return markdown;

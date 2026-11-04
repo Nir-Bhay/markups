@@ -7,6 +7,7 @@
 import { noteStorage } from './noteStorage.js';
 import { NAMESPACE } from './keys.js';
 import { fileTreeStorage } from './fileTreeStorage.js';
+import { ensureStableNoteIds } from './noteIdentity.js';
 
 const MIGRATION_FLAG_KEY = 'markups_migrated';
 const MIGRATION_VERSION = 'v1';
@@ -235,11 +236,15 @@ export async function runMigration() {
             notes.push(note);
         }
 
+        // Generate identities before both backup and IndexedDB insertion so
+        // recovery data and persisted rows refer to the same stable notes.
+        const notesWithStableIds = ensureStableNoteIds(notes);
+
         // Step 2b: Backup before the bulk write (best effort, never throws).
-        const backup = _writeMigrationBackup(notes);
+        const backup = _writeMigrationBackup(notesWithStableIds);
 
         // Step 3: Bulk write to IndexedDB
-        const result = await noteStorage.bulkCreateNotes(notes);
+        const result = await noteStorage.bulkCreateNotes(notesWithStableIds);
 
         if (!result.success) {
             throw new Error('Bulk write to IndexedDB failed');

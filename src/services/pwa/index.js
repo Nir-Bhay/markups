@@ -55,6 +55,7 @@ class PWAService {
      * @private
      */
     async _registerServiceWorker() {
+        if (!import.meta.env.PROD) return;
         if (!('serviceWorker' in navigator)) {
             console.log('Service workers not supported');
             return;
@@ -191,6 +192,11 @@ class PWAService {
      * Skip waiting and activate new service worker
      */
     async activateUpdate() {
+        const state = document.querySelector('#save-status')?.dataset.state;
+        if (state && state !== 'saved') {
+            window.alert('Save or export your current draft before updating Markups.');
+            return false;
+        }
         if (this.registration?.waiting) {
             this._activationRequested = true;
             this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
