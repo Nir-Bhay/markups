@@ -106,7 +106,8 @@ async function runPlaywright() {
         cwd: ROOT,
         env: {
             ...process.env,
-            PLAYWRIGHT_PORT: String(PORT)
+            PLAYWRIGHT_PORT: String(PORT),
+            PLAYWRIGHT_MANAGED_SERVER: '1'
         },
         stdio: 'inherit',
         windowsHide: true
