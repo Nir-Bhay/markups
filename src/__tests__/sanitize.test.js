@@ -29,6 +29,19 @@ describe('shared preview sanitizer', () => {
         expect(sanitized).not.toContain('style=');
     });
 
+    it('allows only explicitly listed local blob URLs on image src attributes', () => {
+        const localBlobUrl = 'blob:https://markups.test/5fca6c87-18cd-4f98-9011-cbc4787d5424';
+        const sanitized = sanitizePreviewHtml(
+            `<img src="${localBlobUrl}"><a href="${localBlobUrl}">local blob</a><img src="blob:https://markups.test/not-listed">`,
+            { LOCAL_BLOB_IMAGE_URLS: [localBlobUrl] }
+        );
+
+        expect(sanitized).toContain(`<img src="${localBlobUrl}">`);
+        expect(sanitized).not.toContain(`<a href="${localBlobUrl}"`);
+        expect(sanitized).not.toContain('blob:https://markups.test/not-listed');
+        expect(sanitizePreviewHtml(`<img src="${localBlobUrl}">`)).not.toContain(localBlobUrl);
+    });
+
     it('preserves toolbar hex color styles but rejects other inline CSS', () => {
         const sanitized = sanitizePreviewHtml([
             '<span style="color:#2563eb">blue</span>',

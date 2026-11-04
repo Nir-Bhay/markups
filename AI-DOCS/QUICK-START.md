@@ -11,7 +11,11 @@ npm run build
 npm run build:modular
 npm run verify:health
 npm run test:e2e
+npm run test:e2e:editor-regressions
 ```
+
+The editor regression suite covers split-pane dragging and view-mode widths,
+live Markdown preview after editor input, and the toolbar expand/collapse control.
 
 ## Where to make common changes
 
@@ -25,6 +29,7 @@ npm run test:e2e
 - Toolbar: `src/features/toolbar/`
 - Images and videos: `src/features/image-*` and `src/utils/video-embed.js`
 - Global styles: `public/css/` and `src/styles/`
+- Marketing landing page: `landing/src/` and `landing/src/index.css`; route metadata/schema: `landing/index.html`
 - Tests: `src/__tests__/`
 
 ## Safe change procedure
@@ -38,7 +43,12 @@ npm run test:e2e
 
 ## Current release blockers
 
-- Playwright has no tests under `tests/e2e/`.
-- `npm run test:coverage` needs `@vitest/coverage-v8`.
+- Playwright specs exist under `tests/e2e/`; run and inspect before release.
+- `@vitest/coverage-v8` is declared; the actual test run still needs verification.
 - `npm run verify:health` must remain cross-platform.
 - Production and modular entry points still coexist.
+
+## Growth branch quality gates
+Run `node scripts/qa/check-seo-geo-static.mjs`, `npm run build`, `node scripts/qa/verify-built-pages.mjs` and browser tests. See docs/seo-geo/README.md.
+
+The `/landing` route is a separate React/TypeScript app. Build scripts pre-render it with `scripts/prerender-landing.mjs` and hydrate that HTML in the browser. Use `npm run typecheck:landing` to check its TypeScript.

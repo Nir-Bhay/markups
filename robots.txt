@@ -1,127 +1,19 @@
-# =============================================================================
-# robots.txt for Markups.dev — Free Online Markdown Editor
-# Optimized for SEO, GEO (Generative Engine Optimization), AEO, and AI Agents
-# Last Updated: April 2026
-# https://markups.dev/
-#
-# This file is designed to:
-#   • Maximize visibility in Google, AI Overviews, ChatGPT, Perplexity, Claude,
-#     Grok, Gemini, Cursor, and other AI agents/research tools.
-#   • Allow citation & retrieval bots (most important for AI visibility).
-#   • Support llms.txt (the new standard for AI agents in 2026).
-#   • Protect development, private, and internal paths.
-#   • Follow current best practices for Next.js + AI-friendly sites.
-# =============================================================================
-
-# ====================== BASE RULES FOR ALL CRAWLERS ======================
 User-agent: *
 Allow: /
-Allow: /landing
-Allow: /llms.txt                  # Critical for AI agents in 2026
-Allow: /robots.txt
-Allow: /sitemap.xml
-
-# Explicitly allow static assets (important for rendering & rich results)
-Allow: /_next/static/
-Allow: /images/
-Allow: /assets/
-Allow: /css/
-Allow: /js/
-
-# Sitemap for better discovery
-Sitemap: https://markups.dev/sitemap.xml
-
-# Be respectful (adjust based on traffic)
-Crawl-delay: 2
-
-# ====================== DEVELOPMENT & PRIVATE PATHS ======================
-# Block internal, API (if not public), build artifacts, and sensitive paths
-Disallow: /api/private/
-Disallow: /api/auth/
-Disallow: /_next/
-Disallow: /__next/
-Disallow: /node_modules/
-Disallow: /src/
-Disallow: /server/
-Disallow: /admin/
-Disallow: /dashboard/
-Disallow: /preview/
-Disallow: /test/
-Disallow: /staging/
-Disallow: /*.env
-Disallow: /*.git
-Disallow: /*.log
-
-# ====================== AI SEARCH & CITATION BOTS (HIGH PRIORITY) ======================
-# These bots power real-time answers and citations in AI tools.
-# We explicitly allow them to maximize visibility in ChatGPT, Perplexity,
-# Claude, Gemini, Cursor, and agentic workflows.
 
 User-agent: GPTBot
+Allow: /
+
 User-agent: OAI-SearchBot
-User-agent: ChatGPT-User
 Allow: /
 
 User-agent: PerplexityBot
-User-agent: Perplexity-User
 Allow: /
 
 User-agent: ClaudeBot
-User-agent: Claude-SearchBot
-User-agent: Claude-User
-User-agent: anthropic-ai
 Allow: /
 
 User-agent: Google-Extended
-User-agent: Googlebot
 Allow: /
 
-User-agent: Bingbot
-User-agent: bingbot
-Allow: /
-
-User-agent: GrokBot
-User-agent: xAI
-Allow: /
-
-User-agent: FacebookBot
-User-agent: Instagram
-Allow: /
-
-User-agent: Applebot-Extended
-Allow: /
-
-# ====================== TRAINING-ONLY BOTS (Still Allowed) ======================
-# These are mainly for model training but still help with broader AI discovery.
-# We allow them for a tool like Markups.dev.
-
-User-agent: CCBot
-Allow: /                     # Common Crawl benefits many LLMs
-
-# ====================== ADDITIONAL GOOD BOTS ======================
-User-agent: DuckDuckBot
-User-agent: Slurp
-User-agent: Twitterbot
-Allow: /
-
-# =============================================================================
-# RECOMMENDATIONS (2026 Best Practices)
-# =============================================================================
-# 1. Create a companion llms.txt file at https://markups.dev/llms.txt
-#    This acts as a "tour guide" for AI agents — list your most important
-#    pages, features, documentation, and usage instructions in clear markdown.
-#
-# 2. Keep llms.txt under ~3000 tokens and update it regularly.
-#
-# 3. Monitor server logs for crawler activity (especially new AI agents).
-#
-# 4. Combine this with strong E-E-A-T content, schema markup (FAQ, HowTo,
-#    SoftwareApplication), and fast Core Web Vitals.
-#
-# 5. For Cursor, Claude Code, or other agent platforms: explicitly allowing
-#    the bots above helps them discover your documentation and features.
-#
-# This configuration is intentionally open for AI agents while protecting
-# sensitive paths. It follows 2026 recommendations from sources focused on
-# GEO, AEO, and agentic AI visibility.
-# =============================================================================
+Sitemap: https://markups.dev/sitemap.xml

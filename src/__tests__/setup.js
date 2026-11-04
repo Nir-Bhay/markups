@@ -6,7 +6,7 @@ import 'fake-indexeddb/auto';
 // Polyfill localStorage only when it is unavailable or throws a security error.
 // This avoids failures like:
 //   SecurityError: Cannot initialize local storage without a `--localstorage-file` path
-let localStorageAvailable = false;
+let localStorageAvailable;
 try {
     localStorageAvailable = typeof localStorage !== 'undefined' && typeof localStorage.clear === 'function';
 } catch {

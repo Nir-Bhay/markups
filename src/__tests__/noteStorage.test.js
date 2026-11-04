@@ -14,10 +14,16 @@ describe('NoteStorageService', () => {
         storage = new NoteStorageService();
         // Clear any existing data
         await db.notes.clear();
+        await db.file_nodes.clear();
+        await db.note_versions.clear();
+        await db.cloud_links.clear();
     });
 
     afterEach(async () => {
         await db.notes.clear();
+        await db.file_nodes.clear();
+        await db.note_versions.clear();
+        await db.cloud_links.clear();
     });
 
     describe('createNote', () => {
@@ -28,6 +34,7 @@ describe('NoteStorageService', () => {
             expect(note.title).toBe('Test');
             expect(note.content).toBe('# Hello');
             expect(note.tags).toEqual([]);
+            expect(note.stableId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
             expect(note.createdAt).toBeGreaterThan(0);
         });
 
@@ -46,6 +53,39 @@ describe('NoteStorageService', () => {
             expect(note.tags).toEqual(['js', 'test']);
             expect(note.category).toBe('work');
             expect(note.favorite).toBe(true);
+        });
+
+        it('preserves a supplied valid stable UUID', async () => {
+            const stableId = '22222222-2222-4222-8222-222222222222';
+            const note = await storage.createNote({ title: 'Stable', stableId });
+            expect(note.stableId).toBe(stableId);
+            expect(await storage.getNoteByStableId(stableId)).toMatchObject({ id: note.id, title: 'Stable' });
+        });
+    });
+
+    describe('tab identity persistence', () => {
+        it('ensures the same durable note for repeated tab initialization', async () => {
+            const tab = {
+                tabId: 'tab-existing-1',
+                stableId: '33333333-3333-4333-8333-333333333333',
+                title: 'Local tab',
+                content: '# Durable',
+                createdAt: 10,
+                updatedAt: 20
+            };
+
+            const first = await storage.ensureTabNote(tab);
+            const second = await storage.ensureTabNote(tab);
+
+            expect(first).toMatchObject({ title: 'Local tab', content: '# Durable', stableId: tab.stableId });
+            expect(second.id).toBe(first.id);
+            expect(await storage.getNotesCount()).toBe(1);
+        });
+
+        it('updates a note through its stable UUID without changing its identity', async () => {
+            const note = await storage.createNote({ title: 'Before', content: 'old' });
+            const updated = await storage.updateNoteByStableId(note.stableId, { content: 'new' });
+            expect(updated).toMatchObject({ id: note.id, stableId: note.stableId, content: 'new' });
         });
     });
 
@@ -93,16 +133,56 @@ describe('NoteStorageService', () => {
             expect(updated.content).toBe('original'); // unchanged
             expect(updated.updatedAt).toBeGreaterThan(originalUpdatedAt);
         });
+
+        it('keeps stable note identity immutable', async () => {
+            const note = await storage.createNote({ title: 'Identity' });
+            const updated = await storage.updateNote(note.id, { stableId: '00000000-0000-4000-8000-000000000000' });
+            expect(updated.stableId).toBe(note.stableId);
+        });
     });
 
     describe('deleteNote', () => {
-        it('should delete a note', async () => {
+        it('moves a note to Trash and preserves linked history and cloud metadata', async () => {
             const note = await storage.createNote({ title: 'Delete Me' });
+            await db.note_versions.add({ noteId: note.id, content: 'older copy', createdAt: Date.now() });
+            await db.cloud_links.put({ accountId: 'test-account', noteId: note.id, documentId: 'remote-doc' });
+            await db.file_nodes.put({
+                id: 'trash-file', type: 'file', name: 'Delete Me', parentId: 'root', noteId: note.id,
+                order: 0, createdAt: Date.now(), updatedAt: Date.now(), deletedAt: null
+            });
             const success = await storage.deleteNote(note.id);
             expect(success).toBe(true);
 
             const fetched = await storage.getNote(note.id);
             expect(fetched).toBeUndefined();
+            expect(await db.notes.get(note.id)).toMatchObject({ deletedAt: expect.any(Number) });
+            expect(await storage.getDeletedNotes()).toHaveLength(1);
+            expect(await db.note_versions.where('noteId').equals(note.id).count()).toBe(1);
+            expect(await db.cloud_links.get(['test-account', note.id])).toMatchObject({ documentId: 'remote-doc' });
+            expect(await db.file_nodes.get('trash-file')).toMatchObject({ deletedAt: expect.any(Number) });
+        });
+
+        it('does not return trashed notes in normal search, filters, lists, or count', async () => {
+            const live = await storage.createNote({ title: 'Shared', tags: ['work'], category: 'team', favorite: true });
+            const trashed = await storage.createNote({ title: 'Shared Trash', content: 'findme', tags: ['work'], category: 'team', favorite: true });
+            await storage.deleteNote(trashed.id);
+
+            expect((await storage.getAllNotes()).map((note) => note.id)).toEqual([live.id]);
+            expect((await storage.searchNotes('findme'))).toEqual([]);
+            expect(await storage.getNotesByTag('work')).toHaveLength(1);
+            expect(await storage.getNotesByCategory('team')).toHaveLength(1);
+            expect(await storage.getFavoriteNotes()).toHaveLength(1);
+            expect(await storage.getNotesCount()).toBe(1);
+        });
+
+        it('restores a standalone trashed note without deleting its history', async () => {
+            const note = await storage.createNote({ title: 'Restore Me', content: 'safe' });
+            const versionId = await db.note_versions.add({ noteId: note.id, content: 'previous', createdAt: Date.now() });
+            await storage.deleteNote(note.id);
+
+            expect(await storage.restoreNote(note.id)).toBe(true);
+            expect(await storage.getNote(note.id)).toMatchObject({ content: 'safe', deletedAt: null });
+            expect(await db.note_versions.get(versionId)).toMatchObject({ noteId: note.id, content: 'previous' });
         });
     });
 
@@ -165,6 +245,7 @@ describe('NoteStorageService', () => {
 
             const all = await storage.getAllNotes();
             expect(all).toHaveLength(3);
+            expect(new Set(all.map(note => note.stableId)).size).toBe(3);
         });
     });
 

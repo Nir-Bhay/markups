@@ -9,23 +9,8 @@ const THREE = [
 test('image resize writes data-ir to one sibling only and avoids preview blink', async ({ page }) => {
   await page.goto('/');
 
-  await page.waitForFunction(() => !!window.editor);
-  await page.evaluate(async () => {
-    const mod = await import('/src/features/image-resize/index.js');
-    const manager = mod.getImageResizeManager();
-    manager.destroy?.();
-    manager.initialize({
-      editor: window.editor,
-      onMarkdownChange: (markdown) => {
-        const model = window.editor.getModel();
-        window.editor.executeEdits('image-resize-test', [{
-          range: model.getFullModelRange(),
-          text: markdown,
-          forceMoveMarkers: true,
-        }]);
-      },
-    });
-  });
+  await page.waitForFunction(() => typeof window.editor?.setValue === 'function');
+  await page.waitForFunction(() => Boolean(document.getElementById('image-resize-styles-v3')));
 
   await page.getByRole('button', { name: 'Split view' }).click();
 

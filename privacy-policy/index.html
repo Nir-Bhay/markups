@@ -24,22 +24,27 @@
         <a class="button" href="/landing">View product overview</a>
         <a class="button ghost" href="https://github.com/Nir-Bhay/markups">GitHub repo</a>
       </div>
-      <p class="meta">Route: /privacy-policy · Last updated: 2026-04-26</p>
+      <p class="meta">Route: /privacy-policy · Last updated: 2026-10-28</p>
     </header>
 
     <main class="content">
       <section class="card">
         <h2>Direct answer</h2>
-        <p>We do not intentionally store your markdown drafts on our servers. The editor is browser-first, so your
-          content remains in your device storage unless you export, share, or otherwise move it yourself. Public pages
-          may still use analytics tools to measure visits and performance.</p>
+        <p>Normal editing and autosave store drafts in your browser, without an account. If optional cloud backup or
+          connected-account features are configured for a build, they require sign-in or provider authorization and a
+          separate user action before selected document content is sent. The hosted editor may load limited analytics
+          on clean URLs at <code>markups.dev</code>; it skips tracker requests on preview builds, local builds, URLs
+          with document fragments, and URLs with unapproved query parameters. The current development build has no
+          Appwrite project configured.</p>
       </section>
 
       <section class="card grid two">
         <div>
           <h2>What we collect</h2>
           <ul>
-            <li>Page views, device type, browser type, and similar usage signals on public pages.</li>
+            <li>On the hosted editor, Google Analytics receives the clean page path, a generic page title, the referring site origin, and allowlisted campaign source/medium/name values. It may also receive an <code>editor_start</code> event and an <code>export_completed</code> event with the format only (for example PDF or HTML). These events do not contain draft text, document titles, filenames, API keys, or share links.</li>
+            <li>Microsoft Clarity session replay is not loaded on the editor. The full editor body also carries an explicit Clarity mask as defense in depth if replay is re-enabled later.</li>
+            <li>Vercel Web Analytics may collect page and performance signals on clean hosted editor URLs.</li>
             <li>Approximate location derived from IP address through analytics providers.</li>
             <li>Any message you send through GitHub issues or the repository.</li>
           </ul>
@@ -47,9 +52,9 @@
         <div>
           <h2>What we do not collect</h2>
           <ul>
-            <li>Your draft markdown content as part of normal editing.</li>
-            <li>Account credentials, because the app does not require a login.</li>
-            <li>Private file uploads to a backend, because the core editor works locally in the browser.</li>
+            <li>Your draft Markdown content as part of normal editing or in the configured Google Analytics/Vercel event payloads. Clarity session replay is not loaded on the editor.</li>
+            <li>Account credentials during normal local editing. Optional account features, when configured and used, necessarily process sign-in and session data.</li>
+            <li>Draft uploads during normal editing. Optional cloud backup sends only a document you explicitly select and consent to save; local image attachments are not included in cloud backup.</li>
           </ul>
         </div>
       </section>
@@ -72,9 +77,31 @@
 
       <section class="card">
         <h2>Third-party services</h2>
-        <p>Public pages on Markups may load services such as Vercel hosting and analytics tooling, including Google
-          Analytics, Microsoft Clarity, Vercel Web Analytics, fonts, and GitHub links. Those providers may process
-          technical data according to their own policies.</p>
+        <p>The hosted editor, product landing page, Markdown guides, and blog may load Google Analytics and Vercel Web Analytics on clean URLs at
+          <code>markups.dev</code>. Analytics scripts are not loaded on local or preview builds, any URL containing a
+          fragment, or URLs with query parameters outside the allowlisted campaign source/medium/name set. The
+          current telemetry bootstrap does not load Clarity session replay.
+          Google Analytics gets a sanitized path and origin-only referrer rather than the full page URL.
+          Public content pages use their published page title; the editor uses a fixed title so draft titles are not sent. These
+          providers may process other technical data, such as device information and approximate location, under
+          their own policies. Markups also loads fonts and links to GitHub.</p>
+      </section>
+
+      <section class="card" id="ai-and-sharing">
+        <h2>Optional AI Writer and document sharing</h2>
+        <p>Ordinary Markdown editing does not require an AI provider or an account. If you choose to use
+          <strong>AI Writer</strong>, Markups sends the prompt and any selected document text or surrounding
+          context included in that request to the AI endpoint you configure. The selected provider, and
+          any enabled routing service, may process that request under their own terms and privacy policy.
+          Do not submit sensitive content unless you understand the recipient.</p>
+        <p>AI Writer accepts your own API key. You can choose a session-only key held in browser memory, or
+          opt to remember the key in local browser storage. A remembered key can remain available to
+          scripts running on this origin until you clear it; do not use it on an untrusted device.
+          The app does not require an AI key for normal editing.</p>
+        <p>The optional <strong>share link</strong> feature encodes a document title and Markdown content
+          into the URL fragment. Anyone with the full link can decode and read the shared content.
+          Treat that URL as containing the document itself; do not share private documents or secrets
+          this way. The browser and installed extensions may also retain link history.</p>
       </section>
 
       <section class="card">

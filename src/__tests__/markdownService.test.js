@@ -2,6 +2,14 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { markdownService, MarkdownService, deriveDocumentTitle } from '../core/markdown/index.js';
 
 describe('MarkdownService', () => {
+    it('keeps escaped dollars inside inline math and does not consume currency prose', () => {
+        markdownService.initialize();
+        const root = document.createElement('div');
+        root.innerHTML = markdownService.parse('Inline: $`\\sqrt{\\$4}`$.\n\nA price of $100 is plain text.');
+        expect(root.querySelectorAll('.katex')).toHaveLength(1);
+        expect(root.querySelector('.katex-error')).toBeNull();
+        expect(root.textContent).toContain('A price of $100 is plain text.');
+    });
     beforeAll(() => {
         markdownService.initialize({ mermaidEnabled: false });
     });

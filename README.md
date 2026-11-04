@@ -1,270 +1,335 @@
-<div align="center">
+# Markups
 
-# ✨ Markups
+Free browser Markdown editor with a live preview. The editor is Monaco. Parsing, sanitizing, KaTeX, PDF export, and saving all run in the page. A fence tagged `mermaid` is drawn after that first paint, when Settings → Preview → Mermaid Diagrams is on. There is no account and no paywall on [markups.dev](https://markups.dev/).
 
-**A powerful, free online markdown editor with real-time preview**
+- **Live app:** [https://markups.dev/](https://markups.dev/)
+- **Source:** [https://github.com/Nir-Bhay/markups](https://github.com/Nir-Bhay/markups)
+- **License:** [MIT](LICENSE)
 
-[![CI](https://img.shields.io/github/actions/workflow/status/Nir-Bhay/markups/ci.yml?branch=main)](https://github.com/Nir-Bhay/markups/actions/workflows/ci.yml)
-[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
-[![npm version](https://img.shields.io/npm/v/markups.svg)](https://www.npmjs.com/package/markups)
-[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Monaco Editor](https://img.shields.io/badge/Monaco%20Editor-0.52-007ACC?logo=visual-studio-code&logoColor=white)](https://microsoft.github.io/monaco-editor/)
+The hosted site loads `src/main.js` (Vite's default entry). `src/app.js` is a second boot path used only when you build with `--mode modular`. Behavior below is the production path, checked against the source and against the HTML, CSS, and JS currently served at markups.dev.
 
-[🌐 Live Demo](https://markups.vercel.app) • [🐛 Report Bug](https://github.com/Nir-Bhay/markups/issues) • [💡 Request Feature](https://github.com/Nir-Bhay/markups/issues)
+## What it is for
 
-![Markups Screenshot](public/image/og-image.svg)
+Open the site and write. A preview pane updates after you pause typing. Notes stay in this browser until you download a file or build a share link.
 
-</div>
+It is a single-user editor in the browser. It is not a hosted wiki, not a multiplayer document, and not a folder of Markdown files on disk the way Obsidian or Typora is.
 
----
+## Who it is for
 
-## 🚀 Features
+This is only what works on [markups.dev](https://markups.dev/) as of 3 October 2026: a free editor in the browser, no account, split preview, KaTeX, export, share by link, and YouTube insert. Mermaid is included with a timing limit, stated in the preview section.
 
-### ✍️ Editor
-- **Monaco Editor** — VS Code's powerful editor with IntelliSense
-- **Syntax Highlighting** — Full markdown syntax support
-- **Multiple Themes** — VS Light/Dark, Dracula, GitHub, Solarized
-- **Customizable** — Font size, font family, line numbers, word wrap
+**Student.** Open the site and write. No account. Split view shows the Markdown beside the preview. KaTeX draws math when Math Rendering is on. Export downloads a file. Share by link puts the note in the URL hash.
 
-### 👁️ Preview
-- **Live Preview** — Real-time rendering as you type
-- **Split View** — Side-by-side editor and preview with resizable divider
-- **Scroll Sync** — Synchronized scrolling between editor and preview
-- **Dark/Light Mode** — Automatic theme switching
+**Writer.** Same editor: no account, split preview, export, and a link you can send. YouTube insert works. After the preview HTML is sanitized, a recognized YouTube URL becomes an embedded player. `src/utils/video-embed.js` builds that iframe with a `youtube-nocookie.com` source.
 
-### 📝 Markdown Support
-- **GitHub Flavored Markdown** — Tables, task lists, strikethrough
-- **KaTeX Math** — LaTeX math equations ($inline$ and $$block$$)
-- **Mermaid Diagrams** — Flowcharts, sequence diagrams, Gantt charts
-- **Syntax Highlighting** — Code blocks with Prism.js
-- **Footnotes** — Reference-style footnotes
-- **Alerts** — GitHub-style alert blocks
+**Developer.** A Monaco buffer, language `markdown`, with split preview, KaTeX, export, and link share. A fence tagged `mermaid` is drawn when the Preview toggle is on. The SVG is not there at the instant `#output` updates. `mermaid.run` runs on a later frame.
 
-### 📤 Export Options
-- **📄 Markdown** — Download as .md file
-- **📑 PDF** — Export with preserved formatting
-- **🌐 HTML** — Clean HTML with embedded styles
-- **📋 Copy** — Quick copy to clipboard
+## Editing
 
-### 🛠️ Advanced Features
-- **📑 Multi-Tab Support** — Work on multiple documents
-- **📚 Templates** — Pre-built document templates
-- **⌨️ Snippets** — Quick text insertions
-- **🎯 Focus Mode** — Distraction-free writing
-- **⌨️ Typewriter Mode** — Keep cursor centered
-- **📊 Statistics** — Word/character/reading time
-- **🎯 Writing Goals** — Set and track word count goals
-- **📋 Table of Contents** — Auto-generated navigation
-- **🔍 Linting** — Markdown best practices checking
-- **💾 Auto-Save** — Never lose your work
-- **📱 PWA Support** — Install as desktop/mobile app
+The editor is created with `monaco.editor.create` on `#editor`, language `markdown`, word wrap on, minimap off. Three toolbar buttons switch the layout:
 
----
+| Button | Body class | What you see |
+|---|---|---|
+| Write | `view-editor` | Source only |
+| Split | `view-split` | Source and preview, with a draggable divider |
+| Preview | `view-preview` | Rendered document only |
 
-## 🆕 Recent improvements
+Scroll sync is a toolbar toggle (`#scroll-sync-button`) backed by `src/utils/scroll-sync.js`. It maps editor lines to preview nodes instead of using a single scroll ratio. The choice is stored in localStorage.
 
-- **Accessibility** — Modal and popover roles added for screen-reader support
-- **Memory leak registry** — Long-running sessions no longer accumulate leaks
-- **XSS escaping** — Safer rendering in headings, TOC, and image renderer
-- **Unified word count** — Consistent statistics across editor and preview
+Settings → Editor can change font size, line height, tab size, word wrap, line numbers, minimap, bracket matching, and keybindings (Default or Vim). Choosing Vim dynamically imports `monaco-vim` and shows the mode in `#vim-status`. If that import fails, the setting is put back to Default.
 
----
+The theme grid in Settings is VS Light, GitHub Light, Solarized Light, VS Dark, GitHub Dark, Dracula, and Solarized Dark. A separate header control toggles the light/dark UI. Ctrl/Cmd+D does **not** walk that grid. The handler in `setupKeyboardShortcuts` cycles only `vs`, `vs-dark`, and `hc-black`.
 
-## 🖥️ Demo
+Other controls that are on the page and wired in `src/main.js`:
 
-Try it live at **[markups.dev](https://markups.dev)**
+- **Tabs and a file explorer.** Notes are files in an in-browser tree (folders and files). The explorer can create, rename, delete, and move nodes. The active tab id is remembered in `localStorage` under `markups_last_active_tab`.
+- **Find** (Ctrl/Cmd+F) and **Find and replace** (Ctrl/Cmd+Shift+H, or the toolbar button) open an in-app search overlay. Monaco's own find widget is not what those shortcuts call.
+- **Focus mode**, **typewriter mode**, and **fullscreen** (the Fullscreen API, not a custom F11 listener).
+- **Templates** modal and a **snippets** menu.
+- **Check Markdown** opens the lint panel.
+- **Writing goals** (a daily word target) and **Document statistics**. The status bar shows word count, character count, and a reading-time estimate.
+- **Version history** keeps up to 20 snapshots in localStorage and writes one at most every 60 seconds (`src/features/version-history/index.js`).
+- **Document Mode** (the toolbar marks it Beta) turns the preview into an editable surface and writes the result back into the Monaco buffer.
+- **Import** opens one dialog with three inputs: a local file, a pasted Markups share link (`#s=…`, decoded offline), or an `http(s)` URL. URL import refuses anything over 5 MB (`src/features/import/dialog.js`).
 
----
 
-## 🚀 Quick Start
+Focus mode hides the surrounding chrome and keeps a small dock for zoom and exit (`src/features/focus/index.js`). Escape leaves focus mode when it is on. Typewriter mode keeps the caret line centered while you type (`src/features/typewriter/index.js`). Fullscreen calls `requestFullscreen` on `document.documentElement` and drops the fullscreen class when the browser leaves fullscreen, including when the user presses Escape.
 
-### Prerequisites
+The status bar is updated on every editor change by `updateStats`. Word count strips fenced code, inline code, and the URL part of Markdown links, then splits on whitespace. Character count is the raw length of the buffer. Reading time is `ceil(words / 200)`, from `READING_SPEED_WPM` in `src/config/app.config.js`. The statistics modal also shows paragraphs, an approximate sentence count, and a heading count from the same function.
 
-- **Node.js** 18.0 or higher
-- **npm** 9.0 or higher
+**Check Markdown** runs only while its panel is open, and again one second after you type if the panel is still open. `runLinter` in `src/main.js` flags trailing spaces (except a trailing double space, which is a Markdown line break), consecutive blank lines, hard tabs, a missing space after `#`, extra spaces after `#`, and a heading that is not preceded by a blank line. Those are the rules on the hosted page. The separate rule list in `src/features/linter/index.js` is not what this button calls.
 
-### Installation
+Pasted images are kept in a `Map` and mirrored to localStorage key `image_store` under the same `com.markdownlivepreview` namespace. The Markdown stores a token `markups-img:img_?`. `resolveImageReferences` swaps that token for the stored data when building the preview, and leaves the token alone in the downloaded Markdown. An `<img>` in the preview stays hidden until it loads (`data-loaded="true"`). A broken URL stays hidden so a half-typed image link does not shove the layout around.
+
+## Preview
+
+Typing calls `debouncedConvert`, which waits 300 ms and then runs `convert()`.
+
+1. Image references stored in the browser are turned back into URLs, and image-attribute suffixes plus video-attribute blocks are stripped so they do not show up as raw text.
+2. `marked.parse` runs. Marked 15 is left on its default `gfm: true`, so tables, strikethrough, task lists, and autolinks are parsed. This file also registers `marked-alert` (GitHub-style callouts), `marked-emoji` (with the `gemoji` name list), `marked-highlight` (Prism), and `marked-katex-extension`. `marked-footnote` is registered as well. On 3 October 2026 the preview showed the footnote marker and did not show the definition at the end, so this README does not treat footnotes as rendered. Heading ids are allocated in a custom renderer so the table of contents can link to them.
+3. The HTML goes through `sanitizePreviewHtml` in `src/utils/sanitize.js`, which calls DOMPurify. The preview profile forbids `script`, `iframe`, `video`, `audio`, and similar tags. A raw `<iframe>` or `<video>` in the Markdown does not survive this step.
+4. The result is written to `#output`. Custom CSS from Settings → Preview (`localStorage` key `markups_custom_css`) is injected as a `<style>` inside that node.
+5. If Math Rendering is off, every `.katex` and `.katex-display` node is removed. The TeX source is not put back into the preview; it remains only in the editor.
+6. Recognized video URLs are then turned into players in the DOM (YouTube, Vimeo, and direct video URLs handled by `src/utils/video-embed.js`). That happens after sanitizing, which is why the embed is allowed even though a hand-written `<iframe>` is not.
+7. Mermaid is initialized in `src/main.js` with `startOnLoad: false`, `theme: 'default'`, `suppressErrors: true`, and `securityLevel: 'strict'`. If Mermaid Diagrams is on, a later animation frame (after `#output` has been written) replaces each `pre code.language-mermaid` fence with a `div.mermaid` and calls `mermaid.run` on those nodes. The diagram is not on the first paint. Until `mermaid.run` finishes, that node is the `.mermaid` box in `public/css/premium-ui.css` (background `--bg-secondary`, padding). On 3 October 2026, with the toggle on, a fence tagged `mermaid` finished as an SVG flowchart with nodes A and B. If the toggle is off, those fences stay as code blocks. If a `.mermaid` node's text later matches "Syntax error in text" or "Parse error on line", `normalizeMermaidPreviewErrors` replaces that node with a short note. That error branch was not what the live check showed.
+
+Both preview toggles live under Settings → Preview and default to on (`src/utils/preview-gates.js`). Syntax highlighting has its own checkbox. Prism grammars are imported explicitly in `src/main.js` (JavaScript, TypeScript, JSX, TSX, Python, JSON, YAML, Bash, SQL, and others). An unknown fence language is left unhighlighted.
+
+### Math, specifically
+
+`marked.use(markedKatex({ throwOnError: false, output: 'html' }))` is the renderer. The installed `marked-katex-extension` treats inline math as `$...$` or `$$...$$` on one line, and only when the closing delimiter sits at the end of the text or is followed by whitespace or punctuation. Display math is a `$` or `$$` line, the expression, then a matching closing line. `nonStandard` is not enabled, so a dollar sign glued to surrounding words is less likely to be eaten as math.
+
+### Table of contents and backlinks
+
+The preview has a right-hand **ON THIS PAGE** sidebar (`#toc-sidebar`) with a close button, **Hide table of contents**. Headings are collected from the rendered preview.
+
+**Backlinks** is not in the static HTML. After boot, `src/main.js` lazy-loads `src/features/backlinks/panel.js`, which inserts a toolbar button and a second sidebar titled BACKLINKS. That panel indexes `[[wikilink]]` targets across notes stored in IndexedDB. It starts hidden. The close button adds the class `hidden`.
+
+In preview mode an older rule forced `.toc-sidebar { display: flex !important }`, which beat the hidden class, so the close button appeared to do nothing. The rule that ships now is `body.view-preview .toc-sidebar:not(.hidden)` for the shown state, and `display: none !important` when `.hidden` is set, in both preview and split (`public/css/premium-ui.css`). Backlinks reuses `.toc-sidebar`, so the same close behavior covers both panels. This is the CSS served as `/css/premium-ui.css?v=2.1.1`.
+
+![Edit, render, sanitize, then Mermaid on a later frame, and autosave](docs/readme/architecture.svg)
+
+## Local save
+
+There is no Markups account. A note is not sent to a Markups API when you type.
+
+`debouncedSaveCurrentDoc` waits 1.5 seconds after a change, then `saveCurrentDoc`:
+
+- Writes the note through Dexie (`src/core/storage/database.js`). The database name is `markups_db`. Tables include `notes`, `note_versions`, `settings`, and `file_nodes`.
+- Also copies the open document list into localStorage via Storehouse, namespace `com.markdownlivepreview`, key `docs`.
+- Skips the write when content and title are unchanged.
+
+The title follows the first heading unless you have renamed the note by hand (`titleLocked`).
+
+If that localStorage write hits a quota error, the app keeps the five most recent documents and tries to delete the dropped notes from IndexedDB so a reload does not bring them back from the file tree. Export anything you cannot afford to lose. Browser storage can be cleared by the user or by the browser.
+
+Editor settings use a separate localStorage key, `markdown_editor_settings`.
+
+A service worker (`public/sw.js`) is registered from `/sw.js`, and `public/manifest.json` makes the site installable. Navigations use network-first and fall back to the cache. Static assets use stale-while-revalidate. The first visit needs a network. After that, a cached shell can load when the network fails. The note itself is the IndexedDB and localStorage data above, in this browser.
+
+![Drafts stay in IndexedDB and localStorage until you export or share](docs/readme/local-data.svg)
+
+
+Version snapshots are separate from the note row. The version-history module stores at most 20 entries under the namespaced localStorage key for version history, and it will not write a new snapshot more often than every 60 seconds. Restoring a snapshot replaces the editor contents. It is a local undo trail, not a remote history.
+
+## Export
+
+The export modal is the control labeled Export. Its format buttons, as rendered on the live page:
+
+| Button | What the handler actually writes |
+|---|---|
+| Markdown | The editor source, downloaded as `.md`. |
+| PDF | Two writers. `#export-pdf-button` and Ctrl/Cmd+P call `exportToPDF`: it lazy-loads `html2pdf.js` and saves from `#output` with JPEG quality 0.98, html2canvas scale 2, letter size, portrait, and 0.75 inch margins. The modal's PDF confirm calls `exportToPDFWithOptions`: it clones `#output` and rasterizes that clone with html2canvas into a jsPDF file (paper size and orientation come from the modal). These functions write the file. The downloaded PDF was not opened in a viewer in this check. |
+| HTML | A standalone `.html` file with the preview markup and inlined export CSS. |
+| Word (.doc) | The button is labeled Word (.doc). `exportToDOCX` (toolbar) and `exportToDOCXWithOptions` (modal) both write an HTML document that includes the Office namespaces `urn:schemas-microsoft-com:office:office` and `urn:schemas-microsoft-com:office:word`, set the blob type to `application/msword`, and download it with `getExportFilename('doc')` (a `.doc` name). The bytes are that HTML string. They are not an OOXML `.docx` zip. The file was not opened in Word in this check. |
+| Text | Plain text from `markdownToPlainText` in `src/services/export/txt.js`. |
+| Image | `exportToPNG` captures `#output` with html2canvas (scale 2, white background) and downloads a PNG data URL. The modal calls `exportToPNGWithOptions`, which clones `#output` and captures that clone with html2canvas using the modal's width and scale. The PNG was not opened in an image viewer in this check. |
+| Print | Opens a new window with the preview HTML and calls `print()`. |
+| Copy MD / Copy HTML | Clipboard copies of the source or the preview HTML. |
+
+Ctrl/Cmd+P runs the PDF download directly. Ctrl/Cmd+Shift+E opens the modal. It does not itself mean "export PDF".
+
+## Share
+
+Share does not upload the document.
+
+**Link share** (`src/services/share/linkShare.js`) builds `{ title, markdown }`, gzip-compresses it when `CompressionStream` exists, and puts it in the URL hash as `#s=g…` (gzip) or `#s=u…` (plain UTF-8). The modal can also draw a QR code of that URL. Limits in code: the Markdown must be at most 100 KB, and the finished URL must be at most 8,000 characters. Past those limits the UI tells you to use file share instead. Anyone who has the URL can read the document. The hash is not a password and not an expiring token.
+
+**File share** uses the Web Share API with a `.md` file when the browser allows it, and otherwise downloads the file (`src/services/share/fileShare.js`).
+
+The share dialog labels link share "private · offline". That describes the absence of a server round-trip. It does not mean the link is secret once you send it.
+
+```mermaid
+flowchart TD
+  A[Type in Monaco] --> B[Wait 300 ms]
+  A --> S[Wait 1.5 s]
+  B --> C["marked.parse<br/>GFM, alerts, emoji, KaTeX, Prism"]
+  C --> D[DOMPurify]
+  D --> E["Write #output"]
+  E --> F{Math Rendering on?}
+  F -->|no| G[Remove .katex nodes]
+  F -->|yes| H[Leave KaTeX HTML]
+  G --> I{Mermaid toggle on?}
+  H --> I
+  I -->|yes| J["Later frame: mermaid.run<br/>SVG, not the first paint"]
+  I -->|no| K[Leave the fence as code]
+  J --> L[Rebuild table of contents]
+  K --> L
+  S --> M["Dexie markups_db notes"]
+  S --> N["localStorage com.markdownlivepreview docs"]
+  E --> O{Export modal}
+  O --> P[PDF image of the preview]
+  O --> Q[HTML, Markdown, text, PNG, print, clipboard]
+  O --> R["DOCX button: Word HTML saved as .doc"]
+  A --> T{Share}
+  T --> U["Hash link #s= gzip or plain"]
+  T --> V[Web Share or .md download]
+```
+
+
+Opening a URL that already has a `#s=` hash calls `handleIncomingShare()` at the end of boot, which decodes the payload and loads it into a tab. That is the same decoder the import dialog uses when you paste a share link.
+
+Downloaded names come from the note title with `<>:"/\\|?*` removed. An empty title becomes `document`, then the extension (`.md`, `.pdf`, `.html`, `.doc`, `.txt`, `.png`).
+
+## Keyboard shortcuts that the page actually runs
+
+`setupKeyboardShortcuts` in `src/main.js` listens for these. On macOS it treats Cmd as the modifier (`navigator.platform`); elsewhere it uses Ctrl. Find uses Ctrl or Cmd on either platform.
+
+| Action | Shortcut | Handler |
+|---|---|---|
+| Download the Markdown file | Ctrl/Cmd+S | `downloadMarkdown` |
+| Export PDF immediately | Ctrl/Cmd+P | `exportToPDF` |
+| Open the import dialog | Ctrl/Cmd+O | `importFile` |
+| Open the export modal | Ctrl/Cmd+Shift+E | `openExportModal` |
+| Toggle the help modal | Ctrl/Cmd+H | shows or hides `#help-modal` |
+| Cycle `vs` / `vs-dark` / `hc-black` | Ctrl/Cmd+D | `applyTheme` |
+| Reset to the welcome sample, after a confirm | Ctrl/Cmd+K | `reset` |
+| Bold | Ctrl/Cmd+B | `insertMarkdown('bold')` |
+| Italic | Ctrl/Cmd+I | `insertMarkdown('italic')` |
+| Focus mode | Ctrl/Cmd+Shift+F | `focusManager.toggle` |
+| Find | Ctrl/Cmd+F | search overlay |
+| Find and replace | Ctrl/Cmd+Shift+H | same overlay, replace enabled |
+
+Settings → Keyboard is static HTML. Several of its rows are not what the handler does. The list says Ctrl+K inserts a link; the handler resets the document. The list includes Ctrl+\\ for split view, Ctrl+1/2/3 for headings, and F11 for fullscreen; `setupKeyboardShortcuts` does not bind those keys. Trust the table above, not that settings list, until the two are the same.
+
+## Honest comparison
+
+Checked 3 October 2026 against each product's own site. "not checked" means the page I opened did not settle the cell. This is not a ranking.
+
+| | Markups | StackEdit | Dillinger | HackMD | Obsidian | Typora | VS Code Markdown preview |
+|---|---|---|---|---|---|---|---|
+| Price | Free. MIT repo, no paywall on the live app | No price on the [homepage](https://stackedit.io/) | Free. The [site](https://dillinger.io/) says no paywall | Free, plus Prime at $5 per seat/month billed annually, plus Enterprise ([pricing](https://hackmd.io/pricing)) | App free. Sync $4/user/month and Publish $8/site/month, billed annually. Optional Catalyst $25 and Commercial $50/user/year ([pricing](https://obsidian.md/pricing)) | $14.99 before tax, one-time. 15-day evaluation ([store](https://store.typora.io/)) | No purchase step on the [Markdown docs](https://code.visualstudio.com/docs/languages/markdown) |
+| Account required to write | No | not checked | No. Accounts only if you connect GitHub, Dropbox, Google Drive, OneDrive, or Bitbucket | Sign-up is how the pricing page describes the Free plan. Anonymous editing was not checked | No. [License page](https://obsidian.md/license): download and use without an account | No account. A license code is required after the evaluation | not checked |
+| Where files live | This browser: IndexedDB `markups_db` and localStorage | Browser, plus optional Google Drive, Dropbox, and GitHub | Browser, plus optional GitHub, Dropbox, Google Drive, OneDrive, Bitbucket | HackMD-hosted notes | Local files. Sync and Publish are optional | Local files | Local workspace files |
+| Runs in the browser | Yes | Yes | Yes | Yes | No | No | Desktop editor. A browser host was not checked |
+| Offline | Cached shell after the first load. Notes never leave the browser | Homepage says you can write offline | After the first load, for editing. Cloud sync needs a network | not checked | Yes, for local files | Yes. The store describes a local file editor | Yes, for local files |
+| Open source | Yes, this repository, MIT | Yes, [benweet/stackedit](https://github.com/benweet/stackedit). License file was not re-read | The Dillinger site says the project is open source | not checked | No. The [releases repo](https://github.com/obsidianmd/obsidian-releases) says Obsidian is not open source and that the repo does not contain the app source | Proprietary | [microsoft/vscode](https://github.com/microsoft/vscode) |
+
+## Runtime dependencies
+
+Each line is a direct `dependencies` entry that the production boot imports. Dev tools (Vite, Vitest, Playwright, ESLint, jsdom) are not required to use the hosted app.
+
+| Package | Where it is used |
+|---|---|
+| `monaco-editor` | `monaco.editor.create` in `src/main.js` |
+| `monaco-vim` | Dynamic import when Settings keybindings are Vim |
+| `marked` | `marked.parse` for the preview. Installed default keeps `gfm: true` |
+| `marked-highlight` | Prism highlighting inside Marked |
+| `marked-alert` | GitHub-style alert blocks |
+| `marked-footnote` | `marked.use(markedFootnote())` in `src/main.js`. Live preview on 3 October 2026 showed the marker, not the definition at the end |
+| `marked-emoji` | `:shortcode:` emoji in the preview |
+| `marked-katex-extension` | `marked.use(markedKatex(...))` in `src/main.js` |
+| `katex` | Loaded with `katex/dist/katex.min.css`; the extension calls KaTeX |
+| `mermaid` | `mermaid.run` on `language-mermaid` fences after `#output` is painted, `securityLevel: 'strict'` |
+| `prismjs` | Grammars imported from `src/main.js` for fenced code |
+| `dompurify` | `src/utils/sanitize.js`, applied before `#output` is updated |
+| `gemoji` | Emoji name data in `src/utils/emoji-shortcodes.js` |
+| `github-markdown-css` | Preview stylesheet imported from `src/main.js` |
+| `html2pdf.js` | Lazy-loaded for the PDF button |
+| `html2canvas` | Lazy-loaded for the PNG button, and used inside the PDF path |
+| `dexie` | IndexedDB wrapper. Database name `markups_db` |
+
+`marked-gfm-heading-id` is also a direct dependency. The production preview does not call it. Heading ids in the hosted app come from the custom renderer and `createHeadingIdAllocator` in `src/utils/heading-ids.js`. The modular markdown service does call `gfmHeadingId()`. It is listed here so the package is not mistaken for the live heading implementation.
+
+## FAQ
+
+### Do I need an account?
+
+No. The live page has no login. Share and export do not ask for one.
+
+### Where is the document saved?
+
+In this browser. Notes go to IndexedDB (`markups_db`) and a copy of the open list goes to localStorage (`com.markdownlivepreview`). Clearing site data deletes them.
+
+### Is the Word (.doc) export a native DOCX file?
+
+The toolbar button calls `exportToDOCX`. The modal calls `exportToDOCXWithOptions`. Both write HTML that includes Word's Office XML namespaces and download a `.doc` file with type `application/msword`. That is what those functions write. It is not an Office Open XML `.docx` package. The file was not opened in Word in this check.
+
+### Does math render?
+
+Math Rendering is on unless you turn it off under Settings → Preview. KaTeX draws the formulas when it is on. On 3 October 2026, turning it off removed the formulas, and the dollar-sign source did not come back in the preview. Turning it on brought the formulas back. In code, that off state removes every `.katex` and `.katex-display` node and does not put the TeX source back. The source stays in the editor.
+
+### Do Mermaid diagrams render?
+
+Yes, when the fence is tagged `mermaid` and Settings → Preview → Mermaid Diagrams is on. On 3 October 2026 that finished as an SVG flowchart with nodes A and B. It does not appear on the first paint. `mermaid.run` runs on a later frame, after `#output` is written. With the toggle off, the fence stays a code block.
+
+### Do footnotes render?
+
+No. `marked-footnote` is registered in `src/main.js`. On 3 October 2026 the marker showed and the definition did not appear at the end of the preview.
+
+### Can I close the table of contents in preview mode?
+
+Yes. The close control hides `#toc-sidebar`, and the same CSS hides the backlinks sidebar, in preview and in split. The toolbar buttons show them again.
+
+### Does share upload my note?
+
+No. A link stores the note in the URL hash. A file share downloads or hands the Markdown to the operating system share sheet. Treat the link as the document.
+
+### Does it work offline?
+
+After the app has loaded once, the service worker can serve the cached shell when the network is down. The first load needs the network. Export a copy of anything important.
+
+## Local development
+
+Node.js 18 or newer (`engines` in `package.json`).
 
 ```bash
-# Clone the repository
 git clone https://github.com/Nir-Bhay/markups.git
-
-# Navigate to directory
 cd markups
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Vite prints the URL, usually `http://localhost:5173`.
 
----
+| Script | What it runs |
+|---|---|
+| `npm run dev` | `vite` |
+| `npm run build` | `vite build` into `dist/` |
+| `npm run preview` | `vite preview` |
+| `npm test` | `vitest run` |
+| `npm run lint` | `eslint src/` |
+| `npm run test:e2e` | `playwright test` |
 
-## 📦 Build
+`vercel.json` sets the framework to Vite, the build command to `npm run build`, and the output directory to `dist`. Any static host can serve `dist/` the same way.
 
-```bash
-# Create production build
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-The build output will be in the `dist/` folder.
-
----
-
-## 🚀 Deployment
-
-### Deploy to Vercel (Recommended)
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNir-Bhay%2Fmarkups)
-
-Or manually:
-
-1. Push your code to GitHub
-2. Import your repository on [Vercel](https://vercel.com/new)
-3. Vercel auto-detects Vite and deploys
-
-**Build Settings:**
-| Setting | Value |
-|---------|-------|
-| Framework | Vite |
-| Build Command | `npm run build` |
-| Output Directory | `dist` |
-
-### Deploy to Netlify
-
-```bash
-# Install Netlify CLI
-npm install -g netlify-cli
-
-# Build and deploy
-npm run build
-netlify deploy --prod --dir=dist
-```
-
-### Deploy to GitHub Pages
-
-```bash
-# Build the project
-npm run build
-
-# Deploy dist folder to gh-pages branch
-npx gh-pages -d dist
-```
-
----
-
-## ⌨️ Keyboard Shortcuts
-
-| Action | Windows/Linux | macOS |
-|--------|---------------|-------|
-| Save as Markdown | `Ctrl + S` | `⌘ + S` |
-| Export to PDF | `Ctrl + P` | `⌘ + P` |
-| Import File | `Ctrl + O` | `⌘ + O` |
-| Toggle Dark Mode | `Ctrl + D` | `⌘ + D` |
-| Bold | `Ctrl + B` | `⌘ + B` |
-| Italic | `Ctrl + I` | `⌘ + I` |
-| Insert Link | `Ctrl + K` | `⌘ + K` |
-| Heading 1 | `Ctrl + 1` | `⌘ + 1` |
-| Heading 2 | `Ctrl + 2` | `⌘ + 2` |
-| Heading 3 | `Ctrl + 3` | `⌘ + 3` |
-| Toggle Focus Mode | `Ctrl + Shift + F` | `⌘ + ⇧ + F` |
-| Open Export Modal | `Ctrl + Shift + E` | `⌘ + ⇧ + E` |
-| Fullscreen | `F11` | `F11` |
-| Show Help | `Ctrl + H` | `⌘ + H` |
-
----
-
-## 🏗️ Tech Stack
-
-| Technology | Purpose |
-|------------|---------|
-| [Vite](https://vitejs.dev/) | Build tool & dev server |
-| [Monaco Editor](https://microsoft.github.io/monaco-editor/) | Code editor |
-| [Marked](https://marked.js.org/) | Markdown parser |
-| [Mermaid](https://mermaid.js.org/) | Diagrams |
-| [KaTeX](https://katex.org/) | Math equations |
-| [Prism.js](https://prismjs.com/) | Syntax highlighting |
-| [DOMPurify](https://github.com/cure53/DOMPurify) | XSS sanitization |
-| [html2pdf.js](https://ekoopmans.github.io/html2pdf.js/) | PDF export |
-
----
-
-## 📁 Project Structure
+## Repository layout
 
 ```
 markups/
-├── index.html              # Main HTML entry
-├── package.json            # Dependencies
-├── vite.config.js          # Vite configuration
-├── vercel.json             # Vercel deployment config
-├── public/
-│   ├── css/                # Stylesheets
-│   │   ├── premium-ui.css  # Main UI styles
-│   │   └── style.css       # Base styles
-│   ├── image/              # Static images
-│   ├── manifest.json       # PWA manifest
-│   └── sw.js               # Service worker
+├── index.html                 # Shell, toolbar, export modal, settings
+├── package.json
+├── vite.config.js             # Default entry is index.html -> src/main.js
+├── vercel.json
+├── public/                    # manifest, service worker, CSS
+├── docs/readme/               # Diagrams in this README
 └── src/
-    ├── main.js             # Application entry
-    ├── config/             # Configuration
-    ├── core/               # Core services
-    │   ├── editor/         # Monaco editor
-    │   ├── markdown/       # Markdown parser
-    │   └── storage/        # LocalStorage
-    ├── features/           # Feature modules
-    │   ├── tabs/           # Multi-tab support
-    │   ├── toc/            # Table of contents
-    │   ├── goals/          # Writing goals
-    │   └── ...
-    ├── services/           # Services
-    │   ├── export/         # Export (PDF, HTML, MD)
-    │   └── shortcuts/      # Keyboard shortcuts
-    ├── ui/                 # UI components
-    │   ├── toast/          # Notifications
-    │   ├── modal/          # Modal dialogs
-    │   └── theme/          # Theme management
-    └── utils/              # Utilities
+    ├── main.js                # Production boot
+    ├── app.js                 # Modular boot, not the hosted entry
+    ├── core/                  # Editor service, markdown service, Dexie
+    ├── features/              # Explorer, TOC, backlinks, focus, vim, …
+    ├── services/              # Export, share, autosave, shortcuts, PWA
+    └── utils/                 # Sanitize, preview gates, scroll sync
 ```
 
----
+## Contributing
 
-## 🤝 Contributing
+1. Fork the repository.
+2. Branch from current `main`.
+3. Keep the change focused.
+4. If you describe a control in the README, confirm it in `src/main.js` and on [markups.dev](https://markups.dev/). The modular entry and the settings shortcut list have both drifted from the hosted behavior before.
+5. Open a pull request.
 
-Contributions are welcome! Please follow these steps:
+## License
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+MIT. See [LICENSE](LICENSE).
 
----
+## Acknowledgments
 
-## 📄 License
+- [Monaco Editor](https://microsoft.github.io/monaco-editor/)
+- [Marked](https://marked.js.org/)
+- [Mermaid](https://mermaid.js.org/)
+- [KaTeX](https://katex.org/)
+- [DOMPurify](https://github.com/cure53/DOMPurify)
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/) by Microsoft
-- [Marked](https://marked.js.org/) for markdown parsing
-- [Mermaid](https://mermaid.js.org/) for diagram support
-- [KaTeX](https://katex.org/) for math rendering
-
----
-
-<div align="center">
-
-**Made with ❤️ by [Nir-Bhay](https://github.com/Nir-Bhay)**
-
-⭐ Star this repo if you find it useful!
-
-</div>
+Made by [Nir-Bhay](https://github.com/Nir-Bhay). The editor is at [markups.dev](https://markups.dev/).

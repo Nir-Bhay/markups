@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="250" viewBox="0 0 920 250" role="img" aria-labelledby="title2 desc2">
+  <title id="title2">Where a draft lives</title>
+  <desc id="desc2">Notes are stored in IndexedDB and copied into localStorage. Export downloads a file. Share encodes the document in the URL hash or hands over a Markdown file. Neither path uploads the note to a Markups server.</desc>
+  <rect width="920" height="250" fill="#f6f8fa" rx="12"/>
+  <text x="28" y="34" fill="#1f2328" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600">Notes stay in this browser. Export downloads. Share does not upload.</text>
+  <rect x="28" y="64" width="180" height="140" rx="10" fill="#ffffff" stroke="#0969da" stroke-width="1.5"/>
+  <text x="118" y="100" text-anchor="middle" fill="#1f2328" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600">Editor</text>
+  <text x="118" y="124" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">open tabs</text>
+  <text x="118" y="144" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">file explorer</text>
+  <text x="118" y="164" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">1.5 s after typing</text>
+  <path d="M208 134 H248" stroke="#656d76" stroke-width="1.5" marker-end="url(#b)"/>
+  <rect x="248" y="56" width="250" height="156" rx="10" fill="#ffffff" stroke="#1a7f37" stroke-width="1.5"/>
+  <text x="373" y="88" text-anchor="middle" fill="#1f2328" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600">This browser only</text>
+  <text x="373" y="116" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">IndexedDB markups_db</text>
+  <text x="373" y="136" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">notes, versions, file tree</text>
+  <text x="373" y="164" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">localStorage namespace</text>
+  <text x="373" y="184" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">com.markdownlivepreview</text>
+  <path d="M498 134 H538" stroke="#656d76" stroke-width="1.5" marker-end="url(#b)"/>
+  <rect x="538" y="56" width="350" height="156" rx="10" fill="#ffffff" stroke="#bf3989" stroke-width="1.5"/>
+  <text x="713" y="88" text-anchor="middle" fill="#1f2328" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600">Only if you ask</text>
+  <text x="713" y="116" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">Download: md, html, pdf, png, txt, .doc</text>
+  <text x="713" y="140" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">Link: document bytes inside #s=</text>
+  <text x="713" y="164" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">File share: Web Share or .md download</text>
+  <text x="713" y="188" text-anchor="middle" fill="#656d76" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">No Markups account on these flows</text>
+  <defs>
+    <marker id="b" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#656d76"/>
+    </marker>
+  </defs>
+</svg>

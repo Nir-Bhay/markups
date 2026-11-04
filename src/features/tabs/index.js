@@ -7,9 +7,11 @@
 import { eventBus, EVENTS, Subscriptions } from '../../utils/eventBus.js';
 import { storageService } from '../../core/storage/index.js';
 import { STORAGE_KEYS } from '../../core/storage/keys.js';
+import { db } from '../../core/storage/database.js';
 import { editorService } from '../../core/editor/index.js';
 import { DEFAULT_CONTENT } from '../../config/default-content.js';
 import { escapeHtml } from '../../utils/escape-html.js';
+import { createStableNoteId, isStableNoteId } from '../../core/storage/noteIdentity.js';
 
 /**
  * Tab data structure
@@ -39,6 +41,7 @@ class TabsManager {
         this.container = null;
         this.maxTabs = 20;
         this.initialized = false;
+        this.hadStoredTabs = false;
 
         TabsManager.instance = this;
     }
@@ -47,7 +50,7 @@ class TabsManager {
      * Initialize tabs manager
      * @param {HTMLElement|string} container - Tabs container element
      */
-    initialize(container) {
+    initialize(container, { fallbackTabs = null } = {}) {
         if (this.initialized) return;
 
         this.container = typeof container === 'string'
@@ -55,7 +58,7 @@ class TabsManager {
         : container;
 
         // Load saved tabs
-        this._loadTabs();
+        this._loadTabs(fallbackTabs);
 
         // Setup event listeners
         this._setupEventListeners();
@@ -80,10 +83,25 @@ class TabsManager {
      * Load tabs from storage
      * @private
      */
-    _loadTabs() {
-        const savedTabs = storageService.get(STORAGE_KEYS.TABS);
+    _loadTabs(fallbackTabs = null) {
+        const savedTabs = storageService.get(STORAGE_KEYS.TABS) || fallbackTabs;
+        this.hadStoredTabs = Array.isArray(savedTabs) && savedTabs.length > 0;
         if (savedTabs && Array.isArray(savedTabs)) {
-        this.tabs = savedTabs;
+        const seenStableIds = new Set();
+        this.tabs = savedTabs.filter((tab) => tab && typeof tab === 'object').map((tab) => {
+            let stableId = isStableNoteId(tab.stableId) && !seenStableIds.has(tab.stableId)
+                ? tab.stableId
+                : createStableNoteId();
+            while (seenStableIds.has(stableId)) stableId = createStableNoteId();
+            seenStableIds.add(stableId);
+            return {
+                ...tab,
+                stableId,
+                content: typeof tab.content === 'string' ? tab.content : '',
+                createdAt: Number(tab.createdAt) || Date.now(),
+                updatedAt: Number(tab.updatedAt) || Date.now()
+            };
+        });
         }
     }
 
@@ -92,8 +110,29 @@ class TabsManager {
      * @private
      */
     _saveTabs() {
-        storageService.set(STORAGE_KEYS.TABS, this.tabs);
+        const saved = storageService.set(STORAGE_KEYS.TABS, this.tabs);
         storageService.set(STORAGE_KEYS.ACTIVE_TAB, this.activeTabId);
+        // Keep the open-tab identities recoverable independently of the
+        // localStorage convenience backup. Note content already lives in notes.
+        const identities = this.tabs.map(({ id, stableId, noteId, name }) => ({
+            // A positive sentinel survives _loadTabs normalization and is
+            // always older than the durable note; hydration restores content.
+            id, stableId, noteId, name, content: '', updatedAt: 1
+        }));
+        void db.settings.put({ key: 'modular-open-tabs', value: identities }).catch(() => {
+            eventBus.emit(EVENTS.TOAST_SHOW, { message: 'Open-tab recovery could not be saved. Export important work.', type: 'warning' });
+        });
+        if (!saved && !this._backupWarningShown) {
+            this._backupWarningShown = true;
+            const notify = () => eventBus.emit(EVENTS.TOAST_SHOW, {
+                message: 'Browser backup storage is full. Documents still use local note storage; export important work.',
+                type: 'warning', duration: 8000
+            });
+            notify();
+            // First-tab creation precedes the application's toast listeners.
+            // Replay that first failure once the whole application is ready.
+            this._backupReadyOff = eventBus.once(EVENTS.APP_READY, notify);
+        }
     }
 
     /**
@@ -114,7 +153,7 @@ class TabsManager {
      * @param {string} content - Initial content
      * @returns {Tab} Created tab
      */
-    createTab(name = 'Untitled', content = '') {
+    createTab(name = 'Untitled', content = '', identity = {}) {
         if (this.tabs.length >= this.maxTabs) {
         eventBus.emit(EVENTS.ERROR, {
         message: `Maximum ${this.maxTabs} tabs allowed`
@@ -123,8 +162,10 @@ class TabsManager {
         }
 
         const tab = {
-        id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: this._getUniqueName(name),
+        id: identity.id || `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        stableId: isStableNoteId(identity.stableId) ? identity.stableId : createStableNoteId(),
+        ...(Number.isInteger(identity.noteId) ? { noteId: identity.noteId } : {}),
+        name: identity.exactName ? String(name || 'Untitled') : this._getUniqueName(name),
         content,
         isDirty: false,
         createdAt: Date.now(),
@@ -178,13 +219,16 @@ class TabsManager {
 
         this.activeTabId = tabId;
 
-        // Update editor content
-        editorService.setValue(tab.content);
-
         this._saveTabs();
         this.render();
 
+        // Switch autosave identity before programmatically replacing the
+        // editor model. The model-change event must never be attributed to
+        // the document that was active a moment ago.
         eventBus.emit(EVENTS.TAB_ACTIVATED, { tab });
+
+        // Update editor content
+        editorService.setValue(tab.content);
     }
 
     /**
@@ -315,6 +359,34 @@ class TabsManager {
     }
 
     /**
+     * Bind a tab to its durable IndexedDB note and optionally restore newer
+     * persisted content without changing the tab's UI identity.
+     * @param {string} tabId
+     * @param {import('../../core/storage/database.js').Note} note
+     * @param {{restoreContent?: boolean}} [options]
+     */
+    syncTabNote(tabId, note, { restoreContent = false } = {}) {
+        const tab = this.tabs.find((item) => item.id === tabId);
+        if (!tab || !note?.id || !note?.stableId) return false;
+
+        tab.noteId = note.id;
+        tab.stableId = note.stableId;
+        if (restoreContent) {
+            tab.name = note.title || 'Untitled';
+            tab.content = note.content || '';
+            tab.updatedAt = note.updatedAt || Date.now();
+            tab.isDirty = false;
+        }
+
+        this._saveTabs();
+        this.render();
+        if (restoreContent && this.activeTabId === tabId) {
+            editorService.setValue(tab.content);
+        }
+        return true;
+    }
+
+    /**
      * Render tabs UI
      */
     render() {
@@ -350,7 +422,7 @@ class TabsManager {
      */
     _createTabElement(tab) {
         const tabEl = document.createElement('div');
-        tabEl.className = `tab ${tab.id === this.activeTabId ? 'active' : ''}`;
+        tabEl.className = `tab header-tab ${tab.id === this.activeTabId ? 'active' : ''}`;
         tabEl.setAttribute('data-tab-id', tab.id);
         tabEl.setAttribute('role', 'tab');
         tabEl.setAttribute('aria-selected', tab.id === this.activeTabId);
@@ -447,6 +519,7 @@ class TabsManager {
      * Dispose tabs manager
      */
     dispose() {
+        this._backupReadyOff?.();
         if (this._saveTimeout) {
         clearTimeout(this._saveTimeout);
         }

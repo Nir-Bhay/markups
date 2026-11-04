@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index,follow">
+  <title>Safe Markdown to HTML Rendering: A Developer Checklist | Markups</title>
+  <meta name="description" content="Learn how to render Markdown as HTML more safely: parse first, sanitize the resulting HTML, review extensions and links, and test the full output pipeline.">
+  <link rel="canonical" href="https://markups.dev/blog/safe-markdown-html-rendering">
+  <link rel="stylesheet" href="/css/content-pages.css">
+  <link rel="stylesheet" href="/css/editorial.css">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://markups.dev/blog/safe-markdown-html-rendering">
+  <meta property="og:title" content="Safe Markdown to HTML Rendering: A Developer Checklist">
+  <meta property="og:description" content="Learn how to render Markdown as HTML more safely: parse first, sanitize the resulting HTML, review extensions and links, and test the full output pipeline.">
+  <meta property="og:image" content="https://markups.dev/image/og-image.png">
+  <meta property="og:site_name" content="Markups">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Safe Markdown to HTML Rendering">
+  <meta name="twitter:description" content="Learn how to render Markdown as HTML more safely: parse first, sanitize the resulting HTML, review extensions and links, and test the full output pipeline.">
+  <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org","@type":"Article",
+    "headline":"Safe Markdown to HTML Rendering: A Developer Checklist",
+    "description":"A source-linked review of HTML sanitization, Markdown extensions, links, and security tests for browser-based renderers.",
+    "datePublished":"2026-11-04","dateModified":"2026-11-04",
+    "author":{"@type":"Organization","name":"Markups Editorial","url":"https://markups.dev/blog"},
+    "publisher":{"@type":"Organization","name":"Markups","url":"https://markups.dev","logo":{"@type":"ImageObject","url":"https://markups.dev/image/og-image.png"}},
+    "mainEntityOfPage":"https://markups.dev/blog/safe-markdown-html-rendering",
+    "articleSection":"Web security","inLanguage":"en"
+  }
+  </script>
+<link rel="stylesheet" href="/css/journal.css">
+</head>
+<body class="journal-article"><a class="skip-editorial" href="#main-content">Skip to content</a><nav class="editorial-nav" aria-label="Site navigation"><a class="editorial-brand" href="/landing"><span>M</span> Markups<span class="journal-label"> / Journal</span></a><div><a href="/blog">Articles</a><a href="/markdown-guide">Markdown guide</a><a href="/blog/markdown-troubleshooting">Troubleshooting</a><a href="/" class="editorial-editor">Open editor ↗</a></div></nav>
+  <div class="page-shell editorial-shell">
+    <header class="hero">
+      <div class="eyebrow">Markups Blog · Web security</div>
+      <h1>Render Markdown as HTML safely: a developer checklist</h1>
+      <p class="lede">Markdown is a writing format, not a security boundary. When a browser turns authored text into HTML, the parser, sanitizer, extensions, links, and later DOM updates all matter.</p>
+      <div class="editorial-meta"><span>Markups Editorial</span><span>November 4, 2026</span><span>4 min read</span></div>
+    </header>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="/">Markups</a></li><li><a href="/blog">Blog</a></li><li aria-current="page">Safe rendering</li></ol></nav>
+    <main class="editorial-main" id="main-content">
+      <aside class="reading-sidebar"><p class="eyebrow">IN THIS ARTICLE</p><nav aria-label="Article contents"><a href="#pipeline">Understand the rendering pipeline</a><a href="#checklist">A safer implementation checklist</a><a href="#test">Test the rendered result</a><a href="#markups">What Markups does today</a><a href="#sources-heading">Sources</a></nav><a class="sidebar-back" href="/blog">← All articles</a></aside><article class="card article-body"><figure class="workflow-figure"><figcaption>A practical mental model</figcaption><ol><li><span>01</span><strong>Inspect the source</strong></li><li><span>02</span><strong>Check the renderer</strong></li><li><span>03</span><strong>Verify the destination</strong></li></ol><p>Each step answers a different question. Verify the final document in its actual destination.</p></figure>
+        <p><strong>Do not inject raw Markdown-parser output into a page and assume it is safe.</strong> A parser converts syntax into HTML; it does not necessarily remove dangerous markup. If documents can contain untrusted text or HTML, sanitize the resulting HTML with a maintained sanitizer, review every plugin that touches it, and test the final browser output.</p>
+        
+
+        <h2 id="pipeline">Understand the rendering pipeline</h2>
+        <p>A browser Markdown preview commonly follows this sequence:</p>
+        <ol>
+          <li><strong>Parse:</strong> convert Markdown tokens into an HTML representation.</li>
+          <li><strong>Sanitize:</strong> remove HTML elements and attributes that should not reach the page.</li>
+          <li><strong>Enhance:</strong> render supported diagrams, math, media, or code highlighting.</li>
+          <li><strong>Insert:</strong> place the final approved output into the document.</li>
+        </ol>
+        <p>Each later step can change the security properties of the content. Sanitizing before a plugin modifies HTML does not protect changes made afterward. An extension that generates SVG, adds links, or updates attributes belongs in the security review too.</p>
+        <p>OWASP recommends HTML sanitization when an application intentionally allows markup to be displayed, and names DOMPurify as a sanitizer option. It also warns that modifying sanitized output afterward can undermine the protection. Keep the sanitizer current and verify how the actual framework uses its output.</p>
+
+        <h2 id="checklist">A safer implementation checklist</h2>
+        <ul>
+          <li><strong>Define the input boundary.</strong> Decide whether users can enter raw HTML, remote images, links, or embedded media. Do not assume a file extension tells you whether content is trusted.</li>
+          <li><strong>Sanitize the HTML that will be inserted.</strong> Use an established HTML sanitizer with an explicit policy appropriate for the preview. Escaping everything may break intended formatting; sanitizing markup is a separate operation.</li>
+          <li><strong>Review URL schemes and attributes.</strong> Check <code>href</code>, <code>src</code>, <code>target</code>, and event-handler attributes. When opening external links in a new tab, set an appropriate <code>rel</code> value.</li>
+          <li><strong>Keep sanitization after parsing.</strong> If a renderer or plugin mutates content afterward, sanitize the final output or ensure the transformation cannot introduce unsafe HTML.</li>
+          <li><strong>Handle SVG and embeds deliberately.</strong> Diagram output and media are richer than ordinary paragraphs. Limit allowed elements and attributes, and test each extension's generated DOM.</li>
+          <li><strong>Keep dependencies patched.</strong> Sanitizer bypasses and browser behavior evolve. Pin and update dependencies through the normal security review process.</li>
+          <li><strong>Use CSP as another layer.</strong> A Content Security Policy can reduce the impact of mistakes, but it is not a substitute for safe rendering or an excuse to allow unsafe content.</li>
+        </ul>
+
+        <h2 id="test">Test the rendered result</h2>
+        <p>Test more than a parser's return string. Load the preview in a real browser and verify both that ordinary Markdown still works and that unwanted markup does not execute or navigate unexpectedly.</p>
+        <ul>
+          <li>Try ordinary headings, fenced code, links, images, tables, and every supported rich-content extension.</li>
+          <li>Include hostile inline HTML and event-handler attributes in test fixtures; confirm the browser never executes them.</li>
+          <li>Check dangerous URL schemes, new-tab link attributes, SVG output, and links generated by extensions.</li>
+          <li>Run checks after changing the parser, sanitizer, extension configuration, or the code that inserts preview HTML.</li>
+          <li>Inspect console errors and the resulting DOM. A screenshot alone cannot prove that generated markup is safe.</li>
+        </ul>
+        <p>Keep security fixtures synthetic. Do not put private documents, API keys, or real user content into test logs or third-party analytics.</p>
+
+        <h2 id="markups">What Markups does today</h2>
+        <p>The current Markups Markdown service parses documents with Marked and configured extensions, then passes parsed preview HTML through the project's sanitization helper before insertion. Mermaid diagrams are rendered with strict security settings, and generated SVG is sanitized again before it enters the preview. External rendered links receive <code>noopener noreferrer</code>; in-page anchors remain local.</p>
+        <p>This describes the code inspected on November 4, 2026; it is not a guarantee that every possible document or future extension is risk-free. Security depends on keeping the parser and sanitizer current and testing the complete path whenever it changes. See the public <a href="https://github.com/Nir-Bhay/markups/blob/main/src/core/markdown/index.js" target="_blank" rel="noopener noreferrer">Markups Markdown service</a> and its <a href="https://github.com/Nir-Bhay/markups/blob/main/src/utils/sanitize.js" target="_blank" rel="noopener noreferrer">sanitization helper</a> for the implementation.</p>
+
+        <aside class="editorial-note"><strong>Research note:</strong> this article was prepared with AI assistance and checked against the linked OWASP guidance and Markups source on November 4, 2026. Security review should be repeated after relevant dependency or rendering changes.</aside>
+        <section class="article-sources" aria-labelledby="sources-heading"><h2 id="sources-heading">Sources</h2><ul>
+          <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html" target="_blank" rel="noopener noreferrer">OWASP: Cross Site Scripting Prevention Cheat Sheet</a> — covers HTML sanitization and safe handling of markup.</li>
+          <li><a href="https://github.com/cure53/DOMPurify" target="_blank" rel="noopener noreferrer">DOMPurify project documentation</a> — sanitizer usage, configuration, and maintenance.</li>
+          <li><a href="https://marked.js.org/" target="_blank" rel="noopener noreferrer">Marked documentation</a> — documents the Markdown parser used by Markups.</li>
+        </ul></section>
+        <p class="quiet-tool-link">Want to inspect a small example? <a href="/">Try it in a Markdown preview</a>, then verify your publishing destination.</p>
+        <div class="editorial-links"><a href="/seo/compatibility-lab">Compatibility Lab</a><a href="/blog/markdown-instructions-for-coding-agents">AGENTS.md guide</a><a href="/blog">All Markups articles</a></div>
+      </article>
+    </main>
+    <footer class="footer"><p>Explore more in the <a href="/blog">Markups Blog</a>.</p></footer>
+  </div>
+<script src="/js/editorial.js" defer></script><script type="module" src="/src/editorialTelemetry.js"></script>
+</body>
+</html>

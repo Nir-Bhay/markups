@@ -1,187 +1,59 @@
-# Security Policy — Markups
+# Security policy — Markups
 
-> **Last Updated:** 2026-09-09
-> **Applies to:** Markups project (https://markups.dev) — Vite + Vercel deployment
+Last source review: 2026-11-03. This describes current working-tree controls and remaining checks; it does not certify that the public deployment contains them.
 
-Thank you for helping keep Markups and its users safe. Markups is a
-**client-side, browser-only** Markdown editor with no backend, no
-authentication, and no user data stored on a server. This document
-describes the security posture, headers, and how to report issues.
+## Scope and data boundaries
 
----
+Markups provides a browser Markdown editor. Ordinary local editing and autosave do not require a Markups account or cloud upload. Local drafts, versions, settings and image references can contain personal or confidential information: browser storage is neither a backup nor encrypted application storage. Clearing browser data, storage limits and device/profile changes affect availability.
 
-## 1. Security Headers (Vercel / vercel.json)
+Optional AI requests send chosen prompt/context and provider keys to configured providers. Some explicitly allowlisted gateways use a same-origin proxy rewrite; do not claim every provider request bypasses hosting infrastructure. Share URLs contain document data and anyone with the link can read it. Exported content may reference external assets. Loading remote media or importing a URL makes network requests.
 
-The following security headers are applied to **every response**
-served from `markups.dev` via `vercel.json → headers`:
+Source also contains optional Appwrite authentication/cloud backup and Drive/GitHub connector code. These require explicit project/provider configuration and live verification; source is not evidence of a live service. Sign-in alone must not upload local notes. Backup/save requires user intent. Pilot consent, quotas, permissions, account switching, recovery and concurrency must be validated before onboarding users.
 
-| Header | Value | Purpose |
-|---|---|---|
-| `X-Content-Type-Options` | `nosniff` | Prevents MIME-type sniffing. |
-| `X-Frame-Options` | `SAMEORIGIN` | Clickjacking protection (allows same-origin iframes only). |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | Sends full path on same-origin, origin only on cross-origin HTTPS, nothing on downgrade. |
-| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()` | Disables powerful APIs by default. |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` | HSTS — forces HTTPS for one year, eligible for browser preload lists. |
-| `Cross-Origin-Opener-Policy` | `same-origin-allow-popups` | Isolates browsing context but allows same-origin popups (Vercel Insights, OAuth flows). |
-| `Cross-Origin-Resource-Policy` | `same-origin` | Limits cross-origin embedding of static resources. |
-| `Content-Security-Policy` | See below | Defense-in-depth against XSS and data exfiltration. |
+## Deployment headers and CSP
 
-### Content-Security-Policy
+`vercel.json` is the source configuration for Vercel headers. The editor has a CSP meta fallback in `index.html`; multiple policies restrict requests together. Check actual response headers after an approved deployment.
 
-```
-default-src 'self';
-script-src 'self' 'unsafe-inline' 'unsafe-eval'
-            https://fonts.googleapis.com
-            https://cdn.jsdelivr.net
-            https://www.googletagmanager.com
-            https://www.clarity.ms https://*.clarity.ms
-            https://vitals.vercel-insights.com;
-style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-img-src 'self' data: blob: https:;
-font-src 'self' data: https://fonts.gstatic.com;
-connect-src 'self' https: wss:;
-worker-src 'self' blob:;
-child-src 'self' blob:;
-frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com;
-frame-ancestors 'self';
-base-uri 'self';
-form-action 'self';
-object-src 'none';
-manifest-src 'self';
-```
+Configured headers include nosniff, same-origin frame protection, strict-origin referrer policy, restricted browser permissions, HSTS, COOP same-origin-allow-popups, CORP same-origin, and CSP. OAuth popups are deliberately supported; this is not full cross-origin isolation. HSTS preload eligibility does not prove inclusion in a browser preload list.
 
-### CSP Trade-offs (Why we keep `'unsafe-inline'` / `'unsafe-eval'`)
+Current allowances:
 
-| Directive | Reason |
+- Scripts: self, inline/evaluated script and explicit external sources. Google Identity/Picker uses accounts.google.com and apis.google.com. No Clarity source remains in the editor policy.
+- Frames: same-origin export frames, supported YouTube/Vimeo embeds and explicit Google Picker/identity origins.
+- Connections: HTTPS destinations support user-selected BYOK providers, URL imports and configured services. The HTML development fallback also permits loopback/WebSocket connections; Vercel response headers omit those development sources.
+- Objects are disabled, base URIs and form submissions are limited to self, and production frame-ancestors is self.
+
+Unsafe-inline, unsafe-eval, broad HTTPS connections and CDN scripts remain hardening work. Do not assert Monaco/Mermaid/KaTeX universally require each allowance. Inventory production paths, externalize inline scripts or use appropriate hashes/nonces, then test workers, diagrams, exports, providers and OAuth in preview before changing enforcement. Broad permissions reduce CSP protection against injection/exfiltration. They do not prove an exploit exists and are not categorically excluded from security review.
+
+## Application controls
+
+| Surface | Current source control and limitation |
 |---|---|
-| `script-src 'unsafe-inline'` | Monaco Editor injects inline scripts at runtime and uses blob: workers. Required for live editing. |
-| `script-src 'unsafe-eval'` | Monaco, Mermaid, and KaTeX use `eval` / `new Function` to render dynamic content. |
-| `script-src https://cdn.jsdelivr.net` | KaTeX, Mermaid, and other vendor libraries may be loaded from jsDelivr in some flows. |
-| `connect-src` | Deployed allowlist (`vercel.json`): `openai.com`, `anthropic.com`, Google analytics hosts, `wss:`. Stricter than a blanket `https:` — custom/self-hosted AI endpoints are blocked by CSP in production unless allowlisted. The AI settings UI warns before a key follows a custom host. |
-| `frame-ancestors 'self'` | Clickjacking protection; allows same-origin iframes only. |
+| Markdown and diagrams | Shared DOMPurify policy removes active content; Mermaid uses strict mode and sanitized output. Regression checks cover hostile HTML/SVG and supported MathML. Not proof against every parser/browser exploit. |
+| AI transport | Remote HTTPS required; HTTP limited to actual loopback hosts regardless of provider label. Endpoint userinfo/query/fragment rejected. Provider fetches reject redirects, omit cookies and send no referrer. Use the final endpoint URL. |
+| AI keys | Session-only mode keeps a key in memory and removes persisted copies. Explicit persistence uses plaintext browser storage; XSS or a compromised browser may access it. Custom endpoints require user confirmation. |
+| Provider access | Drive uses user-initiated limited file access and an in-memory session token. Existing-file overwrites remain blocked until conditional-write validation. GitHub backend derives personal selected-installation access from verified identity, uses repository-scoped tokens and checks expected file SHA on writes. |
+| Repository browsing | Authenticated, bounded relative-directory requests return Markdown/text files and folders. Symlinks/submodules/provider tokens and URLs are excluded. |
+| Imports | Supported extension, size and URL guards apply. Imported data must pass the same rendering sanitizer; a Markdown extension does not make content trustworthy. |
+| Deletion | Local Trash/recovery preserves identity/history links; it is not an automatic storage reclamation or remote deletion guarantee. |
+| Telemetry | Current bootstrap disables Clarity and skips local/preview URLs, fragments and unapproved query strings. Enabled GA sanitizes page location/referrer. Verify actual network payloads after approved release; source does not prove zero collection or cookie-free behavior. |
 
-> **Hardening roadmap:** A nonce-based CSP can replace
-> `'unsafe-inline'` once Monaco is loaded via a service worker
-> that injects the nonce. This is a planned, future hardening.
+## Reporting a vulnerability
 
-### Cache-Control
+Avoid posting sensitive payloads, tokens, documents or exploit details publicly. Prefer the repository private reporting flow when enabled:
 
-Static, fingerprinted assets are served with
-`Cache-Control: public, max-age=31536000, immutable`.
-The service worker (`/sw.js`) is served with
-`Cache-Control: public, max-age=0, must-revalidate` so updates
-roll out immediately. The manifest is cached for 1 day.
+[GitHub vulnerability reporting](https://github.com/Nir-Bhay/markups/security/advisories/new)
 
----
+Include affected commit/deployment, browser/OS, a minimal non-sensitive reproduction, expected versus actual behavior and potential impact. Do not send real user documents or credentials. No unverified support address or response-time guarantee is published here.
 
-## 2. Client-Side Hardening
+## Release verification
 
-| Surface | Hardening |
-|---|---|
-| **Markdown rendering** | All user-supplied Markdown is parsed by `marked` and then sanitized with `DOMPurify` before injection into the preview pane. No `innerHTML` writes from raw user content. |
-| **Mermaid** | Rendered inside a sandboxed DOMPurify-cleansed container with no inline event handlers. |
-| **KaTeX** | Trusted-types-friendly output; no `eval` of user content. |
-| **Image upload** | Images are read as data URLs and stored in IndexedDB; no upload to any third-party server. |
-| **External scripts** | Only Google Fonts CSS, Google Analytics (gtag), Microsoft Clarity, and Vercel Web Analytics are loaded. All have explicit allowances in CSP. |
-| **External links** | All `target="_blank"` anchors include `rel="noopener noreferrer"` to prevent reverse-tabnabbing and Referrer leakage. Verified in both `index.html` and `landing/index.html`. |
-| **PWA / Service Worker** | `/sw.js` uses a cache-first strategy for static assets and a network-first strategy for HTML. |
-| **LocalStorage / IndexedDB** | No PII stored. All content stays client-side. |
-| **Cookies** | None set. (Analytics are cookieless / IP-anonymized.) |
-| **3rd-party iframes** | User-requested YouTube/Vimeo previews are sandboxed and restricted by `frame-src`; arbitrary iframe HTML is not accepted. |
-| **AI API keys** | Stored in namespaced `localStorage` (plaintext, documented in-UI). Session-only mode keeps the key in memory and removes persisted copies. Custom endpoints require explicit `confirm()` consent; non-`http(s)` endpoints are rejected at `setConfig`. Settings `value=` attributes are HTML-escaped. |
-| **File import** | Extension allowlist (`.md/.markdown/.txt/.text`) enforced, 5 MB cap on files and URL imports, `http(s)`-only URLs. |
+1. Preserve local work, identify the exact candidate commit and compare with deployed source.
+2. Audit production/development dependencies and record advisory scope; zero advisories does not cover application logic.
+3. Run unit, production-entry and relevant modular/browser tests, plus hostile rendering, export, quota/recovery and account-isolation checks.
+4. Inspect actual headers, CSP violations, analytics payloads and AI/provider destinations in preview.
+5. Exercise consent, revocation, stale writes and recovery with configured pilot accounts before enabling cloud features.
 
----
+Do not automatically deploy or claim header-scanner scores establish application security. Service workers/open tabs can retain old code; a merge to main does not guarantee every client immediately runs it. Verify deployed artifacts and update/reload behavior, and retain a rollback plan.
 
-## 3. Build & Dependency Hygiene
-
-| Item | Status |
-|---|---|
-| `npm audit` | Run on every release. Tracked in CI. |
-| Vite build target | `es2020` (smaller bundles, modern browsers only). |
-| Debugger stripping | `esbuild.drop = ['debugger']` in production. Console output is not globally stripped. |
-| Source maps | Disabled in production. Hidden `nosources` if needed for error reporting. |
-| Manual chunks | `monaco-editor`, `mermaid-vendor`, `katex-vendor`, `markdown-vendor`, `dom-utils`, `storage-vendor` for cacheable long-term chunks. |
-
----
-
-## 4. Reporting a Vulnerability
-
-**Please do not open a public GitHub issue for security bugs.**
-
-Report privately via one of:
-
-- **GitHub Security Advisories:** [https://github.com/Nir-Bhay/markups/security/advisories/new](https://github.com/Nir-Bhay/markups/security/advisories/new)
-- **Email:** `security@markups.dev` *(if configured)* — fall back to
-  opening a Security Advisory on GitHub.
-
-Please include:
-
-1. A clear description of the issue and impact.
-2. Steps to reproduce (URL, payload, browser).
-3. Affected version / commit SHA.
-4. Your name / handle for the credit line (optional).
-
-We aim to:
-
-- **Acknowledge** within 72 hours.
-- **Triage** within 7 days.
-- **Patch critical** issues within 30 days, sooner when feasible.
-
----
-
-## 5. Supported Versions
-
-| Version | Supported |
-|---|---|
-| Latest `main` branch | Yes |
-| Older releases | Best effort. Open an issue to request a backport. |
-
-Markups is a static, single-page app. Users are always on the
-**latest deployed version** — there is no concept of an "outdated
-client". When a critical fix lands on `main`, it ships to
-production on the next Vercel deploy.
-
----
-
-## 6. Out-of-Scope (By Design)
-
-The following are **intentionally not** in scope for this
-project and **are not** vulnerabilities:
-
-| Behavior | Why |
-|---|---|
-| Storing Markdown in `localStorage` / `IndexedDB` | Core feature. Users explicitly choose to persist drafts. |
-| Loading Google Fonts | Subject to a privacy trade-off. Users can switch to system fonts in the UI. |
-| Loading Google Analytics / Microsoft Clarity | Anonymous, IP-anonymized, opt-out-able. The landing page exposes this in `privacy-policy`. |
-| Allowing same-origin iframes (`frame-ancestors 'self'`) | PWA / embed support. |
-| `unsafe-eval` in CSP | Required for Monaco + Mermaid. See trade-offs above. |
-
----
-
-## 7. Verification
-
-After every deploy, the security posture is verified by:
-
-1. Vercel Analytics showing the new headers in the response inspector.
-2. `https://securityheaders.com/?q=markups.dev` — target: A or A+.
-3. `https://observatory.mozilla.org/analyze/markups.dev` — target: A or A+.
-
-If a regression is observed, the deploy is rolled back via Vercel.
-
----
-
-**Thank you for taking security seriously. Markups is open source
-because we believe writing tools should be transparent, auditable,
-and safe.**
-
----
-
-## 8. Dependency Security Status
-
-The repository currently uses `html2pdf.js@0.14.0` and the resolved `jspdf`
-version from the lockfile. The old 0.12.x warning is no longer applicable.
-Run `npm audit` before every release and record the result in `GATES.md`.
-
-The Markdown → HTML → PDF pipeline remains entirely client-side; no data
-leaves the user's browser as part of export.
+Latest dated evidence/residual gates: `docs/SECURITY-BROWSER-RECHECK-2026-11-03.md`. Browser installation or a launch failure is not a successful compatibility check.

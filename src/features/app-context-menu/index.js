@@ -11,6 +11,7 @@
 import { copyToClipboard, readFromClipboard } from '../../utils/clipboard.js';
 import { insertText } from '../toolbar/index.js';
 import { editorService } from '../../core/editor/index.js';
+import { spellSuggestionsAtCursor, applySpellSuggestion, ignoreWord, addWord, isSpellcheckEnabled, toggleSpellcheck } from '../spellcheck/index.js';
 import { eventBus, EVENTS } from '../../utils/eventBus.js';
 
 const EDITOR_MENU = 'editor';
@@ -224,7 +225,19 @@ class AppContextMenuManager {
             this._item(ICONS.ai, 'Summarize with AI', '', () => this._openAiPanel('summarize')),
             this._item(ICONS.ai, 'Expand with AI', '', () => this._openAiPanel('expand')),
         ] : [];
-        return [
+        const spellItems = [];
+        const hit = spellSuggestionsAtCursor();
+        if (hit) {
+            for (const suggestion of hit.suggestions) {
+                spellItems.push(this._item(ICONS.format, suggestion, '', () => applySpellSuggestion(hit.range, suggestion)));
+            }
+            spellItems.push(this._item(ICONS.trim, 'Ignore word', '', () => ignoreWord(hit.word)));
+            spellItems.push(this._item(ICONS.save, 'Add to dictionary', '', () => addWord(hit.word)));
+            spellItems.push(this._separator());
+        }
+        spellItems.push(this._item(ICONS.help, isSpellcheckEnabled() ? 'Turn spell check off' : 'Turn spell check on', '', () => toggleSpellcheck()));
+        spellItems.push(this._separator());
+        return spellItems.concat([
             this._item(ICONS.copy, 'Copy', 'Ctrl+C', () => this._editorCopy()),
             this._item(ICONS.paste, 'Paste', 'Ctrl+V', () => this._editorPaste()),
             ...aiItems,
@@ -238,7 +251,7 @@ class AppContextMenuManager {
             this._item(ICONS.image, 'Insert Image', 'Ctrl+Shift+I', () => this._clickToolbarButton('toolbar-image')),
             this._item(ICONS.link, 'Insert Link', 'Ctrl+K', () => this._clickToolbarButton('toolbar-link')),
             this._item(ICONS.save, 'Save', 'Ctrl+S', () => this._clickToolbarButton('export-btn')),
-        ];
+        ]);
     }
 
     _buildPreviewMenu() {

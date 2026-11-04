@@ -77,11 +77,11 @@ export async function uploadLargeDocAsLink(markdown, options = {}) {
     try {
         try {
             return await putToPasteRs(text, { signal: timed.signal, fetchFn });
-        } catch (firstError) {
+        } catch {
             try {
                 return await postToZeroX(text, { filename, signal: timed.signal, fetchFn });
-            } catch (secondError) {
-                throw new Error(classifyPasteError(secondError || firstError));
+            } catch (error) {
+                throw new Error(classifyPasteError(error), { cause: error });
             }
         }
     } finally {

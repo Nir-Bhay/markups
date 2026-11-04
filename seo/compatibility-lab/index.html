@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <title>Markdown Compatibility Test: Mermaid, Math, Tables &amp; Export | Markups</title>
+  <meta name="description" content="Download a reproducible Markdown test file with Mermaid, KaTeX, tables and code. Learn what to check in a browser preview, HTML, PDF and Word export.">
+  <link rel="canonical" href="https://markups.dev/seo/compatibility-lab">
+  <link rel="stylesheet" href="/css/content-pages.css">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Markups">
+  <meta property="og:url" content="https://markups.dev/seo/compatibility-lab">
+  <meta property="og:title" content="Markdown Compatibility Lab — A Reproducible Test File">
+  <meta property="og:description" content="Run a practical Markdown preview test with a downloadable fixture. Includes honest PDF and DOC limitations.">
+  <meta property="og:image" content="https://markups.dev/image/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": "https://markups.dev/seo/compatibility-lab#article",
+    "url": "https://markups.dev/seo/compatibility-lab",
+    "headline": "Markdown Compatibility Lab: Mermaid, Math, Tables and Exports",
+    "description": "A reproducible Markdown fixture with step-by-step preview and export checks and known limitations.",
+    "author": {"@type": "Organization", "name": "Markups", "url": "https://markups.dev/"},
+    "publisher": {"@type": "Organization", "name": "Markups", "url": "https://markups.dev/"},
+    "datePublished": "2026-10-23",
+    "dateModified": "2026-10-23",
+    "mainEntityOfPage": "https://markups.dev/seo/compatibility-lab",
+    "inLanguage": "en"
+  }
+  </script>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="eyebrow">Open testing / Practical documentation</div>
+      <h1>Markdown Compatibility Lab</h1>
+      <p class="lede">Can a Markdown editor render a realistic technical document? Try a <strong>downloadable, reusable fixture</strong> that combines a table, fenced code, Mermaid diagram and KaTeX equation. Compare results yourself instead of trusting feature badges.</p>
+      <div class="actions">
+        <a class="button primary" href="/qa/markdown-compatibility-fixture.md" download>Download the test Markdown (.md) ↓</a>
+        <a class="button" href="/">Open Markups editor →</a>
+        <a class="button ghost" href="/seo/cheatsheet">Markdown cheatsheet</a>
+      </div>
+      <p class="meta">Updated 23 October 2026 · Reproducible example · No registration</p>
+    </header>
+    <main class="content" id="content">
+      <section class="card">
+        <h2>What the fixture covers</h2>
+        <p>The same source file exercises a realistic API design note. It intentionally uses a small subset of Markdown so it can be inspected in other editors too.</p>
+        <ul>
+          <li><strong>CommonMark-style elements:</strong> headings, paragraphs, task list, emphasis, blockquote and a fenced JSON/JavaScript example.</li>
+          <li><strong>GitHub-flavored table:</strong> header cells, alignment and three rows.</li>
+          <li><strong>Mermaid:</strong> a four-node flowchart inside a <code>mermaid</code> code fence.</li>
+          <li><strong>KaTeX:</strong> inline and block LaTeX math with a fraction.</li>
+          <li><strong>Export QA:</strong> format-specific manual checks; visual similarity alone is not a fidelity guarantee.</li>
+        </ul>
+        <p><a href="/qa/markdown-compatibility-fixture.md">View the plain-text test fixture</a>. It is a real public <code>.md</code> asset, not a screenshot or generated testimonial.</p>
+      </section>
+      <section class="card grid two">
+        <div>
+          <h2>1. Verify the Markdown table</h2>
+          <p>After pasting the fixture, check that the preview shows three columns and an aligned numeric column. Also check the task-list checkboxes and code highlighting.</p>
+          <pre>| Field | Type | Required |
+| :--- | :--- | :---: |
+| request_id | string | Yes |
+| elapsed_ms | number | Yes |</pre>
+        </div>
+        <div>
+          <h2>2. Verify the Mermaid diagram</h2>
+          <p>The flowchart should show <strong>Write Markdown → Render preview → Visual check → Export</strong>, with a loop back to editing when changes are needed.</p>
+          <pre>&#96;&#96;&#96;mermaid
+flowchart LR
+  A[Write Markdown] --&gt; B[Render preview]
+  B --&gt; C{Visual check}
+  C --&gt;|Pass| D[Export]
+  C --&gt;|Adjust| A
+&#96;&#96;&#96;</pre>
+        </div>
+      </section>
+      <section class="card">
+        <h2>3. Verify the KaTeX math</h2>
+        <p>Check that the preview typesets an inline fraction and a centered display equation, rather than showing raw dollar signs. If math rendering is turned off, behavior can differ between editors.</p>
+        <pre>Inline: $r = \frac{n_{\mathrm{done}}}{n_{\mathrm{total}}}$
+
+Display:
+$$
+\mathrm{estimated\_time} = \frac{N \times t}{60}
+$$</pre>
+      </section>
+      <section class="card">
+        <h2>4. Test the actual exported files</h2>
+        <ol>
+          <li>Download the fixture and open <a href="/">the Markups editor</a>. Import or paste the entire text. Wait for Mermaid and math rendering to finish.</li>
+          <li>Download the source as <code>.md</code>. Reopen it in a text editor; code fences, LaTeX source and table delimiters should remain editable.</li>
+          <li>Export HTML. Open the resulting file and compare it with the preview, including Mermaid and math if present.</li>
+          <li>Export a PDF. Inspect diagrams and page breaks and test whether you can select a sentence. <strong>Markups currently generates an image-based PDF, not a searchable/selectable text PDF.</strong></li>
+          <li>Try the Word export if needed. The output is HTML with a <code>.doc</code> filename and is <strong>not</strong> a native <code>.docx</code> file.</li>
+        </ol>
+        <p>Large tables, fonts, long documents, cross-origin media and browser differences can affect output. Test your real document before relying on any exported format.</p>
+      </section>
+      <section class="card">
+        <h2>Compatibility is not a universal pass/fail claim</h2>
+        <p>Different Markdown implementations support different extensions. A Mermaid block may be ordinary fenced source in a viewer without Mermaid rendering; math, task lists and tables can also differ. This fixture lets you observe those differences directly.</p>
+        <p>Markups runs core editing in your browser. If you use optional AI Writer, selected content may be sent to your configured provider. See the <a href="/privacy-policy">privacy policy</a> for data-handling details.</p>
+      </section>
+      <section class="card">
+        <h2>Continue with focused examples</h2>
+        <p>Use the <a href="/seo/examples/mermaid">Mermaid diagram examples</a>, <a href="/seo/examples/math">KaTeX math examples</a> and <a href="/seo/tutorials/markdown-to-pdf">Markdown-to-PDF walkthrough</a> for a deeper look at each capability.</p>
+      </section>
+    </main>
+    <footer class="footer">
+      <a href="/">Open editor</a>
+      <a href="/seo/cheatsheet">Cheatsheet</a>
+      <a href="/seo/markdown-to-html">HTML export guide</a>
+      <a href="/landing">Product tour</a>
+    </footer>
+  </div>
+</body>
+</html>

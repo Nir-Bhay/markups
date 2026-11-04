@@ -48,6 +48,7 @@ class AIWriterUI {
         this._dismissedSelection = null;
         this._composerAction = null;
         this._menuOpen = false;
+        this.panelLayout = 'right';
     }
 
     /**
@@ -81,6 +82,8 @@ class AIWriterUI {
         container.setAttribute('role', 'complementary');
         container.setAttribute('aria-modal', 'false');
         container.setAttribute('aria-label', 'AI Writing Assistant');
+        this.panelLayout = this._readPanelLayout();
+        container.dataset.aiLayout = this.panelLayout;
 
         container.innerHTML = `
             <div class="ai-panel-inner">
@@ -1162,6 +1165,16 @@ class AIWriterUI {
 
         body.innerHTML = `
             <div class="ai-settings-form">
+                <div class="ai-settings-group ai-settings-layout-group">
+                    <label class="ai-settings-label" for="ai-set-layout">Panel layout</label>
+                    <select id="ai-set-layout" class="ai-settings-select" aria-describedby="ai-set-layout-hint">
+                        <option value="right" ${this.panelLayout === 'right' ? 'selected' : ''}>Right sidebar</option>
+                        <option value="split" ${this.panelLayout === 'split' ? 'selected' : ''}>Wide split panel</option>
+                        <option value="floating" ${this.panelLayout === 'floating' ? 'selected' : ''}>Floating panel</option>
+                    </select>
+                    <small class="ai-settings-hint" id="ai-set-layout-hint">Choose how MarkupsAI sits beside your document.</small>
+                </div>
+
                 <div class="ai-settings-group">
                     <label class="ai-settings-label" for="ai-set-provider">Provider</label>
                     <select id="ai-set-provider" class="ai-settings-select">
@@ -1359,6 +1372,7 @@ class AIWriterUI {
                 contextChars: parseInt(contextInput.value, 10) || AI_LIMITS.maxContextChars,
                 customInstructions: instructionsInput.value.trim()
             };
+            this.setPanelLayout(root.querySelector('#ai-set-layout')?.value);
             const sessionOnly = root.querySelector('#ai-set-session-only')?.checked;
             if (sessionOnly) {
                 if (typedKey) {
@@ -1382,6 +1396,25 @@ class AIWriterUI {
     }
 
     // ==================== Private ====================
+
+    _readPanelLayout() {
+        try {
+            const saved = localStorage.getItem('markups-ai-panel-layout');
+            return ['right', 'split', 'floating'].includes(saved) ? saved : 'right';
+        } catch {
+            return 'right';
+        }
+    }
+
+    setPanelLayout(layout) {
+        if (!['right', 'split', 'floating'].includes(layout)) return;
+        this.panelLayout = layout;
+        if (this.panelEl) this.panelEl.dataset.aiLayout = layout;
+        try {
+            localStorage.setItem('markups-ai-panel-layout', layout);
+        } catch { /* Keep the current choice for this page if storage is unavailable. */ }
+        window.dispatchEvent(new Event('resize'));
+    }
 
     /**
      * Attach panel event handlers
@@ -1584,6 +1617,7 @@ class AIWriterUI {
                 width: 360px;
                 min-width: 280px;
                 max-width: 100%;
+                min-height: 0;
                 background: var(--ai-bg, #ffffff);
                 border-left: 1px solid var(--ai-border, #e5e7eb);
                 display: flex;
@@ -1592,10 +1626,6 @@ class AIWriterUI {
                 overflow: hidden;
                 box-shadow: -4px 0 20px rgba(0, 0, 0, 0.08);
                 animation: aiSlideIn 0.2s ease-out;
-            }
-
-            body.view-editor .ai-writer-panel {
-                display: none !important;
             }
 
             @media (max-width: 1100px) and (min-width: 769px) {
@@ -1615,6 +1645,7 @@ class AIWriterUI {
                 display: flex;
                 flex-direction: column;
                 height: 100%;
+                min-height: 0;
                 overflow: hidden;
             }
 
@@ -2055,8 +2086,9 @@ class AIWriterUI {
             .ai-settings-sheet-body {
                 flex: 1;
                 overflow-y: auto;
-                padding: 14px;
+                padding: 10px 12px;
                 min-height: 0;
+                font-size: 12px;
             }
 
             .ai-settings-sheet-footer {
@@ -2092,18 +2124,18 @@ class AIWriterUI {
             .ai-settings-form {
                 display: flex;
                 flex-direction: column;
-                gap: 14px;
+                gap: 10px;
             }
 
             .ai-settings-group {
                 display: flex;
                 flex-direction: column;
-                gap: 6px;
+                gap: 4px;
             }
 
             .ai-settings-row {
                 display: flex;
-                gap: 12px;
+                gap: 10px;
                 flex-wrap: wrap;
             }
 
@@ -2112,17 +2144,18 @@ class AIWriterUI {
             }
 
             .ai-settings-label {
-                font-size: 13px;
+                font-size: 12px;
                 font-weight: 600;
                 color: var(--ai-title-color, #111827);
             }
 
             .ai-settings-input,
             .ai-settings-select {
-                padding: 8px 12px;
+                min-height: 36px;
+                padding: 6px 10px;
                 border: 1px solid var(--ai-border, #d1d5db);
                 border-radius: 6px;
-                font-size: 14px;
+                font-size: 13px;
                 color: var(--ai-text, #374151);
                 background: var(--ai-input-bg, #ffffff);
                 outline: none;
@@ -2138,15 +2171,16 @@ class AIWriterUI {
             }
 
             .ai-settings-hint {
-                font-size: 11px;
+                font-size: 10px;
                 color: var(--ai-muted, #6b7280);
+                line-height: 1.35;
             }
 
             .ai-settings-check {
                 display: flex;
                 align-items: flex-start;
                 gap: 8px;
-                font-size: 13px;
+                font-size: 12px;
                 color: var(--ai-text, #374151);
                 line-height: 1.4;
             }
@@ -2252,6 +2286,50 @@ class AIWriterUI {
                     right: 0;
                     bottom: 0;
                     z-index: 100;
+                }
+            }
+
+            /* AI panel placement preferences */
+            .ai-writer-panel[data-ai-layout="split"] {
+                flex: 0 0 clamp(380px, 42vw, 640px);
+                width: clamp(380px, 42vw, 640px);
+                max-width: 58vw;
+            }
+
+            .ai-writer-panel[data-ai-layout="floating"] {
+                position: fixed;
+                top: 112px;
+                right: 16px;
+                bottom: 36px;
+                width: min(420px, calc(100vw - 32px));
+                max-width: calc(100vw - 32px);
+                min-width: min(300px, calc(100vw - 32px));
+                height: auto;
+                z-index: 120;
+                border: 1px solid var(--ai-border, #e5e7eb);
+                border-radius: 12px;
+                box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+            }
+
+            body.view-editor .ai-writer-panel[data-ai-layout="floating"]:not([style*="display: none"]) {
+                display: flex !important;
+            }
+
+            @media (max-width: 768px) {
+                .ai-writer-panel[data-ai-layout="split"] {
+                    flex: 0 0 100%;
+                    width: 100%;
+                    max-width: 100%;
+                }
+
+                .ai-writer-panel[data-ai-layout="floating"] {
+                    top: 8px;
+                    right: 8px;
+                    bottom: 8px;
+                    left: 8px;
+                    width: auto;
+                    max-width: none;
+                    min-width: 0;
                 }
             }
         `;
@@ -2375,6 +2453,7 @@ class AIWriterUI {
             /* Thread */
             .ai-thread {
                 flex: 1;
+                min-height: 0;
                 overflow-y: auto;
                 padding: 12px 14px;
                 display: flex;
@@ -2718,8 +2797,8 @@ class AIWriterUI {
 
             /* Composer */
             .ai-composer {
-                flex-shrink: 0;
-                padding: 8px 14px 12px;
+                flex: 0 0 auto;
+                padding: 8px 14px max(12px, env(safe-area-inset-bottom));
                 border-top: 1px solid var(--ai-border, #e5e7eb);
                 position: relative;
             }
@@ -2750,6 +2829,7 @@ class AIWriterUI {
                 flex: 1;
                 min-height: 32px;
                 max-height: 96px;
+                overflow-y: auto;
                 resize: none;
             }
 

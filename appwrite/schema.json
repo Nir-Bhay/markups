@@ -1,0 +1,295 @@
+{
+  "schemaVersion": 1,
+  "database": {
+    "databaseId": "markups_cloud",
+    "name": "Markup private backup",
+    "enabled": true,
+    "specification": "serverless"
+  },
+  "tables": [
+    {
+      "tableId": "control",
+      "name": "Cloud pilot control",
+      "columns": [
+        {
+          "key": "guard",
+          "type": "varchar",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "bytes",
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 2147483647
+        },
+        {
+          "key": "users",
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 2147483647
+        }
+      ],
+      "indexes": [],
+      "permissions": [],
+      "rowSecurity": true,
+      "enabled": true
+    },
+    {
+      "tableId": "users",
+      "name": "Cloud user consent and quotas",
+      "columns": [
+        {
+          "key": "ownerId",
+          "type": "varchar",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "usedBytes",
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 2147483647
+        },
+        {
+          "key": "documentCount",
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 2147483647
+        },
+        {
+          "key": "grants",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "tombstones",
+          "type": "mediumtext",
+          "required": true
+        },
+        {
+          "key": "day",
+          "type": "varchar",
+          "size": 10,
+          "required": true
+        },
+        {
+          "key": "revisionsToday",
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 2147483647
+        },
+        {
+          "key": "ledgerToday",
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 2147483647
+        },
+        {
+          "key": "mutationsToday",
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 2147483647
+        },
+        {
+          "key": "deleting",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "nextExpiry",
+          "type": "bigint",
+          "required": true,
+          "min": 0,
+          "max": 9007199254740991
+        }
+      ],
+      "indexes": [
+        {
+          "key": "owner",
+          "type": "key",
+          "attributes": [
+            "ownerId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ],
+      "permissions": [],
+      "rowSecurity": true,
+      "enabled": true
+    },
+    {
+      "tableId": "documents",
+      "name": "Private cloud documents",
+      "columns": [
+        {
+          "key": "ownerId",
+          "type": "varchar",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "documentId",
+          "type": "varchar",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "title",
+          "type": "varchar",
+          "size": 200,
+          "required": true
+        },
+        {
+          "key": "content",
+          "type": "mediumtext",
+          "required": true
+        },
+        {
+          "key": "bytes",
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 2147483647
+        },
+        {
+          "key": "revision",
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 2147483647
+        },
+        {
+          "key": "hash",
+          "type": "varchar",
+          "size": 64,
+          "required": true
+        },
+        {
+          "key": "updatedAt",
+          "type": "bigint",
+          "required": true,
+          "min": 0,
+          "max": 9007199254740991
+        },
+        {
+          "key": "versions",
+          "type": "longtext",
+          "required": true
+        }
+      ],
+      "indexes": [
+        {
+          "key": "owner",
+          "type": "key",
+          "attributes": [
+            "ownerId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ],
+      "permissions": [],
+      "rowSecurity": true,
+      "enabled": true
+    },
+    {
+      "tableId": "operations",
+      "name": "Cloud idempotency ledger",
+      "columns": [
+        {
+          "key": "ownerId",
+          "type": "varchar",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "fingerprint",
+          "type": "varchar",
+          "size": 64,
+          "required": true
+        },
+        {
+          "key": "result",
+          "type": "mediumtext",
+          "required": true
+        },
+        {
+          "key": "expiresAt",
+          "type": "bigint",
+          "required": true,
+          "min": 0,
+          "max": 9007199254740991
+        }
+      ],
+      "indexes": [
+        {
+          "key": "owner_expiry",
+          "type": "key",
+          "attributes": [
+            "ownerId",
+            "expiresAt"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        },
+        {
+          "key": "owner",
+          "type": "key",
+          "attributes": [
+            "ownerId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ],
+      "permissions": [],
+      "rowSecurity": true,
+      "enabled": true
+    }
+  ],
+  "seed": [
+    {
+      "tableId": "control",
+      "rowId": "pilot",
+      "data": {
+        "guard": "initial",
+        "bytes": 0,
+        "users": 0
+      },
+      "permissions": []
+    }
+  ],
+  "runtimeScopes": [
+    "rows.read",
+    "rows.write"
+  ],
+  "deployment": {
+    "runtime": "node-22",
+    "entrypoint": "src/main.js",
+    "execute": [
+      "users"
+    ],
+    "logging": false,
+    "timeout": 120
+  },
+  "privacy": {
+    "defaultCloudSaving": false,
+    "directClientMutations": false,
+    "ownerRowsReadOnly": true,
+    "noCloudMedia": true
+  }
+}

@@ -8,13 +8,13 @@
     <!-- ===== SECURITY META (fallback when HTTP headers are unavailable) ===== -->
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.clarity.ms https://*.clarity.ms https://vitals.vercel-insights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: http://localhost:* http://127.0.0.1:* https://www.google-analytics.com https://analytics.google.com https://www.google.com https://*.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net https://www.clarity.ms https://*.clarity.ms https://vitals.vercel-insights.com wss:; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com; base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'">
+        content="default-src 'self'; script-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://vitals.vercel-insights.com https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: http://localhost:* http://127.0.0.1:* https://www.google-analytics.com https://analytics.google.com https://www.google.com https://*.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net https://vitals.vercel-insights.com wss:; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' blob: https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://docs.google.com https://drive.google.com https://accounts.google.com;  base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'">
 
     <!-- Primary Meta Tags -->
-    <title>Markups - Free Online Markdown Editor with Live Preview</title>
-    <meta name="title" content="Markups - Free Online Markdown Editor with Live Preview">
+    <title>Free online Markdown editor with live preview | Markups</title>
+    <meta name="title" content="Free online Markdown editor with live preview | Markups">
     <meta name="description"
-        content="Write Markdown with real-time preview, Mermaid diagrams, KaTeX math, syntax highlighting, and export to PDF/HTML/DOCX. Privacy-focused, no login required.">
+        content="A free online Markdown editor in the browser, with live split preview and no signup.">
     <meta name="keywords"
         content="markups, markdown editor, live preview, mermaid diagrams, katex math, syntax highlighting, pdf export, online markdown, free markdown editor, github markdown">
     <meta name="author" content="Nir-Bhay">
@@ -32,10 +32,10 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://markups.dev/">
-    <meta property="og:title" content="Markups - Free Online Markdown Editor with Live Preview">
+    <meta property="og:title" content="Free online Markdown editor with live preview | Markups">
     <meta property="og:description"
-        content="Write Markdown with real-time preview, Mermaid diagrams, KaTeX math, syntax highlighting, and export to PDF/HTML/DOCX. Privacy-focused, no login required.">
-    <meta property="og:image" content="https://markups.dev/image/og-image.svg">
+        content="A free online Markdown editor in the browser, with live split preview and no signup.">
+    <meta property="og:image" content="https://markups.dev/image/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="Markups">
@@ -44,10 +44,10 @@
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://markups.dev/">
-    <meta name="twitter:title" content="Markups - Free Online Markdown Editor with Live Preview">
+    <meta name="twitter:title" content="Free online Markdown editor with live preview | Markups">
     <meta name="twitter:description"
-        content="Write Markdown with real-time preview, Mermaid diagrams, KaTeX math, syntax highlighting, and export to PDF/HTML/DOCX. Privacy-focused, no login required.">
-    <meta name="twitter:image" content="https://markups.dev/image/og-image.svg">
+        content="A free online Markdown editor in the browser, with live split preview and no signup.">
+    <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
     <meta name="twitter:creator" content="@NirBhay">
 
     <!-- JSON-LD Structured Data -->
@@ -57,73 +57,23 @@
         "@type": "WebApplication",
         "name": "Markups",
         "url": "https://markups.dev/",
-        "description": "A premium, privacy-focused Markdown editor with live preview, Mermaid diagrams, KaTeX math equations, and multi-format export capabilities.",
+        "description": "A free online Markdown editor in the browser, with live split preview and no signup.",
         "applicationCategory": "ProductivityApplication",
-        "operatingSystem": "Any",
-        "browserRequirements": "Requires JavaScript. Requires HTML5.",
         "offers": {
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "USD"
         },
         "featureList": [
-            "Real-time Markdown Preview",
-            "Mermaid Diagram Support",
-            "KaTeX Math Equations",
-            "Syntax Highlighting",
-            "Export to PDF, HTML, DOCX",
-            "Multiple Themes",
-            "Auto-save",
-            "Multi-tab Support",
-            "Focus Mode",
-            "Typewriter Mode"
-        ],
-        "screenshot": "https://markups.dev/image/og-image.svg",
-        "author": {
-            "@type": "Person",
-            "name": "Nir-Bhay",
-            "url": "https://github.com/Nir-Bhay"
-        },
-        "datePublished": "2024-01-01",
-        "dateModified": "2026-01-05"
+            "live split preview",
+            "KaTeX",
+            "PDF picture export",
+            "Word-compatible .doc export",
+            "link share",
+            "YouTube insert",
+            "Mermaid after the first paint"
+        ]
     }
-    </script>
-
-    <!-- Analytics (skipped on localhost so local console stays clean) -->
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
-        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-        window.__MARKUPS_LOCAL__ = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-    </script>
-    <script>
-        (function () {
-            if (window.__MARKUPS_LOCAL__) return;
-            var gtagScript = document.createElement('script');
-            gtagScript.async = true;
-            gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-8WMNRN5GFM';
-            document.head.appendChild(gtagScript);
-            gtag('js', new Date());
-            gtag('config', 'G-8WMNRN5GFM');
-        })();
-    </script>
-    <script>
-        (function (c, l, a, r, i, t, y) {
-            if (window.__MARKUPS_LOCAL__) return;
-            c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
-            t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
-            y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
-        })(window, document, "clarity", "script", "uwrtfye6w8");
-    </script>
-    <script>
-        (function () {
-            if (window.__MARKUPS_LOCAL__) return;
-            var script = document.createElement('script');
-            script.defer = true;
-            script.src = '/_vercel/insights/script.js';
-            script.onerror = function () { /* Vercel insights is injected only on Vercel */ };
-            document.head.appendChild(script);
-        })();
     </script>
 
     <!-- Fonts -->
@@ -137,326 +87,58 @@
         rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/css/premium-ui.css">
-    <link rel="stylesheet" href="/css/video-controls.css">
-    <link rel="stylesheet" href="/css/github-markdown-light.css">
+    <link rel="stylesheet" href="/css/premium-ui.css?v=2.1.4">
+    <link rel="stylesheet" href="/css/video-controls.css?v=2.1.0">
+    <link rel="stylesheet" href="/css/github-markdown-light.css?v=2.1.0">
     <link rel="icon" type="image/svg+xml" href="/image/og-image.svg">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/image/og-image.svg">
 
     <script type="module" src="/src/main.js"></script>
 
-    <!-- ============================================================ -->
-    <!-- JSON-LD Structured Data for Markups.dev                      -->
-    <!-- Place inside <head> on ALL pages                             -->
-    <!-- Last Updated: April 2026                                     -->
-    <!-- ============================================================ -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "Organization",
-          "@id": "https://markups.dev/#organization",
-          "name": "Markups",
-          "url": "https://markups.dev",
-          "logo": {
-            "@type": "ImageObject",
-            "url": "https://markups.dev/images/logo.png",
-            "width": 512,
-            "height": 512
-          },
-          "sameAs": [
-            "https://github.com/Nir-Bhay/markups"
-          ],
-          "knowsAbout": [
-            "Markdown Editor",
-            "Mermaid Diagrams",
-            "KaTeX Math",
-            "Monaco Editor",
-            "PWA",
-            "PDF Export",
-            "Technical Writing Tools"
-          ]
-        },
-        {
-          "@type": "WebSite",
-          "@id": "https://markups.dev/#website",
-          "name": "Markups",
-          "url": "https://markups.dev",
-          "description": "Free browser-based Markdown editor with Monaco, live preview, Mermaid diagrams, KaTeX math, and offline PWA support.",
-          "publisher": {
-            "@id": "https://markups.dev/#organization"
-          },
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": {
-              "@type": "EntryPoint",
-              "urlTemplate": "https://markups.dev/?q={search_term_string}"
-            },
-            "query-input": "required name=search_term_string"
-          }
-        },
-        {
-          "@type": "WebApplication",
-          "@id": "https://markups.dev/#app",
-          "name": "Markups - Free Online Markdown Editor",
-          "url": "https://markups.dev",
-          "description": "Markups is a free, privacy-first, browser-based Markdown editor powered by the Monaco Editor. Supports live preview, Mermaid diagram rendering, KaTeX math typesetting, and multi-format export. No login required. Works offline as a PWA.",
-          "applicationCategory": "DeveloperApplication",
-          "applicationSubCategory": "Markdown Editor",
-          "operatingSystem": "All - Web Browser (Chrome, Firefox, Safari, Edge)",
-          "browserRequirements": "Requires a modern browser with JavaScript enabled",
-          "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD",
-            "availability": "https://schema.org/InStock",
-            "description": "Markups is 100% free with no subscription required"
-          },
-          "featureList": [
-            "Monaco Editor (VS Code engine)",
-            "Live split-pane preview",
-            "Mermaid diagram rendering",
-            "KaTeX math typesetting",
-            "PDF export",
-            "HTML export",
-            "Markdown export",
-            "Offline PWA support",
-            "No login required",
-            "Privacy-first - no data sent to server",
-            "Syntax highlighting",
-            "Dark mode support"
-          ],
-          "screenshot": "https://markups.dev/images/screenshot.png",
-          "softwareVersion": "latest",
-          "datePublished": "2024-01-01",
-          "dateModified": "2026-04-01",
-          "isAccessibleForFree": true,
-          "isFamilyFriendly": true,
-          "inLanguage": "en",
-          "author": {
-            "@type": "Person",
-            "@id": "https://markups.dev/#founder",
-            "name": "Nir Bhay",
-            "url": "https://github.com/Nir-Bhay"
-          },
-          "publisher": {
-            "@id": "https://markups.dev/#organization"
-          },
-          "provider": {
-            "@id": "https://markups.dev/#organization"
-          },
-          "sameAs": [
-            "https://github.com/Nir-Bhay/markups"
-          ],
-          "about": [
-            {
-              "@type": "Thing",
-              "name": "Markdown",
-              "sameAs": "https://www.wikidata.org/wiki/Q1079177"
-            },
-            {
-              "@type": "Thing",
-              "name": "Monaco Editor",
-              "sameAs": "https://www.wikidata.org/wiki/Q105846240"
-            },
-            {
-              "@type": "Thing",
-              "name": "Mermaid (diagram tool)",
-              "sameAs": "https://www.wikidata.org/wiki/Q111891132"
-            },
-            {
-              "@type": "Thing",
-              "name": "KaTeX",
-              "sameAs": "https://www.wikidata.org/wiki/Q17121459"
-            },
-            {
-              "@type": "Thing",
-              "name": "Progressive Web App",
-              "sameAs": "https://www.wikidata.org/wiki/Q29913625"
-            }
-          ]
-        },
-        {
-          "@type": "WebPage",
-          "@id": "https://markups.dev/landing#webpage",
-          "url": "https://markups.dev/landing",
-          "name": "Markups - Free Online Markdown Editor with Live Preview",
-          "description": "Markups is a free browser-based Markdown editor with Monaco editor, live preview, Mermaid diagrams, KaTeX math, PDF export, and offline PWA support.",
-          "isPartOf": {
-            "@id": "https://markups.dev/#website"
-          },
-          "about": {
-            "@id": "https://markups.dev/#app"
-          },
-          "inLanguage": "en",
-          "dateModified": "2026-04-01"
-        },
-        {
-          "@type": "FAQPage",
-          "@id": "https://markups.dev/#faq",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "What is Markups?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Markups is a free, browser-based Markdown editor powered by the Monaco Editor (the same engine that powers VS Code). It supports live preview, Mermaid diagram rendering, KaTeX math typesetting, and export to PDF, HTML, and Markdown. No login or installation required."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Is Markups free to use?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes. Markups is 100% free with no subscription, no account, and no hidden fees. It runs entirely in your browser."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Does Markups work offline?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes. Markups is a Progressive Web App (PWA). After the first load, it works fully offline. You can also install it as a desktop or mobile app."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Does Markups support Mermaid diagrams?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes. Markups supports Mermaid.js for rendering diagrams directly in Markdown, including flowcharts, sequence diagrams, Gantt charts, ER diagrams, class diagrams, state diagrams, pie charts, and user journey maps."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Does Markups support math equations?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes. Markups supports KaTeX for LaTeX math typesetting. Use $...$ for inline math and $$...$$ for block equations."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Is my content private in Markups?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes. Markups is privacy-first. All content stays in your browser session. Nothing is sent to any server. There is no account, no tracking, and no cloud sync."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "What formats can I export from Markups?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Markups supports export to PDF, HTML (as a full standalone file), and raw Markdown (.md) files."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "What editor does Markups use?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Markups uses the Monaco Editor - the same code editor engine that powers Visual Studio Code (VS Code). It provides syntax highlighting, multi-cursor support, auto-indent, and keyboard shortcuts consistent with VS Code."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Is Markups open source?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes. Markups is open source. The repository is available at https://github.com/Nir-Bhay/markups."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "What is the best free online Markdown editor?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Markups (markups.dev) is one of the best free online Markdown editors in 2026. It combines a Monaco-powered editor, live split-pane preview, Mermaid diagram rendering, KaTeX math support, multi-format export, and offline PWA capability - all for free with no login required."
-              }
-            }
-          ]
-        },
-        {
-          "@type": "HowTo",
-          "@id": "https://markups.dev/#howto",
-          "name": "How to Use Markups - Free Markdown Editor",
-          "description": "Start writing and previewing Markdown instantly in Markups with no login or installation.",
-          "step": [
-            {
-              "@type": "HowToStep",
-              "name": "Open Markups",
-              "text": "Go to https://markups.dev/ in any modern browser. No installation or login required.",
-              "url": "https://markups.dev/"
-            },
-            {
-              "@type": "HowToStep",
-              "name": "Write Markdown",
-              "text": "Start typing in the left-hand Monaco editor pane. Your Markdown is rendered in real time in the right-hand preview pane.",
-              "url": "https://markups.dev/"
-            },
-            {
-              "@type": "HowToStep",
-              "name": "Add Diagrams or Math",
-              "text": "Use Mermaid code blocks for diagrams and $...$ or $$...$$ for KaTeX math equations.",
-              "url": "https://markups.dev/"
-            },
-            {
-              "@type": "HowToStep",
-              "name": "Export Your Document",
-              "text": "Click the export button to download your document as PDF, HTML, or Markdown.",
-              "url": "https://markups.dev/"
-            },
-            {
-              "@type": "HowToStep",
-              "name": "Install as PWA (Optional)",
-              "text": "Install Markups as a Progressive Web App to use it offline from your desktop or mobile device.",
-              "url": "https://markups.dev/"
-            }
-          ],
-          "totalTime": "PT2M",
-          "tool": [
-            {
-              "@type": "HowToTool",
-              "name": "A modern web browser (Chrome, Firefox, Safari, or Edge)"
-            }
-          ]
-        },
-        {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {
-              "@type": "ListItem",
-              "position": 1,
-              "name": "Home",
-              "item": "https://markups.dev/"
-            },
-            {
-              "@type": "ListItem",
-              "position": 2,
-              "name": "Markups Editor",
-              "item": "https://markups.dev/landing"
-            }
-          ]
+        <style>
+        /* The editor fills the viewport, so clip this block instead of hiding it. */
+        .crawl-summary {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            clip-path: inset(50%);
+            border: 0;
         }
-      ]
-    }
-    </script>
+    </style>
 </head>
 
-<body class="view-split">
+<body class="view-split" data-clarity-mask="True">
+    <section class="crawl-summary">
+        <h1>Free online Markdown editor</h1>
+        <p>A free online Markdown editor in the browser, with live split preview and no signup.</p>
+        <p>PDF export is a picture of the preview. The Word button saves Word-compatible HTML as a .doc file. A mermaid block becomes an SVG after the first paint, not on the first paint. Turning math off removes the formula and does not restore the TeX source.</p>
+        <h2>Common questions</h2>
+        <h3>Does Markups require an account?</h3>
+        <p>No account is needed to edit locally. Optional cloud backup or connected-account features require sign-in and your explicit action when they are configured.</p>
+        <h3>What do the PDF and Word buttons save?</h3>
+        <p>PDF export is a picture of the preview. The Word button saves Word-compatible HTML as a .doc file.</p>
+        <h3>When does a mermaid block become an SVG?</h3>
+        <p>A mermaid block becomes an SVG after the first paint, not on the first paint.</p>
+        <h3>What happens if math is turned off?</h3>
+        <p>Turning math off removes the formula and does not restore the TeX source. YouTube insert is included.</p>
+        <p><a href="/landing">Landing</a></p>
+    </section>
+
     <!-- Skip Navigation Link (accessibility) -->
     <a href="#editor" class="skip-nav-link" id="skip-nav-link">Skip to editor</a>
 
     <!-- ==================== HEADER ==================== -->
     <header class="premium-header" role="banner">
         <!-- Brand -->
-        <div class="header-brand">
+        <a class="header-brand" href="/" aria-label="Markups home" title="Go to Markups home">
             <div class="brand-logo">M</div>
             <span class="brand-name">Markups</span>
-        </div>
+        </a>
 
         <!-- Browser-style file tabs between brand and actions -->
         <div class="header-quicktabs" id="header-quicktabs">
@@ -684,6 +366,11 @@
                 </svg>
             </button>
 
+            <button class="header-btn icon-only" id="cloud-account-btn" title="Cloud &amp; connections"
+                aria-label="Cloud and connected accounts" aria-haspopup="dialog" aria-controls="cloud-account-panel">
+                <span class="material-symbols-outlined" aria-hidden="true">cloud_sync</span>
+            </button>
+
             <!-- AI Assistant -->
             <button class="header-btn icon-only" id="ai-writer-button" title="MarkupsAI Assistant (Ctrl+Shift+A)"
                 aria-label="Open MarkupsAI Assistant" aria-pressed="false">
@@ -844,6 +531,16 @@
                         d="M4.715 6.542L3.343 7.914a3 3 0 104.243 4.243l1.828-1.829A3 3 0 008.586 5.5L8 6.086a1.001 1.001 0 00-.154.199 2 2 0 01.861 3.337L6.88 11.45a2 2 0 11-2.83-2.83l.793-.792a4.018 4.018 0 01-.128-1.287z" />
                     <path
                         d="M6.586 4.672A3 3 0 007.414 9.5l.775-.776a2 2 0 01-.896-3.346L9.12 3.55a2 2 0 112.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 10-4.243-4.243L6.586 4.672z" />
+                </svg>
+            </button>
+            <button class="toolbar-btn" id="toolbar-share" title="Share document" aria-label="Share document">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="18" cy="5" r="3"></circle>
+                    <circle cx="6" cy="12" r="3"></circle>
+                    <circle cx="18" cy="19" r="3"></circle>
+                    <line x1="8.6" y1="10.5" x2="15.4" y2="6.5"></line>
+                    <line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line>
                 </svg>
             </button>
             <button class="toolbar-btn" id="toolbar-url" title="Format URL (auto-detect)" aria-label="Format URL">
@@ -1156,6 +853,12 @@
                         </svg>
                         <span>File</span>
                     </button>
+                    <button class="explorer-action-btn explorer-action-icon" id="explorer-trash-btn"
+                        title="Open Trash" aria-label="Open Trash">
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <path d="M5.5 1h5l.5 1H14v1H2V2h3l.5-1zM3 4h10l-.8 10.2A2 2 0 0 1 10.2 16H5.8a2 2 0 0 1-2-1.8L3 4zm3 2v7h1V6H6zm3 0v7h1V6H9z" />
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="explorer-tree" id="explorer-tree"></div>
@@ -1302,7 +1005,7 @@
             <span>Ln 1, Col 1</span>
         </div>
         <div class="status-divider"></div>
-        <div class="status-saved" id="save-status">
+        <div class="status-saved" id="save-status" role="status" aria-live="polite">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                 <path
                     d="M13.854 3.646a.5.5 0 010 .708l-7 7a.5.5 0 01-.708 0l-3.5-3.5a.5.5 0 11.708-.708L6.5 10.293l6.646-6.647a.5.5 0 01.708 0z" />
@@ -1651,6 +1354,16 @@
                                     <span class="settings-toggle-slider"></span>
                                 </div>
                             </label>
+                            <label class="settings-toggle-item">
+                                <div class="settings-toggle-info">
+                                    <span class="settings-toggle-label">Front Matter Card</span>
+                                    <span class="settings-toggle-desc">Show YAML front matter as a metadata card</span>
+                                </div>
+                                <div class="settings-toggle">
+                                    <input type="checkbox" id="front-matter-checkbox" checked>
+                                    <span class="settings-toggle-slider"></span>
+                                </div>
+                            </label>
                         </div>
                     </section>
 
@@ -1768,6 +1481,12 @@
                                 <span class="shortcut-action">Open Export Modal</span>
                                 <div class="shortcut-keys">
                                     <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span class="shortcut-action">Command Palette</span>
+                                <div class="shortcut-keys">
+                                    <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>P</kbd>
                                 </div>
                             </div>
                         </div>
@@ -2303,7 +2022,7 @@
                 </button>
                 <button class="export-format-btn" data-format="docx">
                     <span class="material-symbols-outlined">description</span>
-                    <span class="btn-text">DOCX</span>
+                    <span class="btn-text">Word (.doc)</span>
                 </button>
                 <button class="export-format-btn" data-format="txt">
                     <span class="material-symbols-outlined">text_snippet</span>
@@ -2740,6 +2459,10 @@
 
         <!-- Actions Section -->
         <div class="mobile-drawer-section">
+            <button class="mobile-nav-item" id="mobile-cloud-account-btn">
+                <span class="material-symbols-outlined" aria-hidden="true">cloud_sync</span>
+                Cloud &amp; connections
+            </button>
             <button class="mobile-nav-item" id="mobile-import-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -2837,6 +2560,22 @@
             </button>
         </div>
     </nav>
+
+    <!-- Command Palette -->
+    <div class="modal-overlay" id="command-palette-overlay"></div>
+    <div class="modal command-palette" id="command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
+        <div class="command-palette-input-wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="command-palette-input" placeholder="Type a command..." autocomplete="off"
+                spellcheck="false" aria-label="Search commands">
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="command-palette-list" id="command-palette-list" role="listbox"></ul>
+    </div>
 
     <!-- Slash Commands Menu -->
     <div id="slash-menu" class="slash-menu" style="display:none"></div>
