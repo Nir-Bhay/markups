@@ -1,0 +1,16 @@
+name: Feature request
+description: Explain a writing or documentation problem Markups could solve
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Suggested behavior and alternatives
+    validations:
+      required: true

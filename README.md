@@ -2,11 +2,12 @@
 
 Free browser Markdown editor with a live preview. The editor is Monaco. Parsing, sanitizing, KaTeX, PDF export, and saving all run in the page. A fence tagged `mermaid` is drawn after that first paint, when Settings → Preview → Mermaid Diagrams is on. There is no account and no paywall on [markups.dev](https://markups.dev/).
 
-- **Live app:** [https://markups.dev/](https://markups.dev/)
+- **Try the editor:** [Open Markups in your browser](https://markups.dev/)
+- **Learn Markdown:** [Complete guide](https://markups.dev/markdown-guide) · [Troubleshooting](https://markups.dev/blog/markdown-troubleshooting)
 - **Source:** [https://github.com/Nir-Bhay/markups](https://github.com/Nir-Bhay/markups)
 - **License:** [MIT](LICENSE)
 
-The hosted site loads `src/main.js` (Vite's default entry). `src/app.js` is a second boot path used only when you build with `--mode modular`. Behavior below is the production path, checked against the source and against the HTML, CSS, and JS currently served at markups.dev.
+The production build uses `src/main.js`. `src/app.js` is a second boot path used only with `--mode modular`. Detailed implementation observations below include historical checks and may lag newer releases; see dated release evidence under `docs/` for validation scope. Optional cloud/provider features require separate configuration and acceptance.
 
 ## What it is for
 
@@ -16,7 +17,7 @@ It is a single-user editor in the browser. It is not a hosted wiki, not a multip
 
 ## Who it is for
 
-This is only what works on [markups.dev](https://markups.dev/) as of 3 October 2026: a free editor in the browser, no account, split preview, KaTeX, export, share by link, and YouTube insert. Mermaid is included with a timing limit, stated in the preview section.
+Core local editing works without an account: split preview, math, diagrams, export and share-by-link. PDF output is image-based; Word-compatible output is HTML `.doc`, not native DOCX. Download backups of important work; browser storage can be cleared or exhausted.
 
 **Student.** Open the site and write. No account. Split view shows the Markdown beside the preview. KaTeX draws math when Math Rendering is on. Export downloads a file. Share by link puts the note in the URL hash.
 
@@ -313,6 +314,8 @@ markups/
 ```
 
 ## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup and review expectations, our [Code of Conduct](CODE_OF_CONDUCT.md), [security reporting policy](SECURITY.md), and [accessibility notes](ACCESSIBILITY.md). Use the bug/feature forms under Issues.
 
 1. Fork the repository.
 2. Branch from current `main`.
