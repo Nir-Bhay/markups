@@ -5,10 +5,13 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const r = spawnSync('npx', ['vitest', 'run', 'src/__tests__/videoEmbed.test.js'], {
+const r = spawnSync(process.execPath, [
+    join(root, 'node_modules', 'vitest', 'vitest.mjs'),
+    'run',
+    'src/__tests__/videoEmbed.test.js'
+], {
     cwd: root,
-    encoding: 'utf8',
-    shell: process.platform === 'win32'
+    encoding: 'utf8'
 });
 const out = `${r.stdout || ''}\n${r.stderr || ''}`;
 const failed = /failed|✗|FAIL/.test(out);
