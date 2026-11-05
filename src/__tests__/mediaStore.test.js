@@ -24,7 +24,8 @@ describe('LocalMediaStore', () => {
         const result = await store.migrateLegacy(legacy);
 
         expect(result).toEqual({ copied: 1, invalid: 1 });
-        expect(database.rows.get('img_1_a').blob.type).toBe('image/png');
+        expect(database.rows.get('img_1_a').mimeType).toBe('image/png');
+        expect(database.rows.get('img_1_a').data).toBeInstanceOf(ArrayBuffer);
         expect(legacy.img_1_a).toBe(png);
     });
 

@@ -4,27 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="index,follow">
-  <title>CommonMark vs GFM: Make Markdown Portable | Markups</title>
-  <meta name="description" content="CommonMark specifies core Markdown parsing. Learn with an example and compatibility checks.">
+  <title>CommonMark vs GFM: Differences and Examples | Markups</title>
+  <meta name="description" content="See which Markdown features are core CommonMark or GFM extensions, compare concrete examples, and check why a destination may render them differently.">
   <link rel="canonical" href="https://markups.dev/blog/commonmark-vs-gfm-markdown">
   <link rel="stylesheet" href="/css/content-pages.css">
   <link rel="stylesheet" href="/css/editorial.css">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://markups.dev/blog/commonmark-vs-gfm-markdown">
-  <meta property="og:title" content="CommonMark vs GFM: Make Markdown Portable">
-  <meta property="og:description" content="CommonMark specifies core Markdown parsing. Learn with an example and compatibility checks.">
+  <meta property="og:title" content="CommonMark vs GFM: Differences and Examples">
+  <meta property="og:description" content="See which Markdown features are core CommonMark or GFM extensions, compare concrete examples, and check why a destination may render them differently.">
   <meta property="og:image" content="https://markups.dev/image/og-image.png">
   <meta property="og:site_name" content="Markups">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="CommonMark vs GFM: Make Markdown Portable">
-  <meta name="twitter:description" content="CommonMark specifies core Markdown parsing. Learn with an example and compatibility checks.">
+  <meta name="twitter:title" content="CommonMark vs GFM: Differences and Examples">
+  <meta name="twitter:description" content="See which Markdown features are core CommonMark or GFM extensions, compare concrete examples, and check why a destination may render them differently.">
   <meta name="twitter:image" content="https://markups.dev/image/og-image.png">
   <script type="application/ld+json">
   {
     "@context":"https://schema.org","@type":"Article",
-    "headline":"CommonMark vs GFM: Make Markdown Portable",
-    "description":"CommonMark specifies core Markdown parsing. Learn with an example and compatibility checks.",
-    "datePublished":"2026-11-04","dateModified":"2026-11-04",
+    "headline":"CommonMark vs GFM: Differences and Examples",
+    "description":"See which Markdown features are core CommonMark or GFM extensions, compare concrete examples, and check why a destination may render them differently.",
+    "datePublished":"2026-11-04","dateModified":"2026-11-05",
     "author":{"@type":"Organization","name":"Markups Editorial","url":"https://markups.dev/blog"},
     "publisher":{"@type":"Organization","name":"Markups","url":"https://markups.dev","logo":{"@type":"ImageObject","url":"https://markups.dev/image/og-image.png"}},
     "mainEntityOfPage":"https://markups.dev/blog/commonmark-vs-gfm-markdown",
@@ -37,17 +37,81 @@
   <div class="page-shell editorial-shell">
     <header class="hero">
       <div class="eyebrow">Markups Blog · Open-source documentation</div>
-      <h1>CommonMark vs GFM: Make Markdown Portable</h1>
-      <p class="lede">CommonMark specifies core Markdown parsing. Learn with an example and compatibility checks.</p>
-      <div class="editorial-meta"><span>Markups Editorial</span><span>November 4, 2026</span><span>2 min read</span></div>
+      <h1>CommonMark vs GFM: What Changes?</h1>
+      <p class="lede">A preview works in one place and breaks in another. Find out whether the cause is core Markdown syntax, a GFM extension, or a renderer-specific setting.</p>
+      <div class="editorial-meta"><span>Markups Editorial</span><span>November 4, 2026</span><span>4 min read</span></div>
     </header>
-<nav class="breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="/">Markups</a></li><li><a href="/blog">Blog</a></li></ol></nav><main class="editorial-main" id="main-content"><aside class="reading-sidebar"><p class="eyebrow">IN THIS ARTICLE</p><nav aria-label="Article contents"><a href="#section-1">Choose the structure for your readers</a><a href="#section-2">A small example to try</a><a href="#section-3">Check compatibility before sharing</a><a href="#section-4">A practical review checklist</a><a href="#section-5">Primary source and further reading</a></nav><a class="sidebar-back" href="/blog">← All articles</a></aside><article class="card article-body"><figure class="workflow-figure"><figcaption>A practical mental model</figcaption><ol><li><span>01</span><strong>Inspect the source</strong></li><li><span>02</span><strong>Check the renderer</strong></li><li><span>03</span><strong>Verify the destination</strong></li></ol><p>Each step answers a different question. Verify the final document in its actual destination.</p></figure><h2 id="section-1">Choose the structure for your readers</h2><p>CommonMark specifies core Markdown parsing. GFM extends it with tables, task-list items, strikethrough and additional autolink behavior. Math, Mermaid, alerts and footnotes depend on further application support.</p><h2 id="section-2">A small example to try</h2><pre><code># Compatibility check
+<nav class="breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="/">Markups</a></li><li><a href="/blog">Blog</a></li></ol></nav><main class="editorial-main" id="main-content">
+  <aside class="reading-sidebar"><p class="eyebrow">IN THIS ARTICLE</p><nav aria-label="Article contents"><a href="#symptom">Why output differs</a><a href="#comparison">Compare the syntax</a><a href="#examples">Try both examples</a><a href="#debug">Debug a mismatch</a><a href="#portable">Keep it portable</a><a href="#sources">Primary specifications</a></nav><a class="sidebar-back" href="/blog">← All articles</a></aside>
+  <article class="card article-body">
+    <p><strong>If Markdown looks different between tools, the source may be valid in both.</strong> Markdown is interpreted by a renderer. CommonMark defines a core syntax; GitHub Flavored Markdown (GFM) builds on CommonMark and adds specific extensions. A third product can support only part of either set, or apply its own settings.</p>
 
-A paragraph with **emphasis**.
+    <h2 id="symptom">Why output differs between a preview and GitHub</h2>
+    <p>Start by separating three questions: does the syntax belong to the specification you expect, does the destination implement that feature, and are renderer options changing the result? A local preview demonstrates that preview's behavior; it cannot guarantee another site or export will match.</p>
 
-- [ ] Task marker
+    <h2 id="comparison">CommonMark and GFM at a glance</h2>
+    <div class="table-scroll"><table><thead><tr><th>Syntax or behavior</th><th>CommonMark core</th><th>GFM specification</th></tr></thead><tbody>
+      <tr><td>Headings, paragraphs, emphasis, links, lists, blockquotes and fenced code</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Pipe tables</td><td>No</td><td>Extension</td></tr>
+      <tr><td>Task-list markers such as <code>- [ ]</code></td><td>No</td><td>Extension</td></tr>
+      <tr><td>Strikethrough such as <code>~~text~~</code></td><td>No</td><td>Extension</td></tr>
+      <tr><td>Bare-URL autolinking</td><td>Not part of the core syntax</td><td>Extension</td></tr>
+      <tr><td>Math, Mermaid diagrams, and alert callouts</td><td>No</td><td>Not defined by the GFM specification</td></tr>
+    </tbody></table></div>
+    <p>GFM documents extensions such as tables, task-list items, strikethrough, and autolinks. Math and diagram fences need additional renderer support. A platform may add more features of its own, so “supports Markdown” is not a complete compatibility statement.</p>
 
-| Feature | Check |
+    <h2 id="examples">Compare a core example with GFM extensions</h2>
+    <p>This first sample uses CommonMark core structures:</p>
+    <pre><code>## Release review
+
+The package is ready for review.
+
+- Check the changelog
+- Verify the install steps
+
+```sh
+npm test
+```</code></pre>
+    <p>Now try a GFM sample. The table, task markers, strikethrough, and bare URL depend on the destination implementing those extensions:</p>
+    <pre><code>| Check | Status |
 | --- | --- |
-| Table | Destination renderer |</code></pre><p>Paste this example into the editor and compare the source with its preview. Change one element at a time so you can identify which syntax controls the result.</p><h2 id="section-3">Check compatibility before sharing</h2><p>Test a representative sample through edit, preview, save, reopen and export. Include nested lists, code fences, relative images and every extension your team uses. Task-list appearance does not guarantee interactive checkboxes. Keep essential meaning in ordinary prose and preserve source files when changing tools.</p><h2 id="section-4">A practical review checklist</h2><ol><li>Check headings and labels explain the content without extra context.</li><li>Test the example in the destination where people will read it.</li><li>Verify links and relative asset paths after moving the file.</li><li>Inspect exported documents separately from the live preview.</li><li>Keep the editable Markdown original alongside distributed copies.</li></ol><h2 id="section-5">Primary source and further reading</h2><p><a href="https://github.github.com/gfm/">Read the specification or project documentation</a>. Explore the <a href="/markdown-guide">complete Markdown guide</a> and <a href="/seo/compatibility-lab">Compatibility Lab</a>.</p><aside class="editorial-note">Prepared with AI assistance using the linked primary documentation. Examples describe a writing workflow; support depends on the destination renderer and its configuration.</aside><p class="quiet-tool-link">Want to inspect a small example? <a href="/">Try it in a Markdown preview</a>, then verify your publishing destination.</p><p><a href="/blog">All Markdown articles</a></p></article></main></div><script src="/js/editorial.js" defer></script><script type="module" src="/src/editorialTelemetry.js"></script>
+| Changelog | Ready |
+| Install steps | Review |
+
+- [x] Run the tests
+- [ ] Verify the release
+
+~~Old command~~
+
+https://example.com</code></pre>
+    <p>If a table displays as pipes or <code>~~text~~</code> stays unchanged, check the renderer before rewriting the whole document. A valid extension can simply be unsupported there.</p>
+
+    <h2 id="debug">Debug a mismatch with a small test</h2>
+    <ol>
+      <li>Copy the smallest source sample that shows the problem. Remove private or unrelated document text.</li>
+      <li>Record the destination, its Markdown flavor if documented, and any relevant option or plugin.</li>
+      <li>Compare one feature at a time: a table, task list, autolink, or line break.</li>
+      <li>Inspect the saved file and final destination separately from the live preview.</li>
+      <li>Keep the original Markdown so you can switch renderers without losing source structure.</li>
+    </ol>
+    <p>Line breaks are a common false alarm: CommonMark treats an ordinary newline inside a paragraph as a soft break. A renderer may output that as a space or line ending; a blank line starts a new paragraph, while two trailing spaces or a backslash before the newline create a hard break. Some renderers also offer an option that turns soft breaks into hard breaks.</p>
+
+    <h2 id="portable">Keep the document portable</h2>
+    <ul>
+      <li>Use core syntax when the same source must render in many destinations.</li>
+      <li>When using GFM-only features, label the requirement and preview the target platform.</li>
+      <li>Keep essential instructions in prose instead of relying on a table or checkbox alone.</li>
+      <li>Check links and relative image paths after moving the Markdown file.</li>
+      <li>Inspect each export format independently; a browser preview does not validate a PDF or another application's renderer.</li>
+    </ul>
+    <p>For a quick compatibility check, paste the examples into <a href="/">the Markups preview</a>, then test the same source in its intended destination. Markups is one renderer in that comparison, not a guarantee that every destination behaves the same.</p>
+
+    <section class="article-sources"><h2 id="sources">Primary specifications and related guides</h2><ul>
+      <li><a href="https://spec.commonmark.org/0.31.2/">CommonMark specification 0.31.2</a> — core syntax and line-break rules.</li>
+      <li><a href="https://github.github.com/gfm/">GitHub Flavored Markdown specification</a> — tables, task-list items, strikethrough, and autolinks.</li>
+      <li><a href="/markdown-guide">Markdown guide</a> and <a href="/seo/compatibility-lab">renderer compatibility lab</a>.</li>
+    </ul></section>
+    <aside class="editorial-note">Examples were checked against the linked primary specifications on November 5, 2026. Destination support and configuration can change; verify the renderer where the document will be read.</aside>
+  </article>
+</main></div><script src="/js/editorial.js" defer></script><script type="module" src="/src/editorialTelemetry.js"></script>
 </body></html>
