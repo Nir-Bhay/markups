@@ -5295,7 +5295,8 @@ const insertImageIntoEditor = async (file, base64Image) => {
     const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
     let blob;
     try { blob = await localMediaStore.putDataUrl(imgId, base64Image); }
-    catch {
+    catch (error) {
+        console.warn('[Markups] Local image persistence failed:', error?.name || 'UnknownError');
         showToast('Could not save this image locally. It was not inserted; export a backup or free up browser storage.', 'error');
         return;
     }

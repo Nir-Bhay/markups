@@ -34,10 +34,22 @@ export function blobToImageData(blob) {
     });
 }
 
+function mediaRowToBlob(row) {
+    if (typeof Blob !== 'undefined' && row?.blob instanceof Blob) return row.blob;
+    const data = row?.data;
+    if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
+        return new Blob([data], { type: typeof row.mimeType === 'string' ? row.mimeType : 'application/octet-stream' });
+    }
+    return null;
+}
+
 export class LocalMediaStore {
     constructor(database = db) { this.db = database; }
 
     async storeBlob(id, blob) {
+        // Resolve Blob data before opening a Dexie transaction. WebKit can
+        // auto-commit a transaction while Blob.arrayBuffer() is pending.
+        const data = await blob.arrayBuffer();
         const write = async () => {
             const existing = await this.db.media.get(id);
             const rows = await this.db.media.toArray();
@@ -45,7 +57,16 @@ export class LocalMediaStore {
             if (total - (Number(existing?.bytes) || Number(existing?.blob?.size) || 0) + blob.size > MAX_LOCAL_MEDIA_TOTAL_BYTES) {
                 throw new DOMException('Local image storage limit reached.', 'QuotaExceededError');
             }
-            await this.db.media.put({ id, blob, bytes: blob.size, createdAt: Date.now() });
+            // Store the bytes rather than a Blob: WebKit can reject Blob values
+            // in IndexedDB with UnknownError even when the database is writable.
+            // Keep reading older `{ blob }` rows in mediaRowToBlob above.
+            await this.db.media.put({
+                id,
+                data,
+                mimeType: blob.type,
+                bytes: blob.size,
+                createdAt: Date.now()
+            });
         };
         if (typeof this.db.transaction === 'function') await this.db.transaction('rw', this.db.media, write);
         else await write();
@@ -61,7 +82,8 @@ export class LocalMediaStore {
     async getDataUrl(id, fallback = null) {
         if (!ID_PATTERN.test(id)) return null;
         const row = await this.db.media.get(id);
-        if (row?.blob) return blobToImageData(row.blob);
+        const blob = mediaRowToBlob(row);
+        if (blob) return blobToImageData(blob);
         if (typeof fallback === 'string' && fallback.startsWith('data:image/')) {
             return blobToImageData(imageDataToBlob(fallback));
         }
@@ -89,9 +111,13 @@ export class LocalMediaStore {
 
     async previewEntries() {
         const rows = await this.db.media.toArray();
-        return Promise.all(rows.map(async row => [row.id,
-            typeof URL.createObjectURL === 'function' ? URL.createObjectURL(row.blob) : await blobToImageData(row.blob)
-        ]));
+        return Promise.all(rows.map(async (row) => {
+            const blob = mediaRowToBlob(row);
+            if (!blob) return null;
+            return [row.id, typeof URL.createObjectURL === 'function'
+                ? URL.createObjectURL(blob)
+                : await blobToImageData(blob)];
+        })).then(entries => entries.filter(Boolean));
     }
 
     async portableMarkdown(markdown, fallback = new Map()) {
@@ -101,7 +127,8 @@ export class LocalMediaStore {
         const data = new Map();
         for (const id of ids) {
             const row = await this.db.media.get(id);
-            if (row?.blob) data.set(id, await blobToImageData(row.blob));
+            const blob = mediaRowToBlob(row);
+            if (blob) data.set(id, await blobToImageData(blob));
             else if (typeof fallback.get(id) === 'string' && fallback.get(id).startsWith('data:image/')) {
                 const cleanBlob = imageDataToBlob(fallback.get(id));
                 data.set(id, await blobToImageData(cleanBlob));
