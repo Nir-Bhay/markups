@@ -24,7 +24,9 @@ export default defineConfig({
         screenshot: 'only-on-failure',
         video: process.env.PLAYWRIGHT_VIDEO === 'off' ? 'off' : 'retain-on-failure'
     },
-    webServer: {
+    // scripts/run-e2e.mjs owns the Vite process and its cleanup lifecycle.
+    // Do not let Playwright start a second server on the same port in that path.
+    webServer: process.env.PLAYWRIGHT_EXTERNAL_SERVER ? undefined : {
         command: `vite --host ${HOST} --port ${PORT}`,
         url: baseURL,
         reuseExistingServer: !process.env.CI,
