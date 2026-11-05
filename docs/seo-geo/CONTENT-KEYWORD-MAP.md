@@ -19,6 +19,7 @@ Reviewed 2026-11-04: 15 existing source articles; all are AI-assisted drafts req
 | [Math in Markdown: KaTeX Syntax and Portability](https://markups.dev/blog/math-in-markdown-portability) | KaTeX Markdown math; equations not rendering | Add verified input/output fixture and useful contextual related links; review source accuracy |
 | [Mermaid Flowcharts in Markdown: A Practical Workflow](https://markups.dev/blog/mermaid-flowchart-markdown) | Mermaid flowchart Markdown; diagram syntax | Add verified input/output fixture and useful contextual related links; review source accuracy |
 | [Render Markdown as HTML safely: a developer checklist](https://markups.dev/blog/safe-markdown-html-rendering) | sanitize Markdown HTML; safe Markdown rendering | Add verified input/output fixture and useful contextual related links; review source accuracy |
+| [Free Online Markdown Editor with Live Preview](https://markups.dev/seo/online-markdown-editor) | online Markdown editor; Markdown live preview; browser Markdown editor | Added original GFM example and clarified browser-storage, front-matter, HTML, PDF and Word-compatible export limits. GSC live test says available, but inspection status is discovered-not-indexed and indexing-request submission failed; recheck after Google UI recovers. |
 
 ## Existing supporting content
 
